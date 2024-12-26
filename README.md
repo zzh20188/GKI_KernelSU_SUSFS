@@ -33,7 +33,6 @@ Follow the steps for GKI:
 
 - **KernelSU**: Developed by [tiann](https://github.com/tiann).
 - **SUSFS**: Developed by [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git).
-- **Sultan Kernel**: Developed by [kerneltoast](https://github.com/kerneltoast/android_kernel_google_zuma).
 
 Special thanks to the open-source community for their contributions!
 
