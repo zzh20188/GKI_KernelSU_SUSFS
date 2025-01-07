@@ -1,5 +1,4 @@
-# .github/workflows/prerequisites.yml
-name: Download Prebuilt Toolchain
+name: Download Prebuilt Toolchain and Repo
 
 on:
   workflow_call:  # Makes this workflow callable by other workflows
@@ -9,11 +8,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Download prebuilt toolchain
       - name: Download prebuilt toolchain
         run: |
           AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-build-2024
-
+          
           # Clone necessary prebuilt tools
           git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
@@ -25,3 +25,11 @@ jobs:
           echo "LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4" >> $GITHUB_ENV
           echo "MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py" >> $GITHUB_ENV
           echo "UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py" >> $GITHUB_ENV
+
+      # Step 2: Download and set up 'repo' tool
+      - name: Download and set up 'repo' tool
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > repo
+          chmod a+rx repo
+          mv repo $GITHUB_WORKSPACE/repo
+          echo "REPO=$GITHUB_WORKSPACE/repo" >> $GITHUB_ENV
