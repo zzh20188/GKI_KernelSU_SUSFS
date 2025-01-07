@@ -1,0 +1,18 @@
+name: Release
+
+on:
+  workflow_dispatch: # Manually triggered workflow
+
+jobs:
+  #build-a12-kernel:
+  #  uses: ./.github/workflows/build-kernel-a12.yml
+  #  secrets: inherit
+  #build-a13-kernel:
+  #  uses: ./.github/workflows/build-kernel-a13.yml
+  #  secrets: inherit
+  build-a14-kernel:
+    uses: ./.github/workflows/build-kernel-a14.yml
+    secrets: inherit
+  #build-a15-kernel:
+  #  uses: ./.github/workflows/build-kernel-a15.yml
+  #  secrets: inherit
