@@ -1,0 +1,31 @@
+name: Download Prebuilt Toolchain
+
+on:
+  workflow_call:  # Makes this file callable by other workflows
+
+jobs:
+  setup-prerequisites:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Download prebuilt toolchain
+      run: |
+        AOSP_MIRROR=https://android.googlesource.com
+        BRANCH=main-kernel-build-2024
+
+        # Clone necessary prebuilt tools
+        git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
+        git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
+        git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
+
+        # Export paths to required tools
+        export AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
+        export GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip
+        export LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4
+        export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
+        export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
+
+        echo "Prerequisites downloaded and paths set up."
