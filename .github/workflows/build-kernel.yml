@@ -50,20 +50,7 @@ jobs:
             echo "$GITHUB_WORKSPACE/avb_keys" >> $GITHUB_PATH
           fi
 
-      # Step 3: Install GitHub CLI (gh) using the .deb file
-      - name: Install GitHub CLI (gh) using .deb file
-        run: |
-          # Download the latest .deb file for GitHub CLI
-          GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | jq -r .tag_name)
-          curl -LO https://github.com/cli/cli/releases/download/$GH_VERSION/gh_$GH_VERSION_linux_amd64.deb
-          
-          # Install the .deb package using dpkg
-          sudo dpkg -i gh_$GH_VERSION_linux_amd64.deb
-          
-          # Fix missing dependencies (if any)
-          sudo apt-get install -f -y
-
-      # Step 4: Authenticate with GitHub CLI
+      # Step 3: Authenticate with GitHub CLI (already available in GitHub Actions)
       - name: Authenticate with GitHub CLI
         run: |
           # Authenticate using GITHUB_TOKEN or a Personal Access Token
@@ -71,18 +58,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 5: Set git username and email
+      # Step 4: Set git username and email
       - name: Set Git username and email
         run: |
           git config --global user.name "TheWildJames"
           git config --global user.email "bins4us@hotmail.com"
 
-      # Step 6: Clone kernel build scripts
+      # Step 5: Clone kernel build scripts
       - name: Clone kernel build scripts
         run: |
           git clone https://github.com/TheWildJames/kernel_build_scripts.git
 
-      # Step 7: Run kernel build script
+      # Step 6: Run kernel build script
       - name: Run kernel build script
         run: |
           chmod +x kernel_build_scripts/GKI/aio_gki_build_kernel_release.sh
