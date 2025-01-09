@@ -1,0 +1,46 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  setup-prerequisites:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download prebuilt toolchain
+      - name: Download prebuilt toolchain
+        run: |
+          AOSP_MIRROR=https://android.googlesource.com
+          BRANCH=main-kernel-build-2024
+          
+          # Clone necessary prebuilt tools
+          git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
+          git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
+          git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
+          
+          # Add tools to PATH
+          echo "$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/build-tools/path/linux-x86" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/mkbootimg" >> $GITHUB_PATH
+
+      # Step 2: Download and set up 'repo' tool
+      - name: Download and set up 'repo' tool
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > repo
+          chmod a+rx repo
+          mv repo $GITHUB_WORKSPACE/repo
+          
+          # Add 'repo' tool to PATH
+          echo "$GITHUB_WORKSPACE" >> $GITHUB_PATH
+
+      # Step 3: Clone kernel build scripts
+      - name: Clone kernel build scripts
+        run: |
+          git clone https://github.com/TheWildJames/kernel_build_scripts.git
+
+      # Step 4: Run the kernel build script
+      - name: Run kernel build script
+        run: |
+          chmod +x kernel_build_scripts/GKI/aio_gki_build_kernel_release.sh
+          kernel_build_scripts/GKI/aio_gki_build_kernel_release.sh
