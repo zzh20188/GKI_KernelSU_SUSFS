@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
-  build-kernel:
+  setup-prerequisites:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,22 +24,49 @@ jobs:
           echo "$GITHUB_WORKSPACE/build-tools/path/linux-x86" >> $GITHUB_PATH
           echo "$GITHUB_WORKSPACE/mkbootimg" >> $GITHUB_PATH
 
-      # Step 2: Download and set up 'repo' tool
-      - name: Download and set up 'repo' tool
+      # Step 2: Set boot sign key
+      - name: Set boot sign key
+        env:
+          BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
         run: |
-          curl https://storage.googleapis.com/git-repo-downloads/repo > repo
-          chmod a+rx repo
-          mv repo $GITHUB_WORKSPACE/repo
+          if [ ! -z "$BOOT_SIGN_KEY" ]; then
+            echo "$BOOT_SIGN_KEY" > ./kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
+          fi
+
+      # Step 3: Download and configure GitHub CLI (gh) binary
+      - name: Download and configure GitHub CLI
+        run: |
+          # Download the latest GitHub CLI binary
+          GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | jq -r .tag_name)
+          curl -LO https://github.com/cli/cli/releases/download/$GH_VERSION/gh_$GH_VERSION_linux_amd64.tar.gz
           
-          # Add 'repo' tool to PATH
+          # Extract and set up the binary
+          tar -xzf gh_$GH_VERSION_linux_amd64.tar.gz
+          mv gh_$GH_VERSION_linux_amd64/bin/gh $GITHUB_WORKSPACE/gh
+          
+          # Add gh to PATH
           echo "$GITHUB_WORKSPACE" >> $GITHUB_PATH
 
-      # Step 3: Clone kernel build scripts
+      # Step 4: Authenticate with GitHub CLI
+      - name: Authenticate with GitHub CLI
+        run: |
+          # Authenticate using GITHUB_TOKEN or a Personal Access Token
+          gh auth login --with-token <<< ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 5: Set git username and email
+      - name: Set Git username and email
+        run: |
+          git config --global user.name "TheWildJames"
+          git config --global user.email "bins4us@hotmail.com"
+
+      # Step 6: Clone kernel build scripts
       - name: Clone kernel build scripts
         run: |
           git clone https://github.com/TheWildJames/kernel_build_scripts.git
 
-      # Step 4: Run the kernel build script
+      # Step 7: Run the kernel build script
       - name: Run kernel build script
         run: |
           chmod +x kernel_build_scripts/GKI/aio_gki_build_kernel_release.sh
