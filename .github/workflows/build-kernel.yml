@@ -4,10 +4,21 @@ on:
   workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
-  setup-prerequisites:
+  build_kernel:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 0: Maximize build space
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
       # Step 1: Download prebuilt toolchain
       - name: Download prebuilt toolchain
         run: |
@@ -24,13 +35,19 @@ jobs:
           echo "$GITHUB_WORKSPACE/build-tools/path/linux-x86" >> $GITHUB_PATH
           echo "$GITHUB_WORKSPACE/mkbootimg" >> $GITHUB_PATH
 
-      # Step 2: Set boot sign key
+      # Step 2: Set boot sign key (store key in the environment and write to a file in PATH)
       - name: Set boot sign key
         env:
-          BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
+          BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}  # Environment variable for the key
         run: |
           if [ ! -z "$BOOT_SIGN_KEY" ]; then
-            echo "$BOOT_SIGN_KEY" > ./kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
+            # Write the key to a file in a directory that is in PATH (e.g., /usr/local/share)
+            mkdir -p /usr/local/share/avb
+            echo "$BOOT_SIGN_KEY" > /usr/local/share/avb/testkey_rsa2048.pem
+            # Ensure it's readable by everyone
+            chmod 644 /usr/local/share/avb/testkey_rsa2048.pem
+            # Optionally, add the directory to the PATH
+            echo "/usr/local/share/avb" >> $GITHUB_PATH
           fi
 
       # Step 3: Download and configure GitHub CLI (gh) binary
