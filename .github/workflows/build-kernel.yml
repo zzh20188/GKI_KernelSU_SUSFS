@@ -50,18 +50,26 @@ jobs:
             echo "$GITHUB_WORKSPACE/avb_keys" >> $GITHUB_PATH
           fi
 
-      # Step 3: Set git username and email
+      # Step 3: Install 'repo' tool
+      - name: Install 'repo' tool
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > repo
+          chmod a+rx repo
+          mv repo $GITHUB_WORKSPACE/repo
+          echo "$GITHUB_WORKSPACE/repo" >> $GITHUB_PATH
+
+      # Step 4: Set git username and email
       - name: Set Git username and email
         run: |
           git config --global user.name "TheWildJames"
           git config --global user.email "bins4us@hotmail.com"
 
-      # Step 4: Clone kernel build scripts
+      # Step 5: Clone kernel build scripts
       - name: Clone kernel build scripts
         run: |
           git clone https://github.com/TheWildJames/kernel_build_scripts.git
 
-      # Step 5: Run kernel build script
+      # Step 6: Run kernel build script
       - name: Run kernel build script
         run: |
           chmod +x kernel_build_scripts/GKI/aio_gki_build_kernel_release.sh
