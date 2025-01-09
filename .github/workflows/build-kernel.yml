@@ -35,19 +35,19 @@ jobs:
           echo "$GITHUB_WORKSPACE/build-tools/path/linux-x86" >> $GITHUB_PATH
           echo "$GITHUB_WORKSPACE/mkbootimg" >> $GITHUB_PATH
 
-      # Step 2: Set boot sign key (store key in the environment and write to a file in PATH)
+      # Step 2: Set boot sign key (store key in the environment and write to a file in new directory)
       - name: Set boot sign key
         env:
           BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}  # Environment variable for the key
         run: |
           if [ ! -z "$BOOT_SIGN_KEY" ]; then
-            # Write the key to a file in a directory that is in PATH (e.g., /usr/local/share)
-            mkdir -p /usr/local/share/avb
-            echo "$BOOT_SIGN_KEY" > /usr/local/share/avb/testkey_rsa2048.pem
+            # Create a new directory in GITHUB_WORKSPACE to avoid permission issues
+            mkdir -p $GITHUB_WORKSPACE/avb_keys
+            echo "$BOOT_SIGN_KEY" > $GITHUB_WORKSPACE/avb_keys/testkey_rsa2048.pem
             # Ensure it's readable by everyone
-            chmod 644 /usr/local/share/avb/testkey_rsa2048.pem
+            chmod 644 $GITHUB_WORKSPACE/avb_keys/testkey_rsa2048.pem
             # Optionally, add the directory to the PATH
-            echo "/usr/local/share/avb" >> $GITHUB_PATH
+            echo "$GITHUB_WORKSPACE/avb_keys" >> $GITHUB_PATH
           fi
 
       # Step 3: Download and configure GitHub CLI (gh) binary
