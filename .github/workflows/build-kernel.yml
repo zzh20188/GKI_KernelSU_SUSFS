@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
-  setup-prerequisites:
+  build-kernel:
     runs-on: ubuntu-latest
 
     steps:
