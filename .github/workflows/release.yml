@@ -1,4 +1,4 @@
-name: Release
+name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
   workflow_dispatch:  # Manually triggered workflow
