@@ -29,7 +29,7 @@ on:
       make_release:
         description: 'Trigger release after the build?'
         required: false  # User interaction is optional
-        default: false   # Defaults to not triggering a release
+        default: true   # Defaults to not triggering a release
         type: boolean
 
 jobs:
