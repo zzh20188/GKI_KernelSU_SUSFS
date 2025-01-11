@@ -42,8 +42,16 @@ jobs:
       
       - name: Install repo tool
         run: |
-          sudo apt-get update
-          sudo apt-get install -y repo
+          # Install dependencies
+          #sudo apt-get update
+          #sudo apt-get install -y curl
+          
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod +x ~/repo
+          mkdir -p ~/bin
+          mv ~/repo ~/bin/
+          echo "export PATH=$HOME/bin:$PATH" >> $GITHUB_ENV
+
 
       - name: Build for all configurations
         run: |
@@ -51,8 +59,8 @@ jobs:
             #"android12-5.10-198-2024-01"
             #"android12-5.10-205-2024-03"
             #"android12-5.10-209-2024-05"
-            #"android12-5.10-218-2024-08"
-            "android12-5.10-X-lts"
+            "android12-5.10-218-2024-08"
+            #"android12-5.10-X-lts"
           )
 
           for CONFIG in "${BUILD_CONFIGS[@]}"; do
