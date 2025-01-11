@@ -91,8 +91,8 @@ jobs:
             fi
 
             # Sync repo and apply patches
-            repo --version
-            repo --trace sync -c -j$(nproc --all) --no-tags --fail-fast
+            repo --version --no-repo-update
+            repo --trace sync -c -j$(nproc --all) --no-tags --fail-fast --no-repo-update
 
             # Add KernelSU, SUSFS patches, and build the kernel
             echo "Adding KernelSU..."
