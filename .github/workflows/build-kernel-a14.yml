@@ -185,12 +185,12 @@ jobs:
             cp ./bazel-bin/common/kernel_aarch64/Image.lz4 ./bootimgs
             cp ./bazel-bin/common/kernel_aarch64/Image ../
             cp ./bazel-bin/common/kernel_aarch64/Image.lz4 ../
-
-            # Compress Image to Image.gz
-            gzip -n -k -f -9 ../Image > ../Image.gz
-
-            # Change directory for boot image creation
+            gzip -n -k -f -9 ../Image >../Image.gz
             cd ./bootimgs
+
+            echo 'Building Image.gz'
+            gzip -n -k -f -9 Image >Image.gz
+            
             $MKBOOTIMG --header_version 4 --kernel Image --output boot.img
             $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
             cp ./boot.img ../../../${ANDROID_VERSION}-${KERNEL_VERSION}.${SUB_LEVEL}_${DATE}-boot.img
