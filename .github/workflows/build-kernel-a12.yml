@@ -87,7 +87,7 @@ jobs:
             # Check if branch is deprecated
             if grep -q deprecated <<< $REMOTE_BRANCH; then
               echo "Found deprecated branch: $FORMATTED_BRANCH"
-              sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATT_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
+              sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
             fi
 
             # Sync repo and apply patches
