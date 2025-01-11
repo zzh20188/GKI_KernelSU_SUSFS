@@ -25,6 +25,8 @@ jobs:
         run: |
           AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-build-2024
+          
+          # Clone the necessary repositories
           git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
@@ -36,20 +38,23 @@ jobs:
           export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
           export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
 
-          # Verify that tools are installed and accessible
+          # Check if the tools are accessible and Python is installed
+          echo "Checking if Python is installed"
           if ! command -v python3 &> /dev/null; then
-            echo "Python is not installed. Please install Python to continue."
+            echo "Error: Python is not installed. Please install Python to continue."
             exit 1
           fi
           
-          # Check if the tools are available
+          # Check if avbtool and other tools are available
+          echo "Checking if avbtool exists at $AVBTOOL"
           if [ ! -f "$AVBTOOL" ]; then
             echo "Error: avbtool not found at $AVBTOOL."
             exit 1
           fi
           
+          echo "Checking if unpack_bootimg.py exists at $UNPACK_BOOTIMG"
           if [ ! -f "$UNPACK_BOOTIMG" ]; then
-            echo "Error: unpack_bootimg not found at $UNPACK_BOOTIMG."
+            echo "Error: unpack_bootimg.py not found at $UNPACK_BOOTIMG."
             exit 1
           fi
 
@@ -66,6 +71,7 @@ jobs:
           FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
           
           # Check if the GKI URL is available
+          echo "Checking if GKI kernel URL is reachable: $GKI_URL"
           status=$(curl -sL -w "%{http_code}" "$GKI_URL" -o /dev/null)
           
           if [ "$status" = "200" ]; then
@@ -77,6 +83,7 @@ jobs:
           fi
           
           # Unzip the downloaded kernel and remove the zip
+          echo "Unzipping the downloaded kernel..."
           unzip gki-kernel.zip && rm gki-kernel.zip
 
           # List the contents to check if boot-5.10.img is present
@@ -84,21 +91,24 @@ jobs:
           ls -l
 
           # Check if boot-5.10.img exists, and exit if not
+          echo "Checking if boot-5.10.img exists..."
           if [ ! -f "./boot-5.10.img" ]; then
             echo "Error: boot-5.10.img not found in the current directory."
             exit 1
           fi
 
           # Unpack the boot.img using the absolute path
-          echo 'Unpacking prebuilt boot.img'
+          echo "Unpacking boot.img..."
           FULL_PATH=$(pwd)/boot-5.10.img
           echo "Unpacking using: $FULL_PATH"
 
-          # Ensure unpack_bootimg is available
+          # Check if unpack_bootimg is available and unpack the image
           if [ ! -f "$UNPACK_BOOTIMG" ]; then
             echo "Error: unpack_bootimg tool not found at $UNPACK_BOOTIMG."
             exit 1
           fi
 
-          # Unpack using the full path
           python3 "$UNPACK_BOOTIMG" --boot_img="$FULL_PATH"
+
+          echo "Boot image unpacked successfully!"
+
