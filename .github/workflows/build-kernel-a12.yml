@@ -168,22 +168,53 @@ jobs:
             cp ./out/${ANDROID_VERSION}-${KERNEL_VERSION}/dist/Image.lz4 ../
             gzip -n -k -f -9 ../Image >../Image.gz
             cd ./bootimgs
-            
+
+          # Set the GKI URLs
             GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${DATE}"_r1.zip
             FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
+
+            # Check if the GKI URL is available
+            echo "Checking if GKI kernel URL is reachable: $GKI_URL"
             status=$(curl -sL -w "%{http_code}" "$GKI_URL" -o /dev/null)
-                
+
             if [ "$status" = "200" ]; then
+                echo "[+] Downloading from GKI_URL"
                 curl -Lo gki-kernel.zip "$GKI_URL"
             else
                 echo "[+] $GKI_URL not found, using $FALLBACK_URL"
                 curl -Lo gki-kernel.zip "$FALLBACK_URL"
             fi
-                
+
+            # Unzip the downloaded kernel and remove the zip
+            echo "Unzipping the downloaded kernel..."
             unzip gki-kernel.zip && rm gki-kernel.zip
-            echo 'Unpack prebuilt boot.img'
+
+            # List the contents to check if boot-5.10.img is present
+            echo "Listing contents of current directory:"
+            ls -l
+
+            # Check if boot-5.10.img exists, and exit if not
+            echo "Checking if boot-5.10.img exists..."
+            if [ ! -f "./boot-5.10.img" ]; then
+                echo "Error: boot-5.10.img not found in the current directory."
+                exit 1
+            fi
+
+            # Unpack the boot.img using the absolute path
+            echo "Unpacking boot.img..."
             FULL_PATH=$(pwd)/boot-5.10.img
-            $UNPACKBOOTIMG --boot_img="$FULL_PATH"
+            echo "Unpacking using: $FULL_PATH"
+
+            # Check if unpack_bootimg.py is available
+            echo "Checking if unpack_bootimg.py exists at $UNPACK_BOOTIMG"
+            if [ ! -f "$UNPACK_BOOTIMG" ]; then
+                echo "Error: unpack_bootimg.py tool not found at $UNPACK_BOOTIMG."
+                exit 1
+            fi
+
+            # Run the unpacking tool
+            echo "Running unpack_bootimg.py..."
+            python3 "$UNPACK_BOOTIMG" --boot_img="$FULL_PATH"
 
             echo 'Building Image.gz'
             gzip -n -k -f -9 Image >Image.gz
