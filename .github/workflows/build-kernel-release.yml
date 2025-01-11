@@ -1,6 +1,10 @@
 name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
+  push:  # Triggered on push to any branch or specific branches if you wish
+    branches:
+      - main  # Example: Only trigger on push to 'main' branch, or adjust to your needs
+      - '*/*'  # Optionally, you can add wildcard to trigger on any branch
   workflow_dispatch:  # Manually triggered workflow
 
 jobs:
