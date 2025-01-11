@@ -87,7 +87,7 @@ jobs:
             
             # Initialize and sync kernel source
             echo "Initializing and syncing kernel source..."
-            repo init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH}
+            repo init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.50
             REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
             DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
 
