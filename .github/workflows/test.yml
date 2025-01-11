@@ -55,6 +55,8 @@ jobs:
             exit 1
           fi
 
-          # Unpack the boot.img
+          # Unpack the boot.img using the absolute path
           echo 'Unpacking prebuilt boot.img'
-          $UNPACKBOOTIMG --boot_img="./boot-5.10.img"
+          FULL_PATH=$(pwd)/boot-5.10.img
+          echo "Unpacking using: $FULL_PATH"
+          $UNPACKBOOTIMG --boot_img="$FULL_PATH"
