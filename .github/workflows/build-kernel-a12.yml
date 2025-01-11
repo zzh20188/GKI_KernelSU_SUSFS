@@ -147,7 +147,7 @@ jobs:
             sed -i "s/dirty/'Wild+'/g" ./common/scripts/setlocalversion
             
             # Build the kernel
-            LTO=full BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+            LTO=${{ inputs.lto_type }} BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
             # Create bootimgs folder and copy images
             echo "Creating bootimgs folder and copying images..."
