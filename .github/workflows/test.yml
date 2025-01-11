@@ -31,6 +31,10 @@ jobs:
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
 
+          # List contents of the mkbootimg directory to verify the script exists
+          echo "Contents of mkbootimg directory:"
+          ls -l mkbootimg
+
           # Set environment variables for tools
           export AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
           export GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip
@@ -38,20 +42,21 @@ jobs:
           export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
           export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
 
-          # Check if the tools are accessible and Python is installed
-          echo "Checking if Python is installed"
+          # Check if Python is installed
+          echo "Checking if Python is installed..."
           if ! command -v python3 &> /dev/null; then
             echo "Error: Python is not installed. Please install Python to continue."
             exit 1
           fi
-          
-          # Check if avbtool and other tools are available
+
+          # Check for avbtool
           echo "Checking if avbtool exists at $AVBTOOL"
           if [ ! -f "$AVBTOOL" ]; then
             echo "Error: avbtool not found at $AVBTOOL."
             exit 1
           fi
-          
+
+          # Check for unpack_bootimg.py
           echo "Checking if unpack_bootimg.py exists at $UNPACK_BOOTIMG"
           if [ ! -f "$UNPACK_BOOTIMG" ]; then
             echo "Error: unpack_bootimg.py not found at $UNPACK_BOOTIMG."
@@ -102,7 +107,7 @@ jobs:
           FULL_PATH=$(pwd)/boot-5.10.img
           echo "Unpacking using: $FULL_PATH"
 
-          # Check if unpack_bootimg is available
+          # Check if unpack_bootimg.py is available
           echo "Checking if unpack_bootimg.py exists at $UNPACK_BOOTIMG"
           if [ ! -f "$UNPACK_BOOTIMG" ]; then
             echo "Error: unpack_bootimg.py tool not found at $UNPACK_BOOTIMG."
