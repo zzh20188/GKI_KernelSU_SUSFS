@@ -10,7 +10,7 @@ on:
       lto_type:
         description: 'Choose LTO type (thin/full)'
         required: true
-        default: 'full'
+        default: 'thin'
         type: choice
         options:
           - thin
