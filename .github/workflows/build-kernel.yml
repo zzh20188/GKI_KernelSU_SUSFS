@@ -1,10 +1,6 @@
 name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
-  push:
-    branches:
-      - main
-      - '*/*'  # Optional: Trigger on any branch
   workflow_dispatch:
     inputs:
       lto_type:
