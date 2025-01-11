@@ -176,7 +176,7 @@ jobs:
             unzip gki-kernel.zip && rm gki-kernel.zip
             echo 'Unpack prebuilt boot.img'
             FULL_PATH=$(pwd)/boot-5.10.img
-            $UNPACKBOOTIMG --boot_img=""$FULL_PATH"
+            $UNPACKBOOTIMG --boot_img="$FULL_PATH"
 
             echo 'Building Image.gz'
             gzip -n -k -f -9 Image >Image.gz
