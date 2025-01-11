@@ -180,7 +180,7 @@ jobs:
             $UNPACKBOOTIMG --boot_img="./boot-5.10.img"
                 
             echo 'Building Image.gz'
-            gzip -n -k -f -9 Image >Image.gz
+            $GZIP -n -k -f -9 Image >Image.gz
                 
             echo 'Building boot.img'
             $MKBOOTIMG --header_version 4 --kernel Image --output boot.img --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level "${DATE}"
