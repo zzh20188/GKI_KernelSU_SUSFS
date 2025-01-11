@@ -42,7 +42,7 @@ jobs:
             echo "$BOOT_SIGN_KEY" > ./kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
           fi
       
-      - name: Install repo tool
+      - name: Install Dependencies
         run: |
           # Install dependencies
             sudo apt update
