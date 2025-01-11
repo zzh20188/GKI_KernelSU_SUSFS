@@ -17,6 +17,32 @@ jobs:
           FILES=($(find ./ -type f \( -name "*.zip" -o -name "*.img" \)))
           echo "FILES=${FILES[@]}" >> $GITHUB_ENV
 
+      - name: Extract zip files
+        run: |
+          # Unzip all collected zip files
+          for zip_file in "${FILES[@]}"; do
+            if [[ $zip_file == *.zip ]]; then
+              echo "Extracting $zip_file"
+              unzip "$zip_file" -d "$(dirname "$zip_file")"
+            fi
+          done
+
+      - name: Remove zip files after extraction
+        run: |
+          # Remove the original zip files after extraction
+          for zip_file in "${FILES[@]}"; do
+            if [[ $zip_file == *.zip ]]; then
+              echo "Removing $zip_file"
+              rm -f "$zip_file"
+            fi
+          done
+
+      - name: Collect extracted zip and img files
+        run: |
+          # Collect zip and img files after extraction and removal of zip files
+          FILES=($(find ./ -type f \( -name "*.zip" -o -name "*.img" \)))
+          echo "FILES=${FILES[@]}" >> $GITHUB_ENV
+
       - name: Get Latest Tag from GitHub
         id: get_tag
         run: |
@@ -41,6 +67,7 @@ jobs:
 
       - name: Create GitHub Release
         run: |
+          # Create the GitHub release
           gh release create "$TAG_NAME" "${FILES[@]}" \
             --repo "$REPO_OWNER/$REPO_NAME" \
             --title "$RELEASE_NAME" \
