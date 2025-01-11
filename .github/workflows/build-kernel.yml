@@ -11,10 +11,26 @@ on:
         options:
           - thin
           - full
+      build_android_12:
+        description: 'Build Android 12 GKI Kernel?'
+        required: true
+        default: false
+        type: boolean
+      build_android_13:
+        description: 'Build Android 13 GKI Kernel?'
+        required: true
+        default: false
+        type: boolean
+      build_android_14:
+        description: 'Build Android 14 GKI Kernel?'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   # Build Android 12 GKI Kernel
   build-kernel-a12:
+    if: inputs.build_android_12 == 'true'  # Run only if build_android_12 is true
     uses: ./.github/workflows/build-kernel-a12.yml  # Reference the build workflow for Android 12 GKI
     with:
       lto_type: ${{ inputs.lto_type }}  # Pass the selected LTO type to the job
@@ -22,6 +38,7 @@ jobs:
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
+    if: inputs.build_android_13 == 'true'  # Run only if build_android_13 is true
     uses: ./.github/workflows/build-kernel-a13.yml  # Reference the build workflow for Android 13 GKI
     with:
       lto_type: ${{ inputs.lto_type }}  # Pass the selected LTO type to the job
@@ -29,6 +46,7 @@ jobs:
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
+    if: inputs.build_android_14 == 'true'  # Run only if build_android_14 is true
     uses: ./.github/workflows/build-kernel-a14.yml  # Reference the build workflow for Android 14 GKI
     with:
       lto_type: ${{ inputs.lto_type }}  # Pass the selected LTO type to the job
@@ -38,6 +56,7 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]  # Ensure this job runs only after the kernel build jobs complete
+    if: inputs.build_android_12 == 'true' || inputs.build_android_13 == 'true' || inputs.build_android_14 == 'true'  # Run only if any kernel build is triggered
 
     steps:
       - name: Checkout code
