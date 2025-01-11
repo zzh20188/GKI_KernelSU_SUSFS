@@ -102,13 +102,15 @@ jobs:
           FULL_PATH=$(pwd)/boot-5.10.img
           echo "Unpacking using: $FULL_PATH"
 
-          # Check if unpack_bootimg is available and unpack the image
+          # Check if unpack_bootimg is available
+          echo "Checking if unpack_bootimg.py exists at $UNPACK_BOOTIMG"
           if [ ! -f "$UNPACK_BOOTIMG" ]; then
-            echo "Error: unpack_bootimg tool not found at $UNPACK_BOOTIMG."
+            echo "Error: unpack_bootimg.py tool not found at $UNPACK_BOOTIMG."
             exit 1
           fi
 
+          # Run the unpacking tool
+          echo "Running unpack_bootimg.py..."
           python3 "$UNPACK_BOOTIMG" --boot_img="$FULL_PATH"
 
           echo "Boot image unpacked successfully!"
-
