@@ -26,6 +26,25 @@ jobs:
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
 
+          export AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
+          export GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip
+          export LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4
+          export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
+          export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
+
+      - name: Set boot sign key
+        env:
+          BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
+        run: |
+          if [ ! -z "$BOOT_SIGN_KEY" ]; then
+            echo "$BOOT_SIGN_KEY" > ./kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem
+          fi
+      
+      - name: Install repo tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y repo
+
       - name: Build for all configurations
         run: |
           BUILD_CONFIGS=(
