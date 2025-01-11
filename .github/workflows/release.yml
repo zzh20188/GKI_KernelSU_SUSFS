@@ -1,0 +1,80 @@
+name: Create GitHub Release and Upload Artifacts
+
+on:
+  workflow_call:  # Make the workflow callable from other workflows
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up GitHub CLI
+        run: |
+          sudo apt-get install gh
+
+      - name: Collect artifacts (zip, img)
+        run: |
+          # Collect all zip and img files
+          FILES=($(find ./ -type f \( -name "*.zip" -o -name "*.img" \)))
+          echo "FILES=${FILES[@]}" >> $GITHUB_ENV
+
+      - name: Get Latest Tag from GitHub
+        id: get_tag
+        run: |
+          REPO_OWNER="TheWildJames"
+          REPO_NAME="GKI_KernelSU_SUSFS"
+          LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="1.5.3-0"
+          fi
+          # Increment the suffix after the dash
+          NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
+          echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
+
+      - name: Define Release Name and Notes
+        run: |
+          # Define release name and notes (hardcoded or dynamically generated)
+          RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
+          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3
+
+          Module: https://github.com/sidex15/ksu_module_susfs
+
+          Official Manager:
+          https://github.com/tiann/KernelSU
+          Non-Official Managers:
+          https://github.com/rifsxd/KernelSU-Next
+          https://github.com/backslashxx/KernelSU
+          https://github.com/rsuntk/KernelSU
+          https://github.com/5ec1cff/KernelSU
+          https://github.com/silvzr/KernelSU
+          https://github.com/sidex15/KernelSU
+
+          Features:
+          [+] KernelSU-Next
+          [+] SUSFS v1.5.3
+          [+] Wireguard Support
+          [+] Maphide LineageOS Detections
+          [+] Futile Maphide for jit-zygote-cache Detections
+          [+] Magic Mount Support
+          [+] Built With LTO=Full, Optimizations For Improved Performance And Efficiency"
+          
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+          echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        run: |
+          # Create the GitHub release
+          gh release create "$TAG_NAME" "${FILES[@]}" \
+            --repo "$REPO_OWNER/$REPO_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_NOTES" \
+            --prerelease \
+            --latest=false
+
+      - name: Display Files Uploaded
+        run: |
+          echo "GitHub release created with the following files:"
+          printf '%s\n' "${FILES[@]}"
