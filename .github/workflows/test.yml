@@ -1,0 +1,60 @@
+name: Test Unpack Boot Image
+
+on:
+  workflow_dispatch:  # Manually trigger the workflow
+
+jobs:
+  test-unpack-boot-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Download and Unpack GKI Kernel
+        run: |
+          # Navigate to the bootimgs directory
+          mkdir -p ./bootimgs
+          cd ./bootimgs
+          
+          # Set the GKI URLs
+          GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${DATE}"_r1.zip
+          FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
+          
+          # Check if the GKI URL is available
+          status=$(curl -sL -w "%{http_code}" "$GKI_URL" -o /dev/null)
+          
+          if [ "$status" = "200" ]; then
+              echo "[+] Downloading from GKI_URL"
+              curl -Lo gki-kernel.zip "$GKI_URL"
+          else
+              echo "[+] $GKI_URL not found, using $FALLBACK_URL"
+              curl -Lo gki-kernel.zip "$FALLBACK_URL"
+          fi
+          
+          # Unzip the downloaded kernel and remove the zip
+          unzip gki-kernel.zip && rm gki-kernel.zip
+
+          # List the contents to check if boot-5.10.img is present
+          echo "Listing contents of current directory:"
+          ls -l
+
+          # Check if boot-5.10.img exists, and exit if not
+          if [ ! -f "./boot-5.10.img" ]; then
+            echo "Error: boot-5.10.img not found in the current directory."
+            exit 1
+          fi
+
+          # Unpack the boot.img
+          echo 'Unpacking prebuilt boot.img'
+          $UNPACKBOOTIMG --boot_img="./boot-5.10.img"
