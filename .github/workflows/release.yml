@@ -1,13 +1,16 @@
 name: Create GitHub Release and Upload Artifacts
 
 on:
-  workflow_call:  # Make the workflow callable from other workflows
+  workflow_call:
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Collect artifacts (zip, img)
         run: |
           # Collect all zip and img files
@@ -29,37 +32,15 @@ jobs:
 
       - name: Define Release Name and Notes
         run: |
-          # Define release name and notes (hardcoded or dynamically generated)
+          # Define release name and notes
           RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
-          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3
+          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3..."
 
-          Module: https://github.com/sidex15/ksu_module_susfs
-
-          Official Manager:
-          https://github.com/tiann/KernelSU
-          Non-Official Managers:
-          https://github.com/rifsxd/KernelSU-Next
-          https://github.com/backslashxx/KernelSU
-          https://github.com/rsuntk/KernelSU
-          https://github.com/5ec1cff/KernelSU
-          https://github.com/silvzr/KernelSU
-          https://github.com/sidex15/KernelSU
-
-          Features:
-          [+] KernelSU-Next
-          [+] SUSFS v1.5.3
-          [+] Wireguard Support
-          [+] Maphide LineageOS Detections
-          [+] Futile Maphide for jit-zygote-cache Detections
-          [+] Magic Mount Support
-          [+] Built With LTO=Full, Optimizations For Improved Performance And Efficiency"
-          
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         run: |
-          # Create the GitHub release
           gh release create "$TAG_NAME" "${FILES[@]}" \
             --repo "$REPO_OWNER/$REPO_NAME" \
             --title "$RELEASE_NAME" \
