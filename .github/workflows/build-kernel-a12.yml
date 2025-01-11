@@ -101,9 +101,9 @@ jobs:
             # Add KernelSU, SUSFS patches, and build the kernel
             echo "Adding KernelSU..."
             curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
-            cd ./KernelSU-Next/kernel
-            sed -i 's/ccflags-y += -DKSU_VERSION=16/ccflags-y += -DKSU_VERSION=12000/' ./Makefile
-            cd ../../
+            #cd ./KernelSU-Next/kernel
+            #sed -i 's/ccflags-y += -DKSU_VERSION=16/ccflags-y += -DKSU_VERSION=12000/' ./Makefile
+            #cd ../../
             echo "Applying SUSFS patches..."
             cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU-Next/
             cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${ANDROID_VERSION}-${KERNEL_VERSION}.patch ./common/
