@@ -42,27 +42,6 @@ jobs:
           echo "MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py" >> $GITHUB_ENV
           echo "UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py" >> $GITHUB_ENV
 
-          # Check if Python is installed
-          echo "Checking if Python is installed..."
-          if ! command -v python3 &> /dev/null; then
-            echo "Error: Python is not installed. Please install Python to continue."
-            exit 1
-          fi
-
-          # Check for avbtool
-          echo "Checking if avbtool exists at $AVBTOOL"
-          if [ ! -f "$AVBTOOL" ]; then
-            echo "Error: avbtool not found at $AVBTOOL."
-            exit 1
-          fi
-
-          # Check for unpack_bootimg.py
-          echo "Checking if unpack_bootimg.py exists at $UNPACK_BOOTIMG"
-          if [ ! -f "$UNPACK_BOOTIMG" ]; then
-            echo "Error: unpack_bootimg.py not found at $UNPACK_BOOTIMG."
-            exit 1
-          fi
-
           echo "Tools setup complete!"
 
       - name: Download and Unpack GKI Kernel
