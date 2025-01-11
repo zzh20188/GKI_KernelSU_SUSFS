@@ -1,176 +1,44 @@
-name: Build A12 Kernel
+name: Build Android 12 GKI Kernels with KernelSU-Next & SUSFS
 
 on:
-  workflow_call:  # This workflow will be triggered by the release.yml
+  workflow_dispatch:  # Manually triggered workflow
 
 jobs:
-  build-kernel:
-    runs-on: ubuntu-latest  # Change the runner if necessary
-    strategy:
-      matrix:
-        kernel_configs:
-          - sub_level: 198
-            os_patch_level: 2024-01
-          - sub_level: 205
-            os_patch_level: 2024-03
-          - sub_level: 209
-            os_patch_level: 2024-05
-          - sub_level: 218
-            os_patch_level: 2024-08
-          - sub_level: 226
-            os_patch_level: 2024-11
+  build-kernel-a12:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Set up kernel build configuration
+      # Step 0: Maximize build space
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      # Step 1: Download prebuilt toolchain from AOSP
+      - name: Download prebuilt toolchain
         run: |
-          # Set static values for Android version and kernel version
-          ANDROID_VERSION="android12"
-          KERNEL_VERSION="5.10"
+          AOSP_MIRROR=https://android.googlesource.com
+          BRANCH=main-kernel-build-2024  # Updated branch name
+          git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
+          git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
+          git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
+
+      # Step 2: Set environment variables for boot image build
+      - name: Build boot images
+        run: |
+          export AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
+          export GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip
+          export LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4
+          export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
+          export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
           
-          # Formatted branch name for each build (e.g., android12-5.10-2024-01)
-          FORMATTED_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-${{ matrix.kernel_configs.os_patch_level }}"
-          echo "Formatted branch name: $FORMATTED_BRANCH"
-
-          # Create a directory in the format android_version-kernel_version-sub_level-os_patch_level
-          BUILD_DIR="${ANDROID_VERSION}-${KERNEL_VERSION}-${{ matrix.kernel_configs.sub_level }}-${{ matrix.kernel_configs.os_patch_level }}"
-          mkdir -p "$BUILD_DIR"
-          echo "Directory created: $BUILD_DIR"
-          
-          # Change into the newly created directory
-          cd "$BUILD_DIR"
-          echo "Now in directory: $(pwd)"
-        
-      - name: Clone AnyKernel3 repository
+      # Step 3: Install repo tool via apt
+      - name: Install repo tool via apt
         run: |
-          echo "Cloning AnyKernel3 repository..."
-          git clone https://github.com/TheWildJames/AnyKernel3.git -b "${ANDROID_VERSION}-${KERNEL_VERSION}"
-
-      - name: Clone susfs4ksu repository
-        run: |
-          echo "Cloning susfs4ksu repository..."
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "gki-${ANDROID_VERSION}-${KERNEL_VERSION}"
-
-      - name: Clone kernel_patches repository
-        run: |
-          echo "Cloning kernel_patches repository..."
-          git clone https://github.com/TheWildJames/kernel_patches.git
-
-      - name: Initialize and sync kernel source
-        run: |
-          echo "Initializing and syncing kernel source..."
-          # Initialize repo
-          repo init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH}
-          
-          # Get remote branch details
-          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
-          DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
-          
-          # Check if the branch is deprecated and adjust the manifest
-          if grep -q deprecated <<< $REMOTE_BRANCH; then
-              echo "Found deprecated branch: $FORMATTED_BRANCH"
-              sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
-          fi
-
-          # Verify repo version and sync the kernel source
-          repo --version
-          repo --trace sync -c -j$(nproc --all) --no-tags --fail-fast
-
-      - name: Set up KernelSU-Next
-        run: |
-          echo "Setting up KernelSU-Next..."
-          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
-
-      - name: Apply SUSFS patches
-        run: |
-          echo "Applying SUSFS patches..."
-          # Copy the necessary patches to the appropriate directories
-          cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU-Next/
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${ANDROID_VERSION}-${KERNEL_VERSION}.patch ./common/
-          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-
-          # Apply the patches
-          cd ./KernelSU-Next
-          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-          cd ../common
-          patch -p1 < 50_add_susfs_in_gki-${ANDROID_VERSION}-${KERNEL_VERSION}.patch || true
-
-      - name: Apply Custom Patches
-        run: |
-          echo "Applying custom patches..."
-          
-          # Copy the custom patches and apply them
-          cp ../../kernel_patches/69_hide_stuff.patch ./
-          patch -p1 -F 3 < 69_hide_stuff.patch
-          cd ..
-          
-          cp ../kernel_patches/apk_sign.c_fix.patch ./
-          patch -p1 -F 3 < apk_sign.c_fix.patch
-          
-          cp ../kernel_patches/core_hook.c_fix.patch ./
-          patch -p1 --fuzz=3 < ./core_hook.c_fix.patch
-
-          cp ../kernel_patches/selinux.c_fix.patch ./
-          patch -p1 -F 3 < selinux.c_fix.patch
-
-      - name: Add SUSFS configuration settings
-        run: |
-          echo "Adding configuration settings to gki_defconfig..."
-          echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
-
-      - name: Final build steps (Apply final fixes and build kernel)
-        run: |
-          # Apply final edits to config files and build kernel image
-          ed -i '2s/check_defconfig//' ./common/build.config.gki
-          sed -i "s/dirty/'Wild+'/g" ./common/scripts/setlocalversion
-          LTO=full BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
-
-      - name: Copy kernel image to AnyKernel3
-        run: |
-          echo "Copying Image.lz4 to $CONFIG/AnyKernel3..."
-          # Check if the boot.img file exists
-          if [ "$ANDROID_VERSION" = "android12" ]; then
-              mkdir bootimgs
-              cp ./out/${ANDROID_VERSION}-${KERNEL_VERSION}/dist/Image ./bootimgs
-              cp ./out/${ANDROID_VERSION}-${KERNEL_VERSION}/dist/Image.lz4 ./bootimgs
-              cp ./out/${ANDROID_VERSION}-${KERNEL_VERSION}/dist/Image ../
-              cp ./out/${ANDROID_VERSION}-${KERNEL_VERSION}/dist/Image.lz4 ../
-              gzip -n -k -f -9 ../Image >../Image.gz
-              cd ./bootimgs
-              
-              GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${DATE}"_r1.zip
-              FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
-              status=$(curl -sL -w "%{http_code}" "$GKI_URL" -o /dev/null)
-                  
-              if [ "$status" = "200" ]; then
-                  curl -Lo gki-kernel.zip "$GKI_URL"
-              else
-                  echo "[+] $GKI_URL not found, using $FALLBACK_URL"
-                  curl -Lo gki-kernel.zip "$FALLBACK_URL"
-              fi
-                  
-              unzip gki-kernel.zip && rm gki-kernel.zip
-              echo 'Unpack prebuilt boot.img'
-              unpack_bootimg.py --boot_img="./boot-5.10.img"
-              
-              echo 'Building Image.gz'
-              gzip -n -k -f -9 Image >Image.gz
-              
-              echo 'Building boot.img'
-              mkbootimg.py --header_version 4 --kernel Image --output boot.img --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level "${DATE}"
+          sudo apt-get update
+          sudo apt-get install -y repo
