@@ -46,7 +46,7 @@ jobs:
         run: |
           # Install dependencies
             sudo apt update
-            sudo apt install -y repo lzf gzip
+            sudo apt install -y repo lz4 gzip
 
       - name: Build for all configurations
         run: |
