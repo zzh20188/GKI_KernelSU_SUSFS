@@ -43,8 +43,8 @@ jobs:
       - name: Install repo tool
         run: |
           # Install dependencies
-          #sudo apt update
-          #sudo apt install -y repo
+            sudo apt update
+            sudo apt install -y repo
 
       - name: Build for all configurations
         run: |
