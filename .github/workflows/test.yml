@@ -1,10 +1,10 @@
-name: Test Unpack Boot Image
+name: Setup and Unpack Boot Image
 
 on:
-  workflow_dispatch:  # Manually trigger the workflow
+  workflow_dispatch:
 
 jobs:
-  test-unpack-boot-image:
+  setup-and-unpack:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,6 +20,40 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
+
+      - name: Download prebuilt toolchain
+        run: |
+          AOSP_MIRROR=https://android.googlesource.com
+          BRANCH=main-kernel-build-2024
+          git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
+          git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
+          git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
+
+          # Set environment variables for tools
+          export AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
+          export GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip
+          export LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4
+          export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
+          export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
+
+          # Verify that tools are installed and accessible
+          if ! command -v python3 &> /dev/null; then
+            echo "Python is not installed. Please install Python to continue."
+            exit 1
+          fi
+          
+          # Check if the tools are available
+          if [ ! -f "$AVBTOOL" ]; then
+            echo "Error: avbtool not found at $AVBTOOL."
+            exit 1
+          fi
+          
+          if [ ! -f "$UNPACK_BOOTIMG" ]; then
+            echo "Error: unpack_bootimg not found at $UNPACK_BOOTIMG."
+            exit 1
+          fi
+
+          echo "Tools setup complete!"
 
       - name: Download and Unpack GKI Kernel
         run: |
@@ -59,4 +93,12 @@ jobs:
           echo 'Unpacking prebuilt boot.img'
           FULL_PATH=$(pwd)/boot-5.10.img
           echo "Unpacking using: $FULL_PATH"
-          $UNPACKBOOTIMG --boot_img="$FULL_PATH"
+
+          # Ensure unpack_bootimg is available
+          if [ ! -f "$UNPACK_BOOTIMG" ]; then
+            echo "Error: unpack_bootimg tool not found at $UNPACK_BOOTIMG."
+            exit 1
+          fi
+
+          # Unpack using the full path
+          python3 "$UNPACK_BOOTIMG" --boot_img="$FULL_PATH"
