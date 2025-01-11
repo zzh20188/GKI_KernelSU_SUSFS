@@ -1,7 +1,12 @@
 name: Build Android 12 GKI Kernels
 
 on:
-  workflow_call:  # Manually triggered workflow
+  workflow_call:  # This allows this workflow to be called from another workflow
+    inputs:
+      lto_type:
+        description: 'Choose LTO type (thin/full)'
+        required: true
+        type: string
 
 jobs:
   build-kernel-a12:
