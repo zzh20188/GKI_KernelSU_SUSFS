@@ -46,8 +46,15 @@ jobs:
         run: |
           # Install dependencies
             sudo apt update
-            sudo apt install -y repo lz4 gzip
+            sudo apt install -y lz4 gzip
 
+      - name: Install repo tool
+        run: |
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "~/bin" >> $GITHUB_PATH
+          
       - name: Build for all configurations
         run: |
           BUILD_CONFIGS=(
