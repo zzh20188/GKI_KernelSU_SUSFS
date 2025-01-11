@@ -9,7 +9,7 @@ on:
         type: string
 
 jobs:
-  build-kernel-a13:
+  build-kernel-a13-kernelsu-susfs:
     runs-on: ubuntu-latest
 
     steps:
