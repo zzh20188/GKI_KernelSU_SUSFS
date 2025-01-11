@@ -1,4 +1,4 @@
-name: Download Prebuilt Toolchain and Repo
+name: Prerequisites
 
 on:
   workflow_call:  # Makes this workflow callable by other workflows
@@ -8,28 +8,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Download prebuilt toolchain
+      # Step 1: Cache prebuilt toolchains
+      - name: Restore prebuilt toolchains from cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            build-tools
+            kernel-build-tools
+            mkbootimg
+          key: toolchains-${{ runner.os }}-${{ github.ref_name }}
+
+      # Step 2: Download prebuilt toolchains (if not cached)
       - name: Download prebuilt toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-build-2024
           
-          # Clone necessary prebuilt tools
           git clone $AOSP_MIRROR/platform/prebuilts/build-tools -b $BRANCH --depth 1 build-tools
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
 
-          # Export paths to required tools as environment variables
+      # Step 3: Save to cache
+      - name: Save toolchains to cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v3
+        with:
+          path: |
+            build-tools
+            kernel-build-tools
+            mkbootimg
+          key: toolchains-${{ runner.os }}-${{ github.ref_name }}
+
+      # Step 4: Export environment variables
+      - name: Export environment variables
+        run: |
           echo "AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool" >> $GITHUB_ENV
           echo "GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip" >> $GITHUB_ENV
           echo "LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4" >> $GITHUB_ENV
           echo "MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py" >> $GITHUB_ENV
           echo "UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py" >> $GITHUB_ENV
-
-      # Step 2: Download and set up 'repo' tool
-      - name: Download and set up 'repo' tool
-        run: |
-          curl https://storage.googleapis.com/git-repo-downloads/repo > repo
-          chmod a+rx repo
-          mv repo $GITHUB_WORKSPACE/repo
-          echo "REPO=$GITHUB_WORKSPACE/repo" >> $GITHUB_ENV
