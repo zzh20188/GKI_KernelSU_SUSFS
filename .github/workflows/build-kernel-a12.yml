@@ -43,15 +43,8 @@ jobs:
       - name: Install repo tool
         run: |
           # Install dependencies
-          #sudo apt-get update
-          #sudo apt-get install -y curl
-          
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
-          chmod +x ~/repo
-          mkdir -p ~/bin
-          mv ~/repo ~/bin/
-          echo "export PATH=$HOME/bin:$PATH" >> $GITHUB_ENV
-
+          #sudo apt update
+          #sudo apt install -y repo
 
       - name: Build for all configurations
         run: |
