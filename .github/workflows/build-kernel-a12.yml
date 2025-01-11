@@ -1,7 +1,7 @@
 name: Build Android 12 GKI Kernels
 
 on:
-  workflow_dispatch:  # Manually triggered workflow
+  workflow_call:  # Manually triggered workflow
 
 jobs:
   build-kernel-a12:
