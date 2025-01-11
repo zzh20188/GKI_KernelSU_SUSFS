@@ -26,6 +26,11 @@ on:
         required: false  # User interaction is optional
         default: true    # Defaults to building Android 14
         type: boolean
+      make_release:
+        description: 'Trigger release after the build?'
+        required: false  # User interaction is optional
+        default: false   # Defaults to not triggering a release
+        type: boolean
 
 jobs:
   # Validation Step
@@ -70,8 +75,7 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]
-    if: inputs.build_android_12 == true || inputs.build_android_13 == true || inputs.build_android_14 == true
-
+    if: inputs.make_release == true # Trigger release only if make_release is true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
