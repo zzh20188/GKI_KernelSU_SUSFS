@@ -168,7 +168,7 @@ jobs:
             sed -i '2s/check_defconfig//' ./common/build.config.gki
             rm -rf ./common/android/abi_gki_protected_exports_aarch64
             rm -rf ./common/android/abi_gki_protected_exports_x86_64
-            tools/bazel build --lto=full //common:kernel_aarch64_dist
+            tools/bazel build --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
 
             # Create boot images
             echo "Creating boot images..."
@@ -183,16 +183,16 @@ jobs:
 
             # Change directory for boot image creation
             cd ./bootimgs
-            mkbootimg.py --header_version 4 --kernel Image --output boot.img
-            avbtool.py add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot.img --algorithm SHA256_RSA2048 --key /home/james/keys/testkey_rsa2048.pem
+            $MKBOOTIMG --header_version 4 --kernel Image --output boot.img
+            $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot.img --algorithm SHA256_RSA2048 --key /home/james/keys/testkey_rsa2048.pem
             cp ./boot.img ../../../${ANDROID_VERSION}-${KERNEL_VERSION}.${SUB_LEVEL}_${DATE}-boot.img
 
-            mkbootimg.py --header_version 4 --kernel Image.gz --output boot-gz.img
-            avbtool.py add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-gz.img --algorithm SHA256_RSA2048 --key /home/james/keys/testkey_rsa2048.pem
+            $MKBOOTIMG --header_version 4 --kernel Image.gz --output boot-gz.img
+            $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-gz.img --algorithm SHA256_RSA2048 --key /home/james/keys/testkey_rsa2048.pem
             cp ./boot-gz.img ../../../${ANDROID_VERSION}-${KERNEL_VERSION}.${SUB_LEVEL}_${DATE}-boot-gz.img
 
-            mkbootimg.py --header_version 4 --kernel Image.lz4 --output boot-lz4.img
-            avbtool.py add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-lz4.img --algorithm SHA256_RSA2048 --key /home/james/keys/testkey_rsa2048.pem
+            $MKBOOTIMG --header_version 4 --kernel Image.lz4 --output boot-lz4.img
+            $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-lz4.img --algorithm SHA256_RSA2048 --key /home/james/keys/testkey_rsa2048.pem
             cp ./boot-lz4.img ../../../${ANDROID_VERSION}-${KERNEL_VERSION}.${SUB_LEVEL}_${DATE}-boot-lz4.img
 
             cd ..
