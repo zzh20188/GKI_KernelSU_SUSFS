@@ -54,11 +54,27 @@ jobs:
       - name: Build for all configurations
         run: |
           BUILD_CONFIGS=(
-            #"android12-5.10-198-2024-01"
-            #"android12-5.10-205-2024-03"
-            #"android12-5.10-209-2024-05"
-            "android12-5.10-218-2024-08"
-            #"android12-5.10-X-lts"
+            "android14-5.15-131-2023-11"
+            "android14-5.15-137-2024-01"
+            "android14-5.15-144-2024-03"
+            "android14-5.15-148-2024-05"
+            "android14-5.15-149-2024-06"
+            "android14-5.15-153-2024-07"
+            "android14-5.15-158-2024-08"
+            "android14-5.15-167-2024-11"
+            
+            "android14-5.15-X-lts"
+            "android14-6.1-25-2023-10"
+            "android14-6.1-43-2023-11"
+            "android14-6.1-57-2024-01"
+            "android14-6.1-68-2024-03"
+            "android14-6.1-75-2024-05"
+            "android14-6.1-78-2024-06"
+            "android14-6.1-84-2024-07"
+            "android14-6.1-90-2024-08"
+            "android14-6.1-112-2024-11"
+            "android14-6.1-115-2024-12"
+            "android14-6.1-X-lts"
           )
 
           for CONFIG in "${BUILD_CONFIGS[@]}"; do
