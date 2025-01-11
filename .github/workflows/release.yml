@@ -4,24 +4,11 @@ on:
   workflow_dispatch:  # Manually triggered workflow
 
 jobs:
-  # Call the prerequisites workflow to download tools and set up environment variables
-  prerequisites:
-    uses: ./.github/workflows/prerequisites.yml  # Reference your prerequisites.yml file
+  # Build Android 12 GKI Kernel
+  build-kernel-a12:
+    uses: ./.github/workflows/build-kernel-a12.yml  # Reference the build workflow you created for Android 12 GKI
+    secrets: inherit  # Inherit any secrets you need (if required)
 
-  # Example kernel builds (uncomment and use as needed)
-  build-a12-kernel:
-    uses: ./.github/workflows/build-kernel-a12.yml
-    needs: prerequisites  # Ensure prerequisites run first
-    secrets: inherit
-  #build-a13-kernel:
-  #  uses: ./.github/workflows/build-kernel-a13.yml
-  #  needs: prerequisites
-  #  secrets: inherit
-  #build-a14-kernel:
-  #  uses: ./.github/workflows/build-kernel-a14.yml
-  #  needs: prerequisites
-  #  secrets: inherit
-  #build-a15-kernel:
-  #  uses: ./.github/workflows/build-kernel-a15.yml
-  #  needs: prerequisites
-  #  secrets: inherit
+  # Other steps of your release workflow (e.g., packaging, deployment, etc.)
+  # Add additional steps here if needed
+  # e.g., upload artifacts, deploy, etc.
