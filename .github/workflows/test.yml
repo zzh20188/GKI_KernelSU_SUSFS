@@ -36,11 +36,11 @@ jobs:
           ls -l mkbootimg
 
           # Set environment variables for tools
-          export AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool
-          export GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip
-          export LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4
-          export MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py
-          export UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py
+          echo "AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool" >> $GITHUB_ENV
+          echo "GZIP=$GITHUB_WORKSPACE/build-tools/path/linux-x86/gzip" >> $GITHUB_ENV
+          echo "LZ4=$GITHUB_WORKSPACE/build-tools/path/linux-x86/lz4" >> $GITHUB_ENV
+          echo "MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py" >> $GITHUB_ENV
+          echo "UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py" >> $GITHUB_ENV
 
           # Check if Python is installed
           echo "Checking if Python is installed..."
