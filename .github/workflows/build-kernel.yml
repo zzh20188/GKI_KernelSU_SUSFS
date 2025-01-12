@@ -1,102 +1,86 @@
 name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
-  push:
-    branches:
-      - main  # Trigger only on pushes to the main branch
   workflow_dispatch:
     inputs:
       lto_type:
         description: 'Choose LTO type (thin/full)'
         required: true
-        default: 'full'
+        default: 'thin'  # Default to 'thin' LTO
         type: choice
         options:
           - thin
           - full
       build_android_12:
         description: 'Build Android 12 GKI Kernel?'
-        required: false  # Optional for manual trigger
+        required: false  # User interaction is optional
         default: true    # Defaults to building Android 12
         type: boolean
       build_android_13:
         description: 'Build Android 13 GKI Kernel?'
-        required: false  # Optional for manual trigger
+        required: false  # User interaction is optional
         default: true    # Defaults to building Android 13
         type: boolean
       build_android_14:
         description: 'Build Android 14 GKI Kernel?'
-        required: false  # Optional for manual trigger
+        required: false  # User interaction is optional
         default: true    # Defaults to building Android 14
         type: boolean
       make_release:
         description: 'Trigger release after the build?'
-        required: false  # Optional for manual trigger
-        default: false   # Defaults to not triggering a release
+        required: false  # User interaction is optional
+        default: false   # Default to not triggering a release
         type: boolean
+
+  push:
+    branches:
+      - main  # Trigger on push to the main branch
 
 jobs:
   # Validation Step
   validate-inputs:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' }}  # Only for manual trigger
-    outputs:
-      build_a12: ${{ inputs.build_android_12 }}
-      build_a13: ${{ inputs.build_android_13 }}
-      build_a14: ${{ inputs.build_android_14 }}
-      make_release: ${{ inputs.make_release }}
+    timeout-minutes: 360
     steps:
       - name: Validate Inputs
         run: |
-          if [ "${{ inputs.build_android_12 }}" != "true" ] && \
-             [ "${{ inputs.build_android_13 }}" != "true" ] && \
-             [ "${{ inputs.build_android_14 }}" != "true" ]; then
+          if [ "${{ inputs.build_android_12 }}" != true ] && [ "${{ inputs.build_android_13 }}" != true ] && [ "${{ inputs.build_android_14 }}" != true ]; then
             echo "At least one kernel build must be selected!"
             exit 1
           fi
-      - name: Set Output Variables
-        id: outputs
-        run: |
-          echo "build_a12=${{ inputs.build_android_12 }}" >> $GITHUB_ENV
-          echo "build_a13=${{ inputs.build_android_13 }}" >> $GITHUB_ENV
-          echo "build_a14=${{ inputs.build_android_14 }}" >> $GITHUB_ENV
-          echo "make_release=${{ inputs.make_release }}" >> $GITHUB_ENV
 
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    if: github.event_name == 'push' || env.build_a12 == 'true'
+    if: inputs.build_android_12 == true
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a12.yml
     with:
-      lto_type: ${{ inputs.lto_type || 'full' }}  # Default to full LTO for push
+      lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    if: github.event_name == 'push' || env.build_a13 == 'true'
+    if: inputs.build_android_13 == true
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a13.yml
     with:
-      lto_type: ${{ inputs.lto_type || 'full' }}  # Default to full LTO for push
+      lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    if: github.event_name == 'push' || env.build_a14 == 'true'
+    if: inputs.build_android_14 == true
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a14.yml
     with:
-      lto_type: ${{ inputs.lto_type || 'full' }}  # Default to full LTO for push
+      lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
   # Trigger Release Job
   trigger-release:
     runs-on: ubuntu-latest
-    needs:
-      - build-kernel-a12
-      - build-kernel-a13
-      - build-kernel-a14
-    if: github.event_name == 'push' || (env.make_release == 'true' && (env.build_a12 == 'true' || env.build_a13 == 'true' || env.build_a14 == 'true'))
+    needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]
+    if: inputs.make_release == true # Trigger release only if make_release is true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
