@@ -169,7 +169,7 @@ jobs:
             sed -i '2s/check_defconfig//' ./common/build.config.gki
             sed -i 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
             sed -i 'N;$s|echo "\$res"|echo "\$res-Wild+"|' ./common/scripts/setlocalversion
-            sed -i "s/dirty/'Wild+'/g" ./common/scripts/setlocalversion
+            sed -i "s/dirty//g" ./common/scripts/setlocalversion
             
             # Build the kernel
             LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
