@@ -41,5 +41,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Trigger Release Workflow
-        uses: ./.github/workflows/release.yml
+      - name: Get Latest Tag from GitHub
+        id: get_tag
+        run: |
+          REPO_OWNER="TheWildJames"
+          REPO_NAME="GKI_KernelSU_SUSFS"
+          # Get the latest release tag from the GitHub repository
+          LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="1.5.3-0"
+          fi
+          # Increment the suffix after the dash (if needed)
+          NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
+          echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
+
+      - name: Define Release Name and Notes
+        run: |
+          # Define release name and notes
+          RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
+          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3, including the GKI Kernel builds for Android 12, 13, and 14."
+
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+          echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
+
+      - name: Download kernel artifacts
+        run: |
+          echo "Downloading kernel artifacts"
+          # Download the artifacts that were uploaded in previous steps
+          mkdir -p ./downloaded-artifacts
+          gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a12*" --dir ./downloaded-artifacts
+          gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a13*" --dir ./downloaded-artifacts
+          gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
+
+      - name: Create GitHub Release
+        run: |
+          # Create the GitHub release
+          gh release create "$TAG_NAME" ./downloaded-artifacts/* \
+            --repo "$REPO_OWNER/$REPO_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_NOTES" \
+            --prerelease \
+            --latest=false
+
+      - name: Display Files Uploaded
+        run: |
+          echo "GitHub release created with the following files:"
+          ls ./downloaded-artifacts
+
