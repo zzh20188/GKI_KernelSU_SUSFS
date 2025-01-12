@@ -159,15 +159,11 @@ jobs:
 
             # Run sed commands
             echo "Running sed commands..."
-            echo "sed 1"
             sed -i '2s/check_defconfig//' ./common/build.config.gki
-            echo "sed 2"
             sed -i "s/dirty//g" ./common/scripts/setlocalversion
-            echo "sed 3"
-            sed -i 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
-            echo "sed 4"
+            sed -i 's|UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN\)"|UTS_VERSION="\$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
             sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
-            
+
             # Build the kernel
             LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
