@@ -161,10 +161,11 @@ jobs:
 
             # Build the kernel using Bazel
             echo "Building kernel..."
-            sed -i 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
-            sed -i 'N;$s|echo "\$res"|echo "\$res-Wild+"|' ./common/scripts/setlocalversion
+            sed -i 's|UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN\)"|UTS_VERSION="\$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
+            sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
             sed -i '2s/check_defconfig//' ./common/build.config.gki
+
             rm -rf ./common/android/abi_gki_protected_exports_aarch64
             rm -rf ./common/android/abi_gki_protected_exports_x86_64
             tools/bazel build --config=fast --lto=thin //common:kernel_aarch64_dist
