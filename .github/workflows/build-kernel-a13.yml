@@ -2,11 +2,6 @@ name: Build Android 13 GKI Kernels
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
-    inputs:
-      lto_type:
-        description: 'Choose LTO type (thin/full)'
-        required: true
-        type: string
 
 jobs:
   build-kernel-a13-kernelsu-susfs:
@@ -175,7 +170,7 @@ jobs:
             sed -i "s/dirty/'Wild+'/g" ./common/scripts/setlocalversion
             
             # Build the kernel
-            LTO=${{ inputs.lto_type }} BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+            LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
             # Create bootimgs folder and copy images
             echo "Creating bootimgs folder and copying images..."
