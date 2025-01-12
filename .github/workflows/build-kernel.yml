@@ -8,6 +8,21 @@ on:
         required: true
         type: boolean
         default: false  # Default is 'false', meaning no release unless explicitly set
+      build_a12:
+        description: 'Build Android 12 kernel?'
+        required: true
+        type: boolean
+        default: true
+      build_a13:
+        description: 'Build Android 13 kernel?'
+        required: true
+        type: boolean
+        default: true
+      build_a14:
+        description: 'Build Android 14 kernel?'
+        required: true
+        type: boolean
+        default: true
 
   push:  # Allows triggering on push to the repository
     branches:
@@ -18,16 +33,19 @@ jobs:
   build-kernel-a12:
     uses: ./.github/workflows/build-kernel-a12.yml
     secrets: inherit
+    if: ${{ github.event.inputs.build_a12 == 'true' }}
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
     uses: ./.github/workflows/build-kernel-a13.yml
     secrets: inherit
+    if: ${{ github.event.inputs.build_a13 == 'true' }}
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
     uses: ./.github/workflows/build-kernel-a14.yml
     secrets: inherit
+    if: ${{ github.event.inputs.build_a14 == 'true' }}
 
   # Trigger Release Job
   trigger-release:
@@ -35,7 +53,7 @@ jobs:
     needs:
       - build-kernel-a12
       - build-kernel-a13
-      - build-kernel-a14  # Ensures all kernel builds must finish first
+      - build-kernel-a14
     if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
     steps:
       - name: Checkout code
@@ -57,21 +75,31 @@ jobs:
 
       - name: Define Release Name and Notes
         run: |
-          # Define release name and notes
           RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
           RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3, including the GKI Kernel builds for Android 12, 13, and 14."
 
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
 
-      - name: Download kernel artifacts
+      - name: Download kernel artifacts (A12, A13, A14)
         run: |
           echo "Downloading kernel artifacts"
-          # Download the artifacts that were uploaded in previous steps
           mkdir -p ./downloaded-artifacts
-          gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a12*" --dir ./downloaded-artifacts
-          gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a13*" --dir ./downloaded-artifacts
-          gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
+          
+          if [ "${{ github.event.inputs.build_a12 }}" == "true" ]; then
+            echo "Downloading kernel artifacts for A12"
+            gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a12*" --dir ./downloaded-artifacts
+          fi
+
+          if [ "${{ github.event.inputs.build_a13 }}" == "true" ]; then
+            echo "Downloading kernel artifacts for A13"
+            gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a13*" --dir ./downloaded-artifacts
+          fi
+
+          if [ "${{ github.event.inputs.build_a14 }}" == "true" ]; then
+            echo "Downloading kernel artifacts for A14"
+            gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
+          fi
 
       - name: Create GitHub Release
         run: |
@@ -87,4 +115,3 @@ jobs:
         run: |
           echo "GitHub release created with the following files:"
           ls ./downloaded-artifacts
-
