@@ -6,7 +6,7 @@ on:
       lto_type:
         description: 'Choose LTO type (thin/full)'
         required: true
-        default: 'full'
+        default: 'thin'
         type: choice
         options:
           - thin
@@ -29,7 +29,7 @@ on:
       make_release:
         description: 'Trigger release after the build?'
         required: false
-        default: true   # Defaults to not triggering a release
+        default: false   # Default to not triggering a release
         type: boolean
 
   push:
@@ -62,7 +62,7 @@ on:
       make_release:
         description: 'Trigger release after the build?'
         required: false
-        default: false   # Defaults to not triggering a release
+        default: false   # Default to not triggering a release
         type: boolean
 
 jobs:
@@ -72,6 +72,7 @@ jobs:
     steps:
       - name: Validate Inputs
         run: |
+          # Check if at least one kernel build is selected (set to true)
           if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
             echo "At least one kernel build must be selected!"
             exit 1
@@ -108,7 +109,7 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]
-    if: inputs.make_release == true # Trigger release only if make_release is true
+    if: inputs.make_release == true  # Trigger release only if make_release is true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
