@@ -242,7 +242,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-artifacts-a13
+          name: kernel-artifacts-a12
           path: |
             *.zip
             *.img
