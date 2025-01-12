@@ -44,10 +44,13 @@ jobs:
     steps:
       - name: Validate Inputs
         run: |
-          # Ensure at least one kernel build is selected (set to true)
-          if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
-            echo "At least one kernel build must be selected!"
-            exit 1
+          # Only perform validation if workflow is manually triggered (not a push)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Ensure at least one kernel build is selected (set to true)
+            if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
+              echo "At least one kernel build must be selected!"
+              exit 1
+            fi
           fi
 
   # Build Android 12 GKI Kernel
