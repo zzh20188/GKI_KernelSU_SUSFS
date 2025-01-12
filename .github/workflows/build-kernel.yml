@@ -1,15 +1,12 @@
 name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       lto_type:
         description: 'Choose LTO type (thin/full)'
         required: true
-        default: 'thin'  # Default to 'thin' LTO
+        default: 'thin'
         type: choice
         options:
           - thin
@@ -32,54 +29,80 @@ on:
       make_release:
         description: 'Trigger release after the build?'
         required: false  # User interaction is optional
-        default: false   # Default to not triggering a release
+        default: true   # Defaults to not triggering a release
         type: boolean
 
+  push:
+    branches:
+      - main  # Trigger on push to the main branch
+
 jobs:
+  # Set default values if no input is provided (for push event)
+  set-default-values:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set default values
+        run: |
+          if [ -z "${{ github.event.inputs.lto_type }}" ]; then
+            echo "lto_type=thin" >> $GITHUB_ENV
+          fi
+          if [ -z "${{ github.event.inputs.build_android_12 }}" ]; then
+            echo "build_android_12=true" >> $GITHUB_ENV
+          fi
+          if [ -z "${{ github.event.inputs.build_android_13 }}" ]; then
+            echo "build_android_13=true" >> $GITHUB_ENV
+          fi
+          if [ -z "${{ github.event.inputs.build_android_14 }}" ]; then
+            echo "build_android_14=true" >> $GITHUB_ENV
+          fi
+          if [ -z "${{ github.event.inputs.make_release }}" ]; then
+            echo "make_release=true" >> $GITHUB_ENV
+          fi
+
   # Validation Step
   validate-inputs:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    needs: set-default-values
     steps:
       - name: Validate Inputs
         run: |
-          if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
+          if [ "${{ env.build_android_12 }}" != true ] && [ "${{ env.build_android_13 }}" != true ] && [ "${{ env.build_android_14 }}" != true ]; then
             echo "At least one kernel build must be selected!"
             exit 1
           fi
 
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    if: ${{ inputs.build_android_12 == true }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build Android 12 Kernel
-        run: echo "Building Android 12 GKI Kernel"
+    if: ${{ env.build_android_12 == 'true' }}
+    needs: validate-inputs
+    uses: ./.github/workflows/build-kernel-a12.yml
+    with:
+      lto_type: ${{ env.lto_type }}
+    secrets: inherit
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    if: ${{ inputs.build_android_13 == true }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build Android 13 Kernel
-        run: echo "Building Android 13 GKI Kernel"
+    if: ${{ env.build_android_13 == 'true' }}
+    needs: validate-inputs
+    uses: ./.github/workflows/build-kernel-a13.yml
+    with:
+      lto_type: ${{ env.lto_type }}
+    secrets: inherit
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    if: ${{ inputs.build_android_14 == true }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build Android 14 Kernel
-        run: echo "Building Android 14 GKI Kernel"
+    if: ${{ env.build_android_14 == 'true' }}
+    needs: validate-inputs
+    uses: ./.github/workflows/build-kernel-a14.yml
+    with:
+      lto_type: ${{ env.lto_type }}
+    secrets: inherit
 
   # Trigger Release Job
   trigger-release:
     runs-on: ubuntu-latest
-    needs: 
-      - build-kernel-a12
-      - build-kernel-a13
-      - build-kernel-a14
-    if: ${{ inputs.make_release == true && (inputs.build_android_12 == true || inputs.build_android_13 == true || inputs.build_android_14 == true) }}
+    needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]
+    if: ${{ env.make_release == 'true' }} # Trigger release only if make_release is true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
