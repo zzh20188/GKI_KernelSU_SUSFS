@@ -2,12 +2,7 @@ name: Build Android 14 GKI Kernels
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
-    inputs:
-      lto_type:
-        description: 'Choose LTO type (thin/full)'
-        required: true
-        type: string
-
+  
 jobs:
   build-kernel-a14-kernelsu-susfs:
     runs-on: ubuntu-latest
@@ -177,7 +172,7 @@ jobs:
             sed -i '2s/check_defconfig//' ./common/build.config.gki
             rm -rf ./common/android/abi_gki_protected_exports_aarch64
             rm -rf ./common/android/abi_gki_protected_exports_x86_64
-            tools/bazel build --config=fast --config=stamp --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
+            tools/bazel build --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist
 
             # Create boot images
             echo "Creating boot images..."
