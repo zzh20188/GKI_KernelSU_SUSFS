@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
     inputs:
       lto_type:
         description: 'Choose LTO type (thin/full)'
@@ -35,30 +34,53 @@ on:
         default: false   # Default to not triggering a release
         type: boolean
 
+  workflow_dispatch:
+    inputs:
+      lto_type:
+        description: 'Choose LTO type (thin/full)'
+        required: true
+        default: 'full'  # Default to 'thin' LTO
+        type: choice
+        options:
+          - thin
+          - full
+      build_android_12:
+        description: 'Build Android 12 GKI Kernel?'
+        required: false  # User interaction is optional
+        default: true    # Defaults to building Android 12
+        type: boolean
+      build_android_13:
+        description: 'Build Android 13 GKI Kernel?'
+        required: false  # User interaction is optional
+        default: true    # Defaults to building Android 13
+        type: boolean
+      build_android_14:
+        description: 'Build Android 14 GKI Kernel?'
+        required: false  # User interaction is optional
+        default: true    # Defaults to building Android 14
+        type: boolean
+      make_release:
+        description: 'Trigger release after the build?'
+        required: false  # User interaction is optional
+        default: true   # Default to not triggering a release
+        type: boolean
+
 jobs:
   # Validation Step
   validate-inputs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: Set default values if inputs are missing
+      - name: Validate Inputs
         run: |
-          if [ -z "${{ inputs.build_android_12 }}" ]; then
-            echo "build_android_12=true" >> $GITHUB_ENV
-          fi
-          if [ -z "${{ inputs.build_android_13 }}" ]; then
-            echo "build_android_13=true" >> $GITHUB_ENV
-          fi
-          if [ -z "${{ inputs.build_android_14 }}" ]; then
-            echo "build_android_14=true" >> $GITHUB_ENV
-          fi
-          if [ -z "${{ inputs.make_release }}" ]; then
-            echo "make_release=false" >> $GITHUB_ENV
+          if [ "${{ inputs.build_android_12 }}" != true ] && [ "${{ inputs.build_android_13 }}" != true ] && [ "${{ inputs.build_android_14 }}" != true ]; then
+            echo "At least one kernel build must be selected!"
+            exit 1
           fi
 
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    if: ${{ env.build_android_12 == 'true' }}
+    if: ${{ inputs.build_android_12 == true }}
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a12.yml
     with:
@@ -67,7 +89,7 @@ jobs:
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    if: ${{ env.build_android_13 == 'true' }}
+    if: ${{ inputs.build_android_13 == true }}
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a13.yml
     with:
@@ -76,7 +98,7 @@ jobs:
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    if: ${{ env.build_android_14 == 'true' }}
+    if: ${{ inputs.build_android_14 == true }}
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a14.yml
     with:
