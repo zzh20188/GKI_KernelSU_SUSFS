@@ -37,9 +37,9 @@ jobs:
   validate-inputs:
     runs-on: ubuntu-latest
     outputs:
-      needs_a12: ${{ inputs.build_android_12 }}
-      needs_a13: ${{ inputs.build_android_13 }}
-      needs_a14: ${{ inputs.build_android_14 }}
+      build_a12: ${{ inputs.build_android_12 }}
+      build_a13: ${{ inputs.build_android_13 }}
+      build_a14: ${{ inputs.build_android_14 }}
     steps:
       - name: Validate Inputs
         run: |
@@ -81,9 +81,9 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     needs:
-      - ${{ inputs.build_android_12 && 'build-kernel-a12' || '' }}
-      - ${{ inputs.build_android_13 && 'build-kernel-a13' || '' }}
-      - ${{ inputs.build_android_14 && 'build-kernel-a14' || '' }}
+      - ${{ inputs.build_android_12 == 'true' && 'build-kernel-a12' || 'validate-inputs' }}
+      - ${{ inputs.build_android_13 == 'true' && 'build-kernel-a13' || 'validate-inputs' }}
+      - ${{ inputs.build_android_14 == 'true' && 'build-kernel-a14' || 'validate-inputs' }}
     if: ${{ inputs.make_release == 'true' }}
     steps:
       - name: Checkout code
