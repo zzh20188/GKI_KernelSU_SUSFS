@@ -13,23 +13,23 @@ on:
           - full
       build_android_12:
         description: 'Build Android 12 GKI Kernel?'
-        required: false  # User interaction is optional
-        default: true    # Defaults to building Android 12
+        required: false
+        default: true
         type: boolean
       build_android_13:
         description: 'Build Android 13 GKI Kernel?'
-        required: false  # User interaction is optional
-        default: true    # Defaults to building Android 13
+        required: false
+        default: true
         type: boolean
       build_android_14:
         description: 'Build Android 14 GKI Kernel?'
-        required: false  # User interaction is optional
-        default: true    # Defaults to building Android 14
+        required: false
+        default: true
         type: boolean
       make_release:
         description: 'Trigger release after the build?'
-        required: false  # User interaction is optional
-        default: false   # Defaults to not triggering a release
+        required: false
+        default: false
         type: boolean
 
 jobs:
@@ -72,11 +72,14 @@ jobs:
       lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
-  # Trigger Release Job
+  # Trigger Release Job (only if make_release is true)
   trigger-release:
     runs-on: ubuntu-latest
-    needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]
     if: ${{ inputs.make_release == true }}
+    needs:
+      - build-kernel-a12
+      - build-kernel-a13
+      - build-kernel-a14
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
