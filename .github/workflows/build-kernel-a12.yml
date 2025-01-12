@@ -151,8 +151,8 @@ jobs:
             echo "2"
             sed -i 's/dirty//' ./common/scripts/setlocalversion
             echo "3"
-            sed -i 's|UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN\)"|UTS_VERSION="\$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
-            echo "4"
+            sed -i 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="$(date '+%a %b %d %H:%M:%S UTC %Y')"|' ./common/scripts/mkcompile_h
+            
             sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
             
             # Build the kernel
