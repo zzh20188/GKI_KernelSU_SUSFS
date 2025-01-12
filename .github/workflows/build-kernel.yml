@@ -33,19 +33,20 @@ jobs:
   build-kernel-a12:
     uses: ./.github/workflows/build-kernel-a12.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a12 == 'true' }}
+    if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
     uses: ./.github/workflows/build-kernel-a13.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a13 == 'true' }}
+    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
     uses: ./.github/workflows/build-kernel-a14.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a14 == 'true' }}
+    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+
 
   # Trigger Release Job
   trigger-release:
