@@ -152,7 +152,7 @@ jobs:
             sed -i 's/dirty//' ./common/scripts/setlocalversion
             echo "3"
             new_version=$(date '+%a %b %d %H:%M:%S UTC %Y')
-            sed -i "s|UTS_VERSION=\"\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)\"|UTS_VERSION=\"$new_version\"|" ./common/scripts/mkcompile_h
+            sed -i "s|UTS_VERSION=\"\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN)\"|UTS_VERSION=\"$new_version\"|" ./common/scripts/mkcompile_h
             echo "4"
             sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
             
