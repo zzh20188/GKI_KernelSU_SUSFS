@@ -9,26 +9,17 @@ on:
 jobs:
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-kernel-a12.yml
-    with:
-      lto_type: 'thin'  # Default LTO type
     secrets: inherit
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-kernel-a13.yml
-    with:
-      lto_type: 'thin'  # Default LTO type
     secrets: inherit
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-kernel-a14.yml
-    with:
-      lto_type: 'thin'  # Default LTO type
     secrets: inherit
 
   # Trigger Release Job
