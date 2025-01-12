@@ -36,6 +36,7 @@ jobs:
   # Validation Step
   validate-inputs:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - name: Validate Inputs
         run: |
