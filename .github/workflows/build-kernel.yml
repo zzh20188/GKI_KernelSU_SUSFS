@@ -49,10 +49,16 @@ jobs:
             echo "At least one kernel build must be selected!"
             exit 1
           fi
+      - name: Set Output Variables
+        id: outputs
+        run: |
+          echo "build_a12=${{ inputs.build_android_12 }}" >> $GITHUB_ENV
+          echo "build_a13=${{ inputs.build_android_13 }}" >> $GITHUB_ENV
+          echo "build_a14=${{ inputs.build_android_14 }}" >> $GITHUB_ENV
 
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    if: ${{ inputs.build_android_12 == 'true' }}
+    if: ${{ env.build_a12 == 'true' }}
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a12.yml
     with:
@@ -61,7 +67,7 @@ jobs:
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    if: ${{ inputs.build_android_13 == 'true' }}
+    if: ${{ env.build_a13 == 'true' }}
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a13.yml
     with:
@@ -70,7 +76,7 @@ jobs:
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    if: ${{ inputs.build_android_14 == 'true' }}
+    if: ${{ env.build_a14 == 'true' }}
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a14.yml
     with:
@@ -81,10 +87,11 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     needs:
-      - ${{ inputs.build_android_12 == 'true' && 'build-kernel-a12' || 'validate-inputs' }}
-      - ${{ inputs.build_android_13 == 'true' && 'build-kernel-a13' || 'validate-inputs' }}
-      - ${{ inputs.build_android_14 == 'true' && 'build-kernel-a14' || 'validate-inputs' }}
-    if: ${{ inputs.make_release == 'true' }}
+      - validate-inputs
+      - build-kernel-a12
+      - build-kernel-a13
+      - build-kernel-a14
+    if: ${{ env.build_a12 == 'true' || env.build_a13 == 'true' || env.build_a14 == 'true' && inputs.make_release == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
