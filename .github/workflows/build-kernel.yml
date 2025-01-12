@@ -44,7 +44,7 @@ jobs:
     steps:
       - name: Validate Inputs
         run: |
-          if [ "${{ inputs.build_android_12 }}" != true ] && [ "${{ inputs.build_android_13 }}" != true ] && [ "${{ inputs.build_android_14 }}" != true ]; then
+          if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
             echo "At least one kernel build must be selected!"
             exit 1
           fi
