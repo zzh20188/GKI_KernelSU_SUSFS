@@ -1,81 +1,39 @@
 name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
-  workflow_dispatch:
-    inputs:
-      lto_type:
-        description: 'Choose LTO type (thin/full)'
-        required: true
-        default: 'thin'
-        type: choice
-        options:
-          - thin
-          - full
-      build_android_12:
-        description: 'Build Android 12 GKI Kernel?'
-        required: false
-        default: true
-        type: boolean
-      build_android_13:
-        description: 'Build Android 13 GKI Kernel?'
-        required: false
-        default: true
-        type: boolean
-      build_android_14:
-        description: 'Build Android 14 GKI Kernel?'
-        required: false
-        default: true
-        type: boolean
-      make_release:
-        description: 'Trigger release after the build?'
-        required: false
-        default: false
-        type: boolean
+  workflow_dispatch:  # Allows triggering manually from the GitHub Actions UI
+  push:  # Allows triggering on push to the repository
+    branches:
+      - main  # Only triggers on pushes to the 'main' branch
 
 jobs:
-  # Validation Step
-  validate-inputs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate Inputs
-        run: |
-          # Check if at least one kernel build is selected
-          if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
-            echo "At least one kernel build must be selected!"
-            exit 1
-          fi
-
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    if: ${{ inputs.build_android_12 == true }}
-    needs: validate-inputs
+    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-kernel-a12.yml
     with:
-      lto_type: ${{ inputs.lto_type }}
+      lto_type: 'thin'  # Default LTO type
     secrets: inherit
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    if: ${{ inputs.build_android_13 == true }}
-    needs: validate-inputs
+    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-kernel-a13.yml
     with:
-      lto_type: ${{ inputs.lto_type }}
+      lto_type: 'thin'  # Default LTO type
     secrets: inherit
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    if: ${{ inputs.build_android_14 == true }}
-    needs: validate-inputs
+    runs-on: ubuntu-latest
     uses: ./.github/workflows/build-kernel-a14.yml
     with:
-      lto_type: ${{ inputs.lto_type }}
+      lto_type: 'thin'  # Default LTO type
     secrets: inherit
 
-  # Trigger Release Job (only if make_release is true)
+  # Trigger Release Job
   trigger-release:
     runs-on: ubuntu-latest
-    if: ${{ inputs.make_release == true }}
     needs:
       - build-kernel-a12
       - build-kernel-a13
