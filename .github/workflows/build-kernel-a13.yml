@@ -159,9 +159,8 @@ jobs:
 
             # Run sed commands
             echo "Running sed commands..."
-            sed -i '2s/check_defconfig//' ./common/build.config.gki
-            sed -i "s/dirty//g" ./common/scripts/setlocalversion
-            sed -i 's|UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN\)"|UTS_VERSION="\$(date "+%a %b %d %H:%M:%S UTC %Y")"|' ./common/scripts/mkcompile_h
+            sed -i 's/check_defconfig//' ./common/build.config.gki
+            sed -i 's/dirty//' ./common/scripts/setlocalversion
             sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
 
             # Build the kernel
