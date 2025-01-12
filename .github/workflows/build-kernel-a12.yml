@@ -239,13 +239,15 @@ jobs:
             rm ./Image.gz
             cd ../../
 
-            # Upload artifacts
-            KERNEL_ARTIFACT_NAME="${ANDROID_VERSION}.${KERNEL_VERSION}.${SUB_LEVEL}-${DATE}-kernel"
-            echo "Uploading artifacts with name: $KERNEL_ARTIFACT_NAME"
-
-            gh run upload-artifact --name "$KERNEL_ARTIFACT_NAME" --path "*.zip,*.img"
-
             # Delete the $CONFIG folder after building
             echo "Deleting $CONFIG folder..."
             rm -rf "$CONFIG"
           done
+    
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-artifacts-a13
+          path: |
+            *.zip
+            *.img
