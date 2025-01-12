@@ -2,6 +2,13 @@ name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
   workflow_dispatch:  # Allows triggering manually from the GitHub Actions UI
+    inputs:
+      make_release:
+        description: 'Do you want to release these kernels?'
+        required: true
+        type: boolean
+        default: false  # Default is 'false', meaning no release unless explicitly set
+
   push:  # Allows triggering on push to the repository
     branches:
       - main  # Only triggers on pushes to the 'main' branch
@@ -28,7 +35,8 @@ jobs:
     needs:
       - build-kernel-a12
       - build-kernel-a13
-      - build-kernel-a14
+      - build-kernel-a14  # Ensures all kernel builds must finish first
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
