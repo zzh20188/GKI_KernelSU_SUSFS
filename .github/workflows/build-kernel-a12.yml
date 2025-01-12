@@ -155,6 +155,11 @@ jobs:
             echo "Running sed commands..."
             sed -i '2s/check_defconfig//' ./common/build.config.gki
             sed -i "s/dirty/'Wild+'/g" ./common/scripts/setlocalversion
+
+            SOURCE_ARTIFACT_NAME="${ANDROID_VERSION}.${KERNEL_VERSION}.${SUB_LEVEL}-${DATE}-source"
+            echo "Uploading artifacts with name: $SOURCE_ARTIFACT_NAME"
+
+            gh run upload-artifact --name "$SOURCE_ARTIFACT_NAME" --path "*"
             
             # Build the kernel
             LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
@@ -239,15 +244,13 @@ jobs:
             rm ./Image.gz
             cd ../../
 
+            # Upload artifacts
+            KERNEL_ARTIFACT_NAME="${ANDROID_VERSION}.${KERNEL_VERSION}.${SUB_LEVEL}-${DATE}-kernel"
+            echo "Uploading artifacts with name: $KERNEL_ARTIFACT_NAME"
+
+            gh run upload-artifact --name "$KERNEL_ARTIFACT_NAME" --path "*.zip,*.img"
+
             # Delete the $CONFIG folder after building
             echo "Deleting $CONFIG folder..."
             rm -rf "$CONFIG"
           done
-          
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: kernel-artifacts-a12
-          path: |
-            *.zip
-            *.img
