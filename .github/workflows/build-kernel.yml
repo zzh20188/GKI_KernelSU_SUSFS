@@ -13,86 +13,73 @@ on:
           - full
       build_android_12:
         description: 'Build Android 12 GKI Kernel?'
-        required: false
-        default: true
+        required: false  # User interaction is optional
+        default: true    # Defaults to building Android 12
         type: boolean
       build_android_13:
         description: 'Build Android 13 GKI Kernel?'
-        required: false
-        default: true
+        required: false  # User interaction is optional
+        default: true    # Defaults to building Android 13
         type: boolean
       build_android_14:
         description: 'Build Android 14 GKI Kernel?'
-        required: false
-        default: true
+        required: false  # User interaction is optional
+        default: true    # Defaults to building Android 14
         type: boolean
       make_release:
         description: 'Trigger release after the build?'
-        required: false
-        default: true
+        required: false  # User interaction is optional
+        default: true   # Defaults to not triggering a release
         type: boolean
 
+  # Trigger when there is a push to the 'main' branch
   push:
     branches:
-      - main  # Trigger on push to the main branch
+      - main
 
 jobs:
-  # Set default values if no input is provided (for push event)
-  set-default-values:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set default values
-        run: |
-          echo "LTO_TYPE=${{ github.event.inputs.lto_type || 'thin' }}" >> $GITHUB_ENV
-          echo "BUILD_ANDROID_12=${{ github.event.inputs.build_android_12 || 'true' }}" >> $GITHUB_ENV
-          echo "BUILD_ANDROID_13=${{ github.event.inputs.build_android_13 || 'true' }}" >> $GITHUB_ENV
-          echo "BUILD_ANDROID_14=${{ github.event.inputs.build_android_14 || 'true' }}" >> $GITHUB_ENV
-          echo "MAKE_RELEASE=${{ github.event.inputs.make_release || 'true' }}" >> $GITHUB_ENV
-
   # Validation Step
   validate-inputs:
     runs-on: ubuntu-latest
-    needs: set-default-values
     steps:
       - name: Validate Inputs
         run: |
-          if [ "${{ env.BUILD_ANDROID_12 }}" != "true" ] && [ "${{ env.BUILD_ANDROID_13 }}" != "true" ] && [ "${{ env.BUILD_ANDROID_14 }}" != "true" ]; then
+          if [ "${{ inputs.build_android_12 }}" != true ] && [ "${{ inputs.build_android_13 }}" != true ] && [ "${{ inputs.build_android_14 }}" != true ]; then
             echo "At least one kernel build must be selected!"
             exit 1
-          fi
-
+          
   # Build Android 12 GKI Kernel
   build-kernel-a12:
-    if: ${{ env.BUILD_ANDROID_12 == 'true' }}
+    if: inputs.build_android_12 == true
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a12.yml
     with:
-      lto_type: ${{ env.LTO_TYPE }}
+      lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
   # Build Android 13 GKI Kernel
   build-kernel-a13:
-    if: ${{ env.BUILD_ANDROID_13 == 'true' }}
+    if: inputs.build_android_13 == true
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a13.yml
     with:
-      lto_type: ${{ env.LTO_TYPE }}
+      lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
   # Build Android 14 GKI Kernel
   build-kernel-a14:
-    if: ${{ env.BUILD_ANDROID_14 == 'true' }}
+    if: inputs.build_android_14 == true
     needs: validate-inputs
     uses: ./.github/workflows/build-kernel-a14.yml
     with:
-      lto_type: ${{ env.LTO_TYPE }}
+      lto_type: ${{ inputs.lto_type }}
     secrets: inherit
 
   # Trigger Release Job
   trigger-release:
     runs-on: ubuntu-latest
     needs: [build-kernel-a12, build-kernel-a13, build-kernel-a14]
-    if: ${{ env.MAKE_RELEASE == 'true' }} # Trigger release only if make_release is true
+    if: inputs.make_release == true # Trigger release only if make_release is true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
