@@ -99,13 +99,13 @@ jobs:
           fi
 
           # Check if at least one kernel build is selected
-          if [ "$build_android_12" != "true" ] && [ "$build_android_13" != "true" ] && [ "$build_android_14" != "true" ]; then
+          if [ "${{ env.build_android_12 }}" != "true" ] && [ "${{ env.build_android_13 }}" != "true" ] && [ "${{ env.build_android_14 }}" != "true" ]; then
             echo "At least one kernel build must be selected!"
             exit 1
           fi
           
           echo "Validation passed. Proceeding with the build..."
-          
+
   # Build Android 12 GKI Kernel
   build-kernel-a12:
     if: ${{ env.build_android_12 == 'true' }}
