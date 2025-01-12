@@ -35,6 +35,7 @@ on:
   push:
     branches:
       - main
+    # Triggered on push to main, with defaults for the inputs
     inputs:
       lto_type:
         description: 'Choose LTO type (thin/full)'
@@ -47,22 +48,22 @@ on:
       build_android_12:
         description: 'Build Android 12 GKI Kernel?'
         required: false
-        default: true    # Defaults to building Android 12
+        default: true
         type: boolean
       build_android_13:
         description: 'Build Android 13 GKI Kernel?'
         required: false
-        default: true    # Defaults to building Android 13
+        default: true
         type: boolean
       build_android_14:
         description: 'Build Android 14 GKI Kernel?'
         required: false
-        default: true    # Defaults to building Android 14
+        default: true
         type: boolean
       make_release:
         description: 'Trigger release after the build?'
         required: false
-        default: false   # Default to not triggering a release
+        default: false
         type: boolean
 
 jobs:
@@ -72,12 +73,18 @@ jobs:
     steps:
       - name: Validate Inputs
         run: |
-          # Check if at least one kernel build is selected (set to true)
-          if [ "${{ inputs.build_android_12 }}" != "true" ] && [ "${{ inputs.build_android_13 }}" != "true" ] && [ "${{ inputs.build_android_14 }}" != "true" ]; then
+          # Assign default values to the inputs if they are empty (for push event)
+          build_android_12=${{ inputs.build_android_12 || 'true' }}
+          build_android_13=${{ inputs.build_android_13 || 'true' }}
+          build_android_14=${{ inputs.build_android_14 || 'true' }}
+          make_release=${{ inputs.make_release || 'false' }}
+
+          # Check if at least one kernel build is selected
+          if [ "$build_android_12" != "true" ] && [ "$build_android_13" != "true" ] && [ "$build_android_14" != "true" ]; then
             echo "At least one kernel build must be selected!"
             exit 1
           fi
-          
+
   # Build Android 12 GKI Kernel
   build-kernel-a12:
     if: inputs.build_android_12 == true
