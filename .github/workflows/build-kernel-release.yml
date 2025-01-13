@@ -7,49 +7,46 @@ on:
         description: 'Do you want to create a release?'
         required: true
         type: boolean
-        default: false
+        default: false  # Set to true to trigger release
       build_a12:
         description: 'Build Android 12 kernel?'
         required: true
         type: boolean
-        default: false
+        default: false  # Set to false to skip build
       build_a13:
         description: 'Build Android 13 kernel?'
         required: true
         type: boolean
-        default: false
+        default: false  # Set to false to skip build
       build_a14:
         description: 'Build Android 14 kernel?'
         required: true
         type: boolean
-        default: false
-  push:
-    branches:
-      - main
+        default: false  # Set to false to skip build
 
 jobs:
   build-kernel-a12:
-    if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
     uses: ./.github/workflows/build-kernel-a12.yml
     secrets: inherit
+    if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
 
   build-kernel-a13:
-    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
     uses: ./.github/workflows/build-kernel-a13.yml
     secrets: inherit
+    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
 
   build-kernel-a14:
-    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
     uses: ./.github/workflows/build-kernel-a14.yml
     secrets: inherit
+    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
 
   trigger-release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Run only if 'make_release' is true
-    needs:
-      - build-kernel-a12
-      - build-kernel-a13
-      - build-kernel-a14
+   #needs:
+   #   - build-kernel-a12
+   #   - build-kernel-a13
+   #   - build-kernel-a14  # This ensures the release only runs after the build jobs complete or are skipped
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -96,46 +93,16 @@ jobs:
           NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
-      # Check Build Results and Add Placeholders if No Build
-      - name: Check Build Status and Download Artifacts or Add Placeholders
+      # Create placeholder files for all three builds
+      - name: Create Placeholder Files
         run: |
-          if [[ "${{ needs.build-kernel-a12.result }}" == "success" || "${{ needs.build-kernel-a12.result }}" == "skipped" ||
-                "${{ needs.build-kernel-a13.result }}" == "success" || "${{ needs.build-kernel-a13.result }}" == "skipped" ||
-                "${{ needs.build-kernel-a14.result }}" == "success" || "${{ needs.build-kernel-a14.result }}" == "skipped" ]]; then
-            echo "At least one build succeeded or was skipped."
-          else
-            echo "No builds triggered or completed. Adding placeholder files."
-            echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
-            echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
-            echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
-          fi
+          echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
+          echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
+          echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
 
-      # Download Artifacts for A12 (Only if Build Succeeded or Skipped)
-      - name: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
-        if: ${{ needs.build-kernel-a12.result == 'success' || needs.build-kernel-a12.result == 'skipped' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: kernel-artifacts-a12
-          path: ./downloaded-artifacts
-
-      # Download Artifacts for A13 (Only if Build Succeeded or Skipped)
-      - name: Download Artifacts for A13 (Only if A13 Build is successful or skipped)
-        if: ${{ needs.build-kernel-a13.result == 'success' || needs.build-kernel-a13.result == 'skipped' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: kernel-artifacts-a13
-          path: ./downloaded-artifacts
-
-      # Download Artifacts for A14 (Only if Build Succeeded or Skipped)
-      - name: Download Artifacts for A14 (Only if Build Succeeded or Skipped)
-        if: ${{ needs.build-kernel-a14.result == 'success' || needs.build-kernel-a14.result == 'skipped' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: kernel-artifacts-a14
-          path: ./downloaded-artifacts
-
-      # Create GitHub Release
+      # Only upload the release if make_release is true
       - name: Create GitHub Release
+        if: ${{ github.event.inputs.make_release == 'true' }}  # This ensures it only uploads when release is triggered
         run: |
           gh release create "$TAG_NAME" ./downloaded-artifacts/* \
             --repo "$REPO_OWNER/$REPO_NAME" \
