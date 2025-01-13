@@ -163,7 +163,7 @@ jobs:
 
             # Build the kernel using Bazel
             echo "Building kernel..."
-            sed -i '/echo "\$res"/s|"\$res"|"\$res-Wild+"|' ./common/scripts/setlocalversion
+            sed -i '$s|echo "\$res"|echo "\$res-Wild+"|' ./common/scripts/setlocalversion
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
             sed -i '2s/check_defconfig//' ./common/build.config.gki
             sed -i 's|UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN\)"|UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"|' ./common/scripts/mkcompile_h
