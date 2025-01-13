@@ -1,4 +1,4 @@
-name: Build and Release GKI Kernels
+name: Build GKI Kernels
 
 on:
   workflow_dispatch:
