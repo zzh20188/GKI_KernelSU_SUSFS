@@ -148,7 +148,9 @@ jobs:
             echo "Running sed commands..."
             sed -i 's/check_defconfig//' ./common/build.config.gki
             sed -i 's/dirty//' ./common/scripts/setlocalversion
-            #sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
+            sed -i '$s|echo "\$res"|echo "\$res-Wild+"|' ./common/scripts/setlocalversion
+            perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"}' ./common/scripts/mkcompile_h
+
             
             # Build the kernel
             LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
