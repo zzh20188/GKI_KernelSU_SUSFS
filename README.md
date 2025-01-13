@@ -25,7 +25,6 @@ Follow the steps for GKI:
 
 - **KernelSU**: KernelSU is a root solution for Android GKI devices, it works in kernel mode and grants root permission to userspace applications directly in kernel space.
 - **SUSFS**: An addon root hiding kernel patches and userspace module for KernelSU.
-- **Sultan Kernel**: A custom kernel built from the ground up.
 
 ---
 
@@ -65,8 +64,12 @@ Flashing this kernel will void your warranty, and there is always a risk of bric
 [Telegram Group](https://t.me/wildkernelplus)  
 [Build Scripts](https://github.com/TheWildJames/kernel_build_scripts)
 
-# Working Devices
+# Special thanks to the following people for their contributions!
+This helps me alot! <3
 
-### Google
-+ Pixel 8
-+ Pixel 8 Pro
+[simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git) - Created SUSFS!
+[sidex15](https://github.com/sidex15) - Created module!
+[backslashxx](https://github.com/backslashxx) - Helped with patches!
+[幕落](https://github.com/MuLuo688) - Donation!
+
+If you have contributed and are not here please remind me!
