@@ -49,6 +49,7 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 2160  # Set maximum timeout
     needs:
         - build-kernel-a12
         - build-kernel-a13
