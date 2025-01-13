@@ -43,10 +43,10 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.make_release == 'true' }}
-    needs:
-      - build-kernel-a12
-      - build-kernel-a13
-      - build-kernel-a14  # Ensure the release happens after the build jobs
+  # needs:
+  #    - build-kernel-a12
+  #    - build-kernel-a13
+  #    - build-kernel-a14  # Ensure the release happens after the build jobs
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
