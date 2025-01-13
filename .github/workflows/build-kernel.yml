@@ -7,50 +7,55 @@ on:
         description: 'Do you want to create a release?'
         required: true
         type: boolean
-        default: false  # Set to true to trigger release
+        default: false
       build_a12:
         description: 'Build Android 12 kernel?'
         required: true
         type: boolean
-        default: false  # Set to true to build, false to skip build
+        default: false
       build_a13:
         description: 'Build Android 13 kernel?'
         required: true
         type: boolean
-        default: false  # Set to true to build, false to skip build
+        default: false
       build_a14:
         description: 'Build Android 14 kernel?'
         required: true
         type: boolean
-        default: false  # Set to true to build, false to skip build
-
+        default: false
   push:
     branches:
-      - main  # Trigger on push to the 'main' branch
+      - main
 
 jobs:
   build-kernel-a12:
     if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
     uses: ./.github/workflows/build-kernel-a12.yml
     secrets: inherit
+    outputs:
+      status_a12: ${{ job.status }}
 
   build-kernel-a13:
     if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
     uses: ./.github/workflows/build-kernel-a13.yml
     secrets: inherit
+    outputs:
+      status_a13: ${{ job.status }}
 
   build-kernel-a14:
     if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
     uses: ./.github/workflows/build-kernel-a14.yml
     secrets: inherit
+    outputs:
+      status_a14: ${{ job.status }}
 
   trigger-release:
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run release if make_release is true
     needs:
       - build-kernel-a12
       - build-kernel-a13
       - build-kernel-a14
-    if: ${{ github.event.inputs.make_release == 'true' || github.event.inputs.make_release == '' }}
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -58,10 +63,8 @@ jobs:
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
       RELEASE_NOTES: |
         This release contains KernelSU and SUSFS v1.5.3
-
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
-
         Official Manager:
         -> https://github.com/tiann/KernelSU
         Non-Official Managers:
@@ -71,7 +74,6 @@ jobs:
         -> https://github.com/5ec1cff/KernelSU
         -> https://github.com/silvzr/KernelSU
         -> https://github.com/sidex15/KernelSU
-
         Features:
         [+] KernelSU-Next
         [+] SUSFS v1.5.3
@@ -89,7 +91,7 @@ jobs:
       - name: Verify gh Authentication
         run: gh auth status
 
-      # Step 3: Get the Latest Tag from GitHub
+      # Step 3: Get Latest Tag from GitHub
       - name: Get Latest Tag from GitHub
         id: get_tag
         run: |
@@ -101,40 +103,45 @@ jobs:
           NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
-      # Step 4: Download Artifacts for A12 (Only if A12 Build is triggered)
-      - name: Download artifacts for A12
-        if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
+      # Step 4: Check if at least one build job was successful or skipped
+      - name: Check Build Status and Download Artifacts
+        run: |
+          if [[ "${{ needs.build-kernel-a12.result }}" == "success" || "${{ needs.build-kernel-a12.result }}" == "skipped" ||
+                "${{ needs.build-kernel-a13.result }}" == "success" || "${{ needs.build-kernel-a13.result }}" == "skipped" ||
+                "${{ needs.build-kernel-a14.result }}" == "success" || "${{ needs.build-kernel-a14.result }}" == "skipped" ]]; then
+            echo "At least one build succeeded or was skipped."
+          else
+            echo "No builds were triggered or completed. Proceeding with placeholders."
+            echo "This is a placeholder text file for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
+            echo "This is a placeholder text file for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
+            echo "This is a placeholder text file for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
+          fi
+
+      # Step 5: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
+      - name: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
+        if: ${{ needs.build-kernel-a12.result == 'success' || needs.build-kernel-a12.result == 'skipped' }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a12
           path: ./downloaded-artifacts
 
-      # Step 5: Download Artifacts for A13 (Only if A13 Build is triggered)
-      - name: Download artifacts for A13
-        if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
+      # Step 6: Download Artifacts for A13 (Only if A13 Build is successful or skipped)
+      - name: Download Artifacts for A13 (Only if A13 Build is successful or skipped)
+        if: ${{ needs.build-kernel-a13.result == 'success' || needs.build-kernel-a13.result == 'skipped' }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a13
           path: ./downloaded-artifacts
 
-      # Step 6: Download Artifacts for A14 (Only if A14 Build is triggered)
-      - name: Download artifacts for A14
-        if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+      # Step 7: Download Artifacts for A14 (Only if A14 Build is successful or skipped)
+      - name: Download Artifacts for A14 (Only if A14 Build is successful or skipped)
+        if: ${{ needs.build-kernel-a14.result == 'success' || needs.build-kernel-a14.result == 'skipped' }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a14
           path: ./downloaded-artifacts
 
-      # Step 7: Create Placeholder Files for Release if no builds are triggered
-      - name: Create Placeholder Files for Release
-        if: ${{ github.event.inputs.build_a12 == 'false' && github.event.inputs.build_a13 == 'false' && github.event.inputs.build_a14 == 'false' }}
-        run: |
-          echo "This is a placeholder text file for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
-          echo "This is a placeholder text file for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
-          echo "This is a placeholder text file for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
-          echo "Placeholder files created as no builds are triggered."
-
-      # Step 8: Create GitHub Release with build or placeholder files
+      # Step 8: Create GitHub Release
       - name: Create GitHub Release
         run: |
           gh release create "$TAG_NAME" ./downloaded-artifacts/* \
