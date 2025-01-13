@@ -79,31 +79,31 @@ jobs:
       - name: Define Release Name and Notes
         run: |
           RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
-          RELEASE_NOTES=$(cat <<EOF
-This release contains KernelSU and SUSFS v1.5.3
-
-Module: https://github.com/sidex15/ksu_module_susfs
-
-Official Manager:
--> https://github.com/tiann/KernelSU
-Non-Official Managers:
--> https://github.com/rifsxd/KernelSU-Next
--> https://github.com/backslashxx/KernelSU
--> https://github.com/rsuntk/KernelSU
--> https://github.com/5ec1cff/KernelSU
--> https://github.com/silvzr/KernelSU
--> https://github.com/sidex15/KernelSU
-
-Features:
-[+] KernelSU-Next
-[+] SUSFS v1.5.3
-[+] Wireguard Support
-[+] Maphide LineageOS Detections
-[+] Futile Maphide for jit-zygote-cache Detections
-[+] Magic Mount Support
-EOF
-)
           
+          # Use multi-line string properly
+          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3
+
+          Module: https://github.com/sidex15/ksu_module_susfs
+
+          Official Manager:
+          -> https://github.com/tiann/KernelSU
+          Non-Official Managers:
+          -> https://github.com/rifsxd/KernelSU-Next
+          -> https://github.com/backslashxx/KernelSU
+          -> https://github.com/rsuntk/KernelSU
+          -> https://github.com/5ec1cff/KernelSU
+          -> https://github.com/silvzr/KernelSU
+          -> https://github.com/sidex15/KernelSU
+
+          Features:
+          [+] KernelSU-Next
+          [+] SUSFS v1.5.3
+          [+] Wireguard Support
+          [+] Maphide LineageOS Detections
+          [+] Futile Maphide for jit-zygote-cache Detections
+          [+] Magic Mount Support
+          "
+
           echo "RELEASE_NAME=${RELEASE_NAME}" >> $GITHUB_ENV
           echo "RELEASE_NOTES=${RELEASE_NOTES}" >> $GITHUB_ENV
 
