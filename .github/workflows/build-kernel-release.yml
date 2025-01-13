@@ -59,7 +59,7 @@ jobs:
       REPO_NAME: GKI_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
-      RELEASE_NOTES: "
+      RELEASE_NOTES: |
         This release contains KernelSU and SUSFS v1.5.3
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
@@ -90,7 +90,6 @@ jobs:
         幕落 - Donation!
 
         If you have contributed and are not here please remind me!
-        "
     steps:
       # Checkout the code
       - name: Checkout code
