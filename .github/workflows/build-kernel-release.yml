@@ -93,6 +93,10 @@ jobs:
           NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
+      # Create the downloaded-artifacts directory
+      - name: Create download artifacts directory
+        run: mkdir -p ./downloaded-artifacts
+      
       # Create placeholder files for all three builds
       - name: Create Placeholder Files
         run: |
