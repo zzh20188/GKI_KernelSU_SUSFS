@@ -1,6 +1,9 @@
 name: Build and Release GKI Kernels
 
 on:
+  push:
+    branches:
+      - main  # Trigger on push to the main branch
   workflow_dispatch:
     inputs:
       make_release:
@@ -42,11 +45,11 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-    needs:
-      - build-kernel-a12
-      - build-kernel-a13
-      - build-kernel-a14  # Ensure the release only runs after the build jobs complete or are skipped
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true
+    # needs:
+    #   - build-kernel-a12
+    #   - build-kernel-a13
+    #   - build-kernel-a14  # Ensure the release only runs after the build jobs complete or are skipped
+    if: ${{ github.event.inputs.make_release == 'true' || github.event.inputs.make_release == '' }}  # Only run if make_release is true or empty
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -78,10 +81,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Verify GitHub CLI Authentication
-      - name: Verify gh Authentication
-        run: gh auth status
-
       # Get the Latest Tag from GitHub
       - name: Get Latest Tag from GitHub
         id: get_tag
@@ -101,19 +100,19 @@ jobs:
       # Create placeholder files for the kernels
       - name: Create Placeholder Files
         run: |
-          if [ "${{ github.event.inputs.build_a12 }}" == "true" ]; then
+          if [ "${{ github.event.inputs.build_a12 }}" == "true" ] || [ "${{ github.event.inputs.build_a12 }}" == "" ]; then
             echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
           fi
-          if [ "${{ github.event.inputs.build_a13 }}" == "true" ]; then
+          if [ "${{ github.event.inputs.build_a13 }}" == "true" ] || [ "${{ github.event.inputs.build_a13 }}" == "" ]; then
             echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
           fi
-          if [ "${{ github.event.inputs.build_a14 }}" == "true" ]; then
+          if [ "${{ github.event.inputs.build_a14 }}" == "true" ] || [ "${{ github.event.inputs.build_a14 }}" == "" ]; then
             echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
           fi
 
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
-        if: ${{ github.event.inputs.make_release == 'true' }}
+        if: ${{ github.event.inputs.make_release == 'true' || github.event.inputs.make_release == '' }}
         uses: softprops/action-gh-release@v1
         with:
           files: ./downloaded-artifacts/*
