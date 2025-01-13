@@ -170,7 +170,7 @@ jobs:
             echo "sed 3"
             sed -i '2s/check_defconfig//' ./common/build.config.gki
             echo "perl 1"
-            perl -i -pe 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"|g' ./common/scripts/mkcompile_h
+            perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"}' ./common/scripts/mkcompile_h
             
             rm -rf ./common/android/abi_gki_protected_exports_aarch64
             rm -rf ./common/android/abi_gki_protected_exports_x86_64
