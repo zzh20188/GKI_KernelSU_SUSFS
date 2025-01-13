@@ -34,21 +34,21 @@ jobs:
 
       # Build Android 12 kernel if enabled
       - name: Build Android 12 Kernel
-        if: ${{ github.event.inputs.build_a12 == 'true' }}
+        if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
         run: |
           echo "Building Android 12 kernel..."
           # Add the Android 12 kernel build commands here
 
       # Build Android 13 kernel if enabled
       - name: Build Android 13 Kernel
-        if: ${{ github.event.inputs.build_a13 == 'true' }}
+        if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
         run: |
           echo "Building Android 13 kernel..."
           # Add the Android 13 kernel build commands here
 
       # Build Android 14 kernel if enabled
       - name: Build Android 14 Kernel
-        if: ${{ github.event.inputs.build_a14 == 'true' }}
+        if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
         run: |
           echo "Building Android 14 kernel..."
           # Add the Android 14 kernel build commands here
