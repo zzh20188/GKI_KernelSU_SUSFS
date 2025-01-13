@@ -49,19 +49,25 @@ jobs:
 
 
   # Trigger Release Job
-  trigger-release:
+    trigger-release:
     runs-on: ubuntu-latest
     needs:
       - build-kernel-a12
       - build-kernel-a13
       - build-kernel-a14
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
+    if: ${{ github.event.inputs.make_release == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Set up GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Get Latest Tag from GitHub
         id: get_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO_OWNER="TheWildJames"
           REPO_NAME="GKI_KernelSU_SUSFS"
@@ -75,6 +81,8 @@ jobs:
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
       - name: Define Release Name and Notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
           RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3, including the GKI Kernel builds for Android 12, 13, and 14."
@@ -83,6 +91,8 @@ jobs:
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
 
       - name: Download kernel artifacts (A12, A13, A14)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Downloading kernel artifacts"
           mkdir -p ./downloaded-artifacts
@@ -103,6 +113,8 @@ jobs:
           fi
 
       - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Create the GitHub release
           gh release create "$TAG_NAME" ./downloaded-artifacts/* \
@@ -113,6 +125,8 @@ jobs:
             --latest=false
 
       - name: Display Files Uploaded
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "GitHub release created with the following files:"
           ls ./downloaded-artifacts
