@@ -10,23 +10,23 @@ on:
       - main  # Trigger on push to the main branch
   workflow_dispatch:
     inputs:
-      make_release:
-        description: 'Do you want to create a release?'
-        required: true
-        type: boolean
-        default: false
       build_a12:
         description: 'Build Android 12 kernel?'
         required: true
         type: boolean
-        default: false
+        default: true
       build_a13:
         description: 'Build Android 13 kernel?'
         required: true
         type: boolean
-        default: false
+        default: true
       build_a14:
         description: 'Build Android 14 kernel?'
+        required: true
+        type: boolean
+        default: true
+      make_release:
+        description: 'Do you want to create a release?'
         required: true
         type: boolean
         default: false
