@@ -1,42 +1,151 @@
-name: Build GKI Kernels Dispatcher
+name: Build and Release GKI Kernels
 
 on:
   workflow_dispatch:
     inputs:
       make_release:
-        description: 'Do you want to release these kernels?'
+        description: 'Do you want to create a release?'
         required: true
         type: boolean
-        default: false
+        default: false  # Set to true to trigger release
       build_a12:
         description: 'Build Android 12 kernel?'
         required: true
         type: boolean
-        default: true
+        default: false  # Set to true to build, false to skip build
       build_a13:
         description: 'Build Android 13 kernel?'
         required: true
         type: boolean
-        default: true
+        default: false  # Set to true to build, false to skip build
       build_a14:
         description: 'Build Android 14 kernel?'
         required: true
         type: boolean
-        default: true
+        default: false  # Set to true to build, false to skip build
+
+  push:
+    branches:
+      - main  # Trigger on push to the 'main' branch
 
 jobs:
-  dispatch-builds:
+  build-kernel-a12:
+    if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
+    uses: ./.github/workflows/build-kernel-a12.yml
+    secrets: inherit
+
+  build-kernel-a13:
+    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
+    uses: ./.github/workflows/build-kernel-a13.yml
+    secrets: inherit
+
+  build-kernel-a14:
+    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+    uses: ./.github/workflows/build-kernel-a14.yml
+    secrets: inherit
+
+  trigger-release:
     runs-on: ubuntu-latest
+    needs:
+      - build-kernel-a12
+      - build-kernel-a13
+      - build-kernel-a14
+    if: ${{ github.event.inputs.make_release == 'true' || github.event.inputs.make_release == '' }}
+    env:
+      REPO_OWNER: TheWildJames
+      REPO_NAME: GKI_KernelSU_SUSFS
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
+      RELEASE_NOTES: |
+        This release contains KernelSU and SUSFS v1.5.3
+
+        Module: 
+        -> https://github.com/sidex15/ksu_module_susfs
+
+        Official Manager:
+        -> https://github.com/tiann/KernelSU
+        Non-Official Managers:
+        -> https://github.com/rifsxd/KernelSU-Next
+        -> https://github.com/backslashxx/KernelSU
+        -> https://github.com/rsuntk/KernelSU
+        -> https://github.com/5ec1cff/KernelSU
+        -> https://github.com/silvzr/KernelSU
+        -> https://github.com/sidex15/KernelSU
+
+        Features:
+        [+] KernelSU-Next
+        [+] SUSFS v1.5.3
+        [+] Wireguard Support
+        [+] Maphide LineageOS Detections
+        [+] Futile Maphide for jit-zygote-cache Detections
+        [+] Magic Mount Support
+
     steps:
-      - name: Trigger A12 Build
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Verify GitHub CLI Authentication
+      - name: Verify gh Authentication
+        run: gh auth status
+
+      # Step 3: Get the Latest Tag from GitHub
+      - name: Get Latest Tag from GitHub
+        id: get_tag
+        run: |
+          LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="1.5.3-0"
+          fi
+          # Increment the suffix after the dash (if needed)
+          NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
+          echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
+
+      # Step 4: Download Artifacts for A12
+      - name: Download artifacts for A12
         if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
-        run: |
-          gh workflow run build-kernel-a12.yml --repo ${{ github.repository }}
-      - name: Trigger A13 Build
+        uses: actions/download-artifact@v3
+        with:
+          name: kernel-artifacts-a12
+          path: ./downloaded-artifacts
+
+      # Step 5: Download Artifacts for A13
+      - name: Download artifacts for A13
         if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
-        run: |
-          gh workflow run build-kernel-a13.yml --repo ${{ github.repository }}
-      - name: Trigger A14 Build
+        uses: actions/download-artifact@v3
+        with:
+          name: kernel-artifacts-a13
+          path: ./downloaded-artifacts
+
+      # Step 6: Download Artifacts for A14
+      - name: Download artifacts for A14
         if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+        uses: actions/download-artifact@v3
+        with:
+          name: kernel-artifacts-a14
+          path: ./downloaded-artifacts
+
+      # Step 7: Create Placeholder Files for Release if no builds are triggered
+      - name: Create Placeholder Files for Release
+        if: ${{ github.event.inputs.build_a12 == 'false' && github.event.inputs.build_a13 == 'false' && github.event.inputs.build_a14 == 'false' }}
         run: |
-          gh workflow run build-kernel-a14.yml --repo ${{ github.repository }}
+          echo "This is a placeholder text file for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
+          echo "This is a placeholder text file for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
+          echo "This is a placeholder text file for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
+          echo "Placeholder files created as no builds are triggered."
+
+      # Step 8: Create GitHub Release with build or placeholder files
+      - name: Create GitHub Release
+        run: |
+          gh release create "$TAG_NAME" ./downloaded-artifacts/* \
+            --repo "$REPO_OWNER/$REPO_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_NOTES" \
+            --prerelease \
+            --latest=false
+
+      # Step 9: Display Files Uploaded
+      - name: Display Files Uploaded
+        run: |
+          echo "GitHub release created with the following files:"
+          ls ./downloaded-artifacts
