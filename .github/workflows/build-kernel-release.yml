@@ -161,10 +161,10 @@ jobs:
           files: ./downloaded-artifacts/*
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
           prerelease: true  # Mark the release as a pre-release
+          name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
+          body: ${{ env.RELEASE_NOTES }}  # Pass the RELEASE_NOTES to the action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_NAME: ${{ env.RELEASE_NAME }}
-          RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
 
       # Display Files Uploaded
       - name: Display Files Uploaded
