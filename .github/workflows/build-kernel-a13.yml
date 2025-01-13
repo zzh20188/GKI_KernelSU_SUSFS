@@ -6,7 +6,6 @@ on:
 jobs:
   build-kernel-a13-kernelsu-susfs:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
 
     steps:
       - name: Maximize build space
