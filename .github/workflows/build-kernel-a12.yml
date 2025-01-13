@@ -147,7 +147,7 @@ jobs:
             # Run sed commands
             echo "Running sed commands..."
             sed -i 's/check_defconfig//' ./common/build.config.gki
-            #sed -i 's/dirty//' ./common/scripts/setlocalversion
+            sed -i 's/dirty//' ./common/scripts/setlocalversion
             #sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
             
             # Build the kernel
