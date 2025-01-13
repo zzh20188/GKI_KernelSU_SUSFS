@@ -45,7 +45,7 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run release if make_release is true
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
     needs:
       - build-kernel-a12
       - build-kernel-a13
@@ -77,7 +77,7 @@ jobs:
         [+] Magic Mount Support
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
