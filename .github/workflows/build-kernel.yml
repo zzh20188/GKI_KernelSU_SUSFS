@@ -19,9 +19,9 @@ on:
         type: boolean
         default: true  # Set to false to skip build
 
-  push:
-    branches:
-      - main
+  #push:
+  #  branches:
+  #    - main
 
 jobs:
   build-kernels:
