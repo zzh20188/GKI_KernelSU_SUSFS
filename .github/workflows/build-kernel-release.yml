@@ -7,22 +7,22 @@ on:
         description: 'Do you want to create a release?'
         required: true
         type: boolean
-        default: false  # Set to true to trigger release
+        default: false
       build_a12:
         description: 'Build Android 12 kernel?'
         required: true
         type: boolean
-        default: false  # Set to false to skip build
+        default: false
       build_a13:
         description: 'Build Android 13 kernel?'
         required: true
         type: boolean
-        default: false  # Set to false to skip build
+        default: false
       build_a14:
         description: 'Build Android 14 kernel?'
         required: true
         type: boolean
-        default: false  # Set to false to skip build
+        default: false
 
 jobs:
   build-kernel-a12:
@@ -42,11 +42,11 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-   #needs:
-   #   - build-kernel-a12
-   #   - build-kernel-a13
-   #   - build-kernel-a14  # This ensures the release only runs after the build jobs complete or are skipped
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true
+    if: ${{ github.event.inputs.make_release == 'true' }}
+    needs:
+      - build-kernel-a12
+      - build-kernel-a13
+      - build-kernel-a14  # Ensure the release happens after the build jobs
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -96,24 +96,31 @@ jobs:
       # Create the downloaded-artifacts directory
       - name: Create download artifacts directory
         run: mkdir -p ./downloaded-artifacts
-      
-      # Create placeholder files for all three builds
+
+      # Create placeholder files for the kernels
       - name: Create Placeholder Files
         run: |
-          echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
-          echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
-          echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
+          if [ "${{ github.event.inputs.build_a12 }}" == "true" ]; then
+            echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
+          fi
+          if [ "${{ github.event.inputs.build_a13 }}" == "true" ]; then
+            echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
+          fi
+          if [ "${{ github.event.inputs.build_a14 }}" == "true" ]; then
+            echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
+          fi
 
-      # Only upload the release if make_release is true
+      # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
-        if: ${{ github.event.inputs.make_release == 'true' }}  # This ensures it only uploads when release is triggered
-        run: |
-          gh release create "$TAG_NAME" ./downloaded-artifacts/* \
-            --repo "$REPO_OWNER/$REPO_NAME" \
-            --title "$RELEASE_NAME" \
-            --notes "$RELEASE_NOTES" \
-            --prerelease \
-            --latest=false
+        if: ${{ github.event.inputs.make_release == 'true' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./downloaded-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ env.TAG_NAME }}
+          RELEASE_NAME: ${{ env.RELEASE_NAME }}
+          RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
 
       # Display Files Uploaded
       - name: Display Files Uploaded
