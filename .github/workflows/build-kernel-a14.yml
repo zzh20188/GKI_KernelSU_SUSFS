@@ -159,11 +159,9 @@ jobs:
             echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
 
-            echo "CONFIG_LOCALVERSION=-Wild+" >> ./common/arch/arm64/configs/gki_defconfig
-
             # Build the kernel using Bazel
             echo "Building kernel..."
-            #sed -i '/echo "\$res"/s|$| -Wild+|' ./common/scripts/setlocalversion
+            sed -i '/echo "\$res"/s|"\$res"|"\$res-Wild+"|' ./common/scripts/setlocalversion
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
             sed -i '2s/check_defconfig//' ./common/build.config.gki
 
