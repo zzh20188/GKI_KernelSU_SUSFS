@@ -6,6 +6,7 @@ on:
 jobs:
   build-kernel-a14-kernelsu-susfs:
     runs-on: ubuntu-latest
+    timeout-minutes: 2160  # Set maximum timeout
 
     steps:
       - name: Maximize build space
