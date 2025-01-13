@@ -47,30 +47,31 @@ jobs:
     secrets: inherit
     if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
 
-
   # Trigger Release Job
-    trigger-release:
+  trigger-release:
     runs-on: ubuntu-latest
     needs:
       - build-kernel-a12
       - build-kernel-a13
       - build-kernel-a14
-    if: ${{ github.event.inputs.make_release == 'true' }}
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
+    env:
+      REPO_OWNER: TheWildJames
+      REPO_NAME: GKI_KernelSU_SUSFS
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: Verify gh Authentication
+        run: gh auth status
 
       - name: Get Latest Tag from GitHub
         id: get_tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPO_OWNER="TheWildJames"
-          REPO_NAME="GKI_KernelSU_SUSFS"
           # Get the latest release tag from the GitHub repository
           LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
           if [ -z "$LATEST_TAG" ]; then
@@ -81,40 +82,64 @@ jobs:
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
       - name: Define Release Name and Notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
-          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3, including the GKI Kernel builds for Android 12, 13, and 14."
+          RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3
 
+          Module: https://github.com/sidex15/ksu_module_susfs
+
+          Official Manager:
+          -> https://github.com/tiann/KernelSU
+          Non-Official Managers:
+          -> https://github.com/rifsxd/KernelSU-Next
+          -> https://github.com/backslashxx/KernelSU
+          -> https://github.com/rsuntk/KernelSU
+          -> https://github.com/5ec1cff/KernelSU
+          -> https://github.com/silvzr/KernelSU
+          -> https://github.com/sidex15/KernelSU
+
+          Features:
+          [+] KernelSU-Next
+          [+] SUSFS v1.5.3
+          [+] Wireguard Support
+          [+] Maphide LineageOS Detections
+          [+] Futile Maphide for jit-zygote-cache Detections
+          [+] Magic Mount Support
+          "
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
 
       - name: Download kernel artifacts (A12, A13, A14)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Downloading kernel artifacts"
           mkdir -p ./downloaded-artifacts
           
-          if [ "${{ github.event.inputs.build_a12 }}" == "true" ]; then
+          if [[ "${{ github.event.inputs.build_a12 }}" == "true" ]]; then
             echo "Downloading kernel artifacts for A12"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a12*" --dir ./downloaded-artifacts
           fi
 
-          if [ "${{ github.event.inputs.build_a13 }}" == "true" ]; then
+          if [[ "${{ github.event.inputs.build_a13 }}" == "true" ]]; then
             echo "Downloading kernel artifacts for A13"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a13*" --dir ./downloaded-artifacts
           fi
 
-          if [ "${{ github.event.inputs.build_a14 }}" == "true" ]; then
+          if [[ "${{ github.event.inputs.build_a14 }}" == "true" ]]; then
             echo "Downloading kernel artifacts for A14"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
           fi
 
+          # Extract and delete the zip files
+          for zip_file in ./downloaded-artifacts/*.zip; do
+            if [[ -f "$zip_file" ]]; then
+              echo "Extracting $zip_file"
+              unzip "$zip_file" -d ./downloaded-artifacts
+              echo "Deleting $zip_file"
+              rm "$zip_file"
+            fi
+          done
+
       - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Create the GitHub release
           gh release create "$TAG_NAME" ./downloaded-artifacts/* \
@@ -125,8 +150,6 @@ jobs:
             --latest=false
 
       - name: Display Files Uploaded
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "GitHub release created with the following files:"
           ls ./downloaded-artifacts
