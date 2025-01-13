@@ -42,11 +42,11 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.make_release == 'true' }}
-  # needs:
-  #    - build-kernel-a12
-  #    - build-kernel-a13
-  #    - build-kernel-a14  # Ensure the release happens after the build jobs
+    needs:
+      - build-kernel-a12
+      - build-kernel-a13
+      - build-kernel-a14  # Ensure the release only runs after the build jobs complete or are skipped
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -88,10 +88,11 @@ jobs:
         run: |
           LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
           if [ -z "$LATEST_TAG" ]; then
-            LATEST_TAG="1.5.3-0"
+            LATEST_TAG="1.5.3-0"  # Default to an initial tag if none exists
           fi
           NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
-          echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
+          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
+          echo "New tag to use: $NEW_TAG"
 
       # Create the downloaded-artifacts directory
       - name: Create download artifacts directory
@@ -116,9 +117,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: ./downloaded-artifacts/*
+          tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ env.TAG_NAME }}
           RELEASE_NAME: ${{ env.RELEASE_NAME }}
           RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
 
