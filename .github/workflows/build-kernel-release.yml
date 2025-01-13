@@ -59,7 +59,7 @@ jobs:
       REPO_NAME: GKI_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
-      RELEASE_NOTES: |
+      RELEASE_NOTES: "
         This release contains KernelSU and SUSFS v1.5.3
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
@@ -72,6 +72,7 @@ jobs:
         -> https://github.com/5ec1cff/KernelSU
         -> https://github.com/silvzr/KernelSU
         -> https://github.com/sidex15/KernelSU
+        
         Features:
         [+] KernelSU-Next
         [+] SUSFS v1.5.3
@@ -80,6 +81,17 @@ jobs:
         [+] Futile Maphide for jit-zygote-cache Detections
         [+] Magic Mount Support
 
+        Special thanks to the following people for their contributions!
+
+        This helps me alot! <3
+
+        simonpunk - Created SUSFS!
+        sidex15 - Created module!
+        backslashxx - Helped with patches!
+        幕落 - Donation!
+
+        If you have contributed and are not here please remind me!
+        "
     steps:
       # Checkout the code
       - name: Checkout code
