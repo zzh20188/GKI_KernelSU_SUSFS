@@ -138,6 +138,7 @@ jobs:
         with:
           files: ./downloaded-artifacts/*
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
+          prerelease: true  # Mark the release as a pre-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NAME: ${{ env.RELEASE_NAME }}
