@@ -103,17 +103,17 @@ jobs:
           echo "Downloading kernel artifacts"
           mkdir -p ./downloaded-artifacts
           
-          if [[ "${{ github.event.inputs.build_a12 }}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.build_a12 }}" == "true" || -z "${{ github.event.inputs.build_a12 }}" ]]; then
             echo "Downloading kernel artifacts for A12"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a12*" --dir ./downloaded-artifacts
           fi
 
-          if [[ "${{ github.event.inputs.build_a13 }}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.build_a13 }}" == "true" || -z "${{ github.event.inputs.build_a13 }}" ]]; then
             echo "Downloading kernel artifacts for A13"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a13*" --dir ./downloaded-artifacts
           fi
 
-          if [[ "${{ github.event.inputs.build_a14 }}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.build_a14 }}" == "true" || -z "${{ github.event.inputs.build_a14 }}" ]]; then
             echo "Downloading kernel artifacts for A14"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
           fi
