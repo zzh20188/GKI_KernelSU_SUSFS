@@ -12,17 +12,17 @@ on:
         description: 'Build Android 12 kernel?'
         required: true
         type: boolean
-        default: false  # Set to true to build, false to skip build
+        default: true  # Set to true to build, false to skip build
       build_a13:
         description: 'Build Android 13 kernel?'
         required: true
         type: boolean
-        default: false  # Set to true to build, false to skip build
+        default: true  # Set to true to build, false to skip build
       build_a14:
         description: 'Build Android 14 kernel?'
         required: true
         type: boolean
-        default: false  # Set to true to build, false to skip build
+        default: true  # Set to true to build, false to skip build
 
   push:
     branches:
