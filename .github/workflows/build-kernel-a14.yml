@@ -159,6 +159,8 @@ jobs:
             echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
 
+            echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
+
             # Build the kernel using Bazel
             echo "Building kernel..."
             sed -i '/echo "\$res"/s|"\$res"|"\$res-Wild+"|' ./common/scripts/setlocalversion
