@@ -107,29 +107,30 @@ jobs:
             git tag $NEW_TAG
             git push origin $NEW_TAG
 
-      # Download Artifacts for A12 (Only if A12 Build is successful or skipped)
+      # Download Artifacts for A12 (Only if A12 Build is successful or input is true or empty)
       - name: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
-        if: ${{ needs.build-kernel-a12.result == 'success' || needs.build-kernel-a12.result == 'skipped' }}
+        if: ${{ (needs.build-kernel-a12.result == 'success' || needs.build-kernel-a12.result == 'skipped') && (github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '') }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a12
           path: ./downloaded-artifacts
 
-      # Download Artifacts for A13 (Only if A13 Build is successful or skipped)
+# Download Artifacts for A13 (Only if A13 Build is successful or input is true or empty)
       - name: Download Artifacts for A13 (Only if A13 Build is successful or skipped)
-        if: ${{ needs.build-kernel-a13.result == 'success' || needs.build-kernel-a13.result == 'skipped' }}
+        if: ${{ (needs.build-kernel-a13.result == 'success' || needs.build-kernel-a13.result == 'skipped') && (github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '') }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a13
           path: ./downloaded-artifacts
 
-      # Download Artifacts for A14 (Only if A14 Build is successful or skipped)
+# Download Artifacts for A14 (Only if A14 Build is successful or input is true or empty)
       - name: Download Artifacts for A14 (Only if A14 Build is successful or skipped)
-        if: ${{ needs.build-kernel-a14.result == 'success' || needs.build-kernel-a14.result == 'skipped' }}
+        if: ${{ (needs.build-kernel-a14.result == 'success' || needs.build-kernel-a14.result == 'skipped') && (github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '') }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a14
           path: ./downloaded-artifacts
+
 
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
