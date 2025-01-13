@@ -84,9 +84,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install GitHub CLI
-        run: sudo apt-get install gh -y
-
       - name: Verify gh Authentication
         run: gh auth status
 
@@ -120,16 +117,6 @@ jobs:
             echo "Downloading kernel artifacts for A14"
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
           fi
-
-          # Extract and delete the zip files
-          for zip_file in ./downloaded-artifacts/*.zip; do
-            if [[ -f "$zip_file" ]]; then
-              echo "Extracting $zip_file"
-              unzip "$zip_file" -d ./downloaded-artifacts
-              echo "Deleting $zip_file"
-              rm "$zip_file"
-            fi
-          done
 
       - name: Create GitHub Release
         run: |
