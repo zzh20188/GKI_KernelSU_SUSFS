@@ -1,13 +1,13 @@
 name: Build GKI Kernels With KernelSU-Next & SUSFS
 
 on:
-  workflow_dispatch:  # Allows triggering manually from the GitHub Actions UI
+  workflow_dispatch:
     inputs:
       make_release:
         description: 'Do you want to release these kernels?'
         required: true
         type: boolean
-        default: false  # Default is 'false', meaning no release unless explicitly set
+        default: false
       build_a12:
         description: 'Build Android 12 kernel?'
         required: true
@@ -24,37 +24,33 @@ on:
         type: boolean
         default: true
 
-  push:  # Allows triggering on push to the repository
+  push:
     branches:
-      - main  # Only triggers on pushes to the 'main' branch
+      - main
 
 jobs:
-  # Build Android 12 GKI Kernel
   build-kernel-a12:
     uses: ./.github/workflows/build-kernel-a12.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
 
-  # Build Android 13 GKI Kernel
   build-kernel-a13:
     uses: ./.github/workflows/build-kernel-a13.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
 
-  # Build Android 14 GKI Kernel
   build-kernel-a14:
     uses: ./.github/workflows/build-kernel-a14.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
 
-  # Trigger Release Job
   trigger-release:
     runs-on: ubuntu-latest
     needs:
       - build-kernel-a12
       - build-kernel-a13
       - build-kernel-a14
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
+    if: ${{ github.event.inputs.make_release == 'true' }}
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -72,12 +68,10 @@ jobs:
       - name: Get Latest Tag from GitHub
         id: get_tag
         run: |
-          # Get the latest release tag from the GitHub repository
           LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
           if [ -z "$LATEST_TAG" ]; then
             LATEST_TAG="1.5.3-0"
           fi
-          # Increment the suffix after the dash (if needed)
           NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
@@ -86,26 +80,26 @@ jobs:
           RELEASE_NAME="*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.3 *TEST BUILD*"
           RELEASE_NOTES="This release contains KernelSU and SUSFS v1.5.3
 
-          Module: https://github.com/sidex15/ksu_module_susfs
+Module: https://github.com/sidex15/ksu_module_susfs
 
-          Official Manager:
-          -> https://github.com/tiann/KernelSU
-          Non-Official Managers:
-          -> https://github.com/rifsxd/KernelSU-Next
-          -> https://github.com/backslashxx/KernelSU
-          -> https://github.com/rsuntk/KernelSU
-          -> https://github.com/5ec1cff/KernelSU
-          -> https://github.com/silvzr/KernelSU
-          -> https://github.com/sidex15/KernelSU
+Official Manager:
+-> https://github.com/tiann/KernelSU
+Non-Official Managers:
+-> https://github.com/rifsxd/KernelSU-Next
+-> https://github.com/backslashxx/KernelSU
+-> https://github.com/rsuntk/KernelSU
+-> https://github.com/5ec1cff/KernelSU
+-> https://github.com/silvzr/KernelSU
+-> https://github.com/sidex15/KernelSU
 
-          Features:
-          [+] KernelSU-Next
-          [+] SUSFS v1.5.3
-          [+] Wireguard Support
-          [+] Maphide LineageOS Detections
-          [+] Futile Maphide for jit-zygote-cache Detections
-          [+] Magic Mount Support
-          "
+Features:
+[+] KernelSU-Next
+[+] SUSFS v1.5.3
+[+] Wireguard Support
+[+] Maphide LineageOS Detections
+[+] Futile Maphide for jit-zygote-cache Detections
+[+] Magic Mount Support"
+
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
 
@@ -129,7 +123,6 @@ jobs:
             gh release download "$TAG_NAME" --repo "$REPO_OWNER/$REPO_NAME" --name "kernel-artifacts-a14*" --dir ./downloaded-artifacts
           fi
 
-          # Extract and delete the zip files
           for zip_file in ./downloaded-artifacts/*.zip; do
             if [[ -f "$zip_file" ]]; then
               echo "Extracting $zip_file"
@@ -141,7 +134,6 @@ jobs:
 
       - name: Create GitHub Release
         run: |
-          # Create the GitHub release
           gh release create "$TAG_NAME" ./downloaded-artifacts/* \
             --repo "$REPO_OWNER/$REPO_NAME" \
             --title "$RELEASE_NAME" \
