@@ -46,7 +46,7 @@ jobs:
         run: |
           # Install dependencies
             sudo apt update
-            sudo apt install -y lz4 gzip repo
+            sudo apt install -y lz4 gzip repo perl
 
       - name: Build for all configurations
         run: |
@@ -169,8 +169,8 @@ jobs:
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
             echo "sed 3"
             sed -i '2s/check_defconfig//' ./common/build.config.gki
-            echo "sed 4"
-            sed -i 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"|' ./common/scripts/mkcompile_h
+            echo "perl 1"
+            perl -i -pe 's|UTS_VERSION="\$(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP | cut -b -\$UTS_LEN)"|UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"|g' ./common/scripts/mkcompile_h
             
             rm -rf ./common/android/abi_gki_protected_exports_aarch64
             rm -rf ./common/android/abi_gki_protected_exports_x86_64
