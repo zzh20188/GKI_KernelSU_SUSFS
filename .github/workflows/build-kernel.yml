@@ -45,7 +45,7 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only trigger if make_release is true
+    if: ${{ github.event.inputs.make_release == 'true' }}  # Run only if 'make_release' is true
     needs:
       - build-kernel-a12
       - build-kernel-a13
@@ -77,15 +77,15 @@ jobs:
         [+] Magic Mount Support
 
     steps:
-      # Step 1: Checkout code
+      # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Verify GitHub CLI Authentication
+      # Verify GitHub CLI Authentication
       - name: Verify gh Authentication
         run: gh auth status
 
-      # Step 3: Get Latest Tag from GitHub
+      # Get the Latest Tag from GitHub
       - name: Get Latest Tag from GitHub
         id: get_tag
         run: |
@@ -93,25 +93,24 @@ jobs:
           if [ -z "$LATEST_TAG" ]; then
             LATEST_TAG="1.5.3-0"
           fi
-          # Increment the suffix after the dash (if needed)
           NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
           echo "TAG_NAME=${NEW_TAG}" >> $GITHUB_ENV
 
-      # Step 4: Check if at least one build job was successful or skipped
-      - name: Check Build Status and Download Artifacts
+      # Check Build Results and Add Placeholders if No Build
+      - name: Check Build Status and Download Artifacts or Add Placeholders
         run: |
           if [[ "${{ needs.build-kernel-a12.result }}" == "success" || "${{ needs.build-kernel-a12.result }}" == "skipped" ||
                 "${{ needs.build-kernel-a13.result }}" == "success" || "${{ needs.build-kernel-a13.result }}" == "skipped" ||
                 "${{ needs.build-kernel-a14.result }}" == "success" || "${{ needs.build-kernel-a14.result }}" == "skipped" ]]; then
             echo "At least one build succeeded or was skipped."
           else
-            echo "No builds were triggered or completed. Proceeding with placeholders."
-            echo "This is a placeholder text file for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
-            echo "This is a placeholder text file for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
-            echo "This is a placeholder text file for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
+            echo "No builds triggered or completed. Adding placeholder files."
+            echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
+            echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
+            echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
           fi
 
-      # Step 5: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
+      # Download Artifacts for A12 (Only if Build Succeeded or Skipped)
       - name: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
         if: ${{ needs.build-kernel-a12.result == 'success' || needs.build-kernel-a12.result == 'skipped' }}
         uses: actions/download-artifact@v3
@@ -119,7 +118,7 @@ jobs:
           name: kernel-artifacts-a12
           path: ./downloaded-artifacts
 
-      # Step 6: Download Artifacts for A13 (Only if A13 Build is successful or skipped)
+      # Download Artifacts for A13 (Only if Build Succeeded or Skipped)
       - name: Download Artifacts for A13 (Only if A13 Build is successful or skipped)
         if: ${{ needs.build-kernel-a13.result == 'success' || needs.build-kernel-a13.result == 'skipped' }}
         uses: actions/download-artifact@v3
@@ -127,15 +126,15 @@ jobs:
           name: kernel-artifacts-a13
           path: ./downloaded-artifacts
 
-      # Step 7: Download Artifacts for A14 (Only if A14 Build is successful or skipped)
-      - name: Download Artifacts for A14 (Only if A14 Build is successful or skipped)
+      # Download Artifacts for A14 (Only if Build Succeeded or Skipped)
+      - name: Download Artifacts for A14 (Only if Build Succeeded or Skipped)
         if: ${{ needs.build-kernel-a14.result == 'success' || needs.build-kernel-a14.result == 'skipped' }}
         uses: actions/download-artifact@v3
         with:
           name: kernel-artifacts-a14
           path: ./downloaded-artifacts
 
-      # Step 8: Create GitHub Release
+      # Create GitHub Release
       - name: Create GitHub Release
         run: |
           gh release create "$TAG_NAME" ./downloaded-artifacts/* \
@@ -145,7 +144,7 @@ jobs:
             --prerelease \
             --latest=false
 
-      # Step 9: Display Files Uploaded
+      # Display Files Uploaded
       - name: Display Files Uploaded
         run: |
           echo "GitHub release created with the following files:"
