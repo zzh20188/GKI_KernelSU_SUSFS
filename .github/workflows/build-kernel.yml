@@ -59,7 +59,8 @@ jobs:
       RELEASE_NOTES: |
         This release contains KernelSU and SUSFS v1.5.3
 
-        Module: https://github.com/sidex15/ksu_module_susfs
+        Module: 
+        -> https://github.com/sidex15/ksu_module_susfs
 
         Official Manager:
         -> https://github.com/tiann/KernelSU
