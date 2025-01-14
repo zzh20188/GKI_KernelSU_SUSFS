@@ -1,0 +1,42 @@
+name: Test Lower GLIBC Version
+
+on:
+  workflow_dispatch:  # Manual trigger for this workflow
+
+jobs:
+  test-glibc:
+    runs-on: ubuntu-latest  # Choose the operating system for your environment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Check Current GLIBC Version
+      run: |
+        echo "[+] Checking current GLIBC version"
+        ldd --version
+
+    - name: Install Lower GLIBC Version (e.g., 2.34)
+      run: |
+        echo "[+] Installing GLIBC 2.34"
+        sudo apt-get update
+        sudo apt-get install -y build-essential wget
+        wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz
+        tar -xvf glibc-2.34.tar.gz
+        cd glibc-2.34
+        mkdir build
+        cd build
+        ../configure --prefix=/opt/glibc-2.34
+        make -j$(nproc)
+        sudo make install
+        echo "[+] Installed GLIBC 2.34"
+
+    - name: Verify GLIBC Installation
+      run: |
+        echo "[+] Verifying GLIBC 2.34"
+        /opt/glibc-2.34/bin/ldd --version
+
+    - name: Run with Custom Loader
+      run: |
+        echo "[+] Running with custom loader"
+        /opt/glibc-2.34/lib/ld-2.34.so --library-path /opt/glibc-2.34/lib ldd --version
