@@ -54,7 +54,7 @@ jobs:
         - build-kernel-a12
         - build-kernel-a13
         - build-kernel-a14  # Ensure the release only runs after the build jobs complete or are skipped
-    if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true or empty
+    if: ${{ github.event.inputs.make_release == 'true' && needs.build-kernel-a12.result == 'success' && needs.build-kernel-a13.result == 'success' && needs.build-kernel-a14.result == 'success' }}
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
