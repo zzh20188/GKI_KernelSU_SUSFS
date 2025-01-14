@@ -142,17 +142,6 @@ jobs:
           name: kernel-artifacts-a14
           path: ./downloaded-artifacts
 
-      # Create the downloaded-artifacts directory
-      - name: Create download artifacts directory
-        run: mkdir -p ./downloaded-artifacts
-
-      # Create placeholder files
-      - name: Create Placeholder Files
-        run: |
-          echo "This is a placeholder for A12 kernel" > ./downloaded-artifacts/placeholder_a12.txt
-          echo "This is a placeholder for A13 kernel" > ./downloaded-artifacts/placeholder_a13.txt
-          echo "This is a placeholder for A14 kernel" > ./downloaded-artifacts/placeholder_a14.txt
-
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
         if: ${{ github.event.inputs.make_release == 'true' && needs.build-kernel-a12.result == 'success' && needs.build-kernel-a13.result == 'success' && needs.build-kernel-a14.result == 'success' }}  # Only run if make_release is true and all build jobs succeeded
