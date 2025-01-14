@@ -24,6 +24,11 @@ jobs:
         cd glibc-2.37
         echo "[+] Extracted GLIBC 2.37"
 
+    - name: Create target directory for GLIBC
+      run: |
+        echo "[+] Creating directory /opt/glibc-2.37"
+        sudo mkdir -p /opt/glibc-2.37
+
     - name: Install Precompiled GLIBC 2.37
       run: |
         echo "[+] Installing Precompiled GLIBC 2.37"
