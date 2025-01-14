@@ -1,46 +1,14 @@
-name: Test Precompiled GLIBC 2.37 Installation
+name: Test GLIBC Version
 
 on:
   workflow_dispatch:  # Manual trigger for this workflow
 
 jobs:
-  test-glibc-installation:
-    runs-on: ubuntu-latest  # Run on the latest Ubuntu environment
+  test-glibc-version:
+    runs-on: ubuntu-22.04  # Use Ubuntu 22.04
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2  # Checkout the code if needed (not necessary for this task)
-
-    - name: Install dependencies
+    - name: Check GLIBC version
       run: |
-        sudo apt-get update
-        sudo apt-get install -y wget
-
-    - name: Download Precompiled GLIBC 2.37
-      run: |
-        echo "[+] Downloading Precompiled GLIBC 2.37"
-        wget http://ftp.gnu.org/gnu/libc/glibc-2.37.tar.gz  # Use a precompiled version URL if available
-        tar -xvzf glibc-2.37.tar.gz
-        cd glibc-2.37
-        echo "[+] Extracted GLIBC 2.37"
-
-    - name: Create target directory for GLIBC
-      run: |
-        echo "[+] Creating directory /opt/glibc-2.37"
-        sudo mkdir -p /opt/glibc-2.37
-
-    - name: Install Precompiled GLIBC 2.37
-      run: |
-        echo "[+] Installing Precompiled GLIBC 2.37"
-        sudo cp -r glibc-2.37/* /opt/glibc-2.37/
-        echo "[+] GLIBC 2.37 installed to /opt/glibc-2.37"
-
-    - name: Verify GLIBC Installation
-      run: |
-        echo "[+] Verifying GLIBC 2.37 installation"
-        /opt/glibc-2.37/bin/ldd --version
-
-    - name: Run Test with Custom GLIBC
-      run: |
-        echo "[+] Running test with custom GLIBC 2.37"
-        /opt/glibc-2.37/lib/ld-2.37.so --library-path /opt/glibc-2.37/lib ldd --version
+        echo "[+] Checking GLIBC version"
+        ldd --version
