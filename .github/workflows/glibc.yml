@@ -16,8 +16,7 @@ jobs:
     - name: Update system and upgrade GLIBC
       run: |
         echo "[+] Updating system and upgrading GLIBC"
-        sudo apt update
-        #&& sudo apt upgrade -y
+        sudo apt update && sudo apt upgrade -y
         
     - name: Check updated GLIBC version
       run: |
