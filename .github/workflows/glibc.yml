@@ -1,42 +1,41 @@
-name: Test Lower GLIBC Version
+name: Test Precompiled GLIBC 2.37 Installation
 
 on:
   workflow_dispatch:  # Manual trigger for this workflow
 
 jobs:
-  test-glibc:
-    runs-on: ubuntu-latest  # Choose the operating system for your environment
+  test-glibc-installation:
+    runs-on: ubuntu-latest  # Run on the latest Ubuntu environment
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v2  # Checkout the code if needed (not necessary for this task)
 
-    - name: Check Current GLIBC Version
+    - name: Install dependencies
       run: |
-        echo "[+] Checking current GLIBC version"
-        ldd --version
-
-    - name: Install Lower GLIBC Version (e.g., 2.34)
-      run: |
-        echo "[+] Installing GLIBC 2.34"
         sudo apt-get update
-        sudo apt-get install -y build-essential wget
-        wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz
-        tar -xvf glibc-2.34.tar.gz
-        cd glibc-2.34
-        mkdir build
-        cd build
-        ../configure --prefix=/opt/glibc-2.34
-        make -j$(nproc)
-        sudo make install
-        echo "[+] Installed GLIBC 2.34"
+        sudo apt-get install -y wget
+
+    - name: Download Precompiled GLIBC 2.37
+      run: |
+        echo "[+] Downloading Precompiled GLIBC 2.37"
+        wget http://ftp.gnu.org/gnu/libc/glibc-2.37.tar.gz  # Use a precompiled version URL if available
+        tar -xvzf glibc-2.37.tar.gz
+        cd glibc-2.37
+        echo "[+] Extracted GLIBC 2.37"
+
+    - name: Install Precompiled GLIBC 2.37
+      run: |
+        echo "[+] Installing Precompiled GLIBC 2.37"
+        sudo cp -r glibc-2.37/* /opt/glibc-2.37/
+        echo "[+] GLIBC 2.37 installed to /opt/glibc-2.37"
 
     - name: Verify GLIBC Installation
       run: |
-        echo "[+] Verifying GLIBC 2.34"
-        /opt/glibc-2.34/bin/ldd --version
+        echo "[+] Verifying GLIBC 2.37 installation"
+        /opt/glibc-2.37/bin/ldd --version
 
-    - name: Run with Custom Loader
+    - name: Run Test with Custom GLIBC
       run: |
-        echo "[+] Running with custom loader"
-        /opt/glibc-2.34/lib/ld-2.34.so --library-path /opt/glibc-2.34/lib ldd --version
+        echo "[+] Running test with custom GLIBC 2.37"
+        /opt/glibc-2.37/lib/ld-2.37.so --library-path /opt/glibc-2.37/lib ldd --version
