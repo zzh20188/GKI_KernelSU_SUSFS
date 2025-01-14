@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-kernel-a13-kernelsu-susfs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 2160  # Set maximum timeout
 
     steps:
@@ -158,16 +158,6 @@ jobs:
             echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
 
             echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
-
-            if [ ! -e build/build.sh ]; then
-              GLIBC_VERSION=$(ldd --version 2>/dev/null | head -n 1 | awk '{print $NF}')
-              echo "GLIBC_VERSION: $GLIBC_VERSION"
-              if [ "$(printf '%s\n' "2.38" "$GLIBC_VERSION" | sort -V | head -n1)" = "2.38" ]; then
-                echo "Patching resolve_btfids/Makefile"
-                sed -i '/\$(Q)\$(MAKE) -C \$(SUBCMD_SRC) OUTPUT=\$(abspath \$(dir \$@))\/ \$(abspath \$@)/s//$(Q)$(MAKE) -C $(SUBCMD_SRC) EXTRA_CFLAGS="$(CFLAGS)" OUTPUT=$(abspath $(dir $@))\/ $(abspath $@)/' \
-                $GKI_ROOT/common/tools/bpf/resolve_btfids/Makefile || echo "No patch needed."
-              fi
-            fi
 
             # Run sed commands
             echo "Running sed commands..."
