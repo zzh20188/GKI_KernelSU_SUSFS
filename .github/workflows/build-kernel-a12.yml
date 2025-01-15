@@ -80,9 +80,14 @@ jobs:
       - name: Clone AnyKernel3 and Other Dependencies
         run: |
           echo "Cloning AnyKernel3 and other dependencies..."
-          
-          git clone https://github.com/TheWildJames/AnyKernel3.git -b "${{ matrix.android_version }}-${{ matrix.kernel_version }}"
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+
+          # Define the branch names
+          ANYKERNEL_BRANCH="${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+          SUSFS_BRANCH="gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+
+          # Clone repositories using the branch names
+          git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           git clone https://github.com/TheWildJames/kernel_patches.git
 
       - name: Set CONFIG Environment Variable
