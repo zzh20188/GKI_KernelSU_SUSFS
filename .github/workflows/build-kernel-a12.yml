@@ -85,6 +85,10 @@ jobs:
           ANYKERNEL_BRANCH="${{ matrix.android_version }}-${{ matrix.kernel_version }}"
           SUSFS_BRANCH="gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}"
 
+          # Debug print the branches
+          echo "Using branch for AnyKernel3: $ANYKERNEL_BRANCH"
+          echo "Using branch for SUSFS: $SUSFS_BRANCH"
+
           # Clone repositories using the branch names
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
