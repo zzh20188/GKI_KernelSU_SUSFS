@@ -35,6 +35,7 @@ jobs:
           sub_level: "X"
           os_patch_level: "lts"
 
+
     steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
@@ -80,10 +81,10 @@ jobs:
       - name: Clone AnyKernel3 and Other Dependencies
         run: |
           echo "Cloning AnyKernel3 and other dependencies..."
-
-          # Define the branch names
-          ANYKERNEL_BRANCH="${{ matrix.android_version }}-${{ matrix.kernel_version }}"
-          SUSFS_BRANCH="gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+    
+          # Define the branch names using the matrix values
+          ANYKERNEL_BRANCH="${{ matrix.config.android_version }}-${{ matrix.config.kernel_version }}"
+          SUSFS_BRANCH="gki-${{ matrix.config.android_version }}-${{ matrix.config.kernel_version }}"
 
           # Debug print the branches
           echo "Using branch for AnyKernel3: $ANYKERNEL_BRANCH"
@@ -93,6 +94,7 @@ jobs:
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           git clone https://github.com/TheWildJames/kernel_patches.git
+
 
       - name: Set CONFIG Environment Variable
         run: |
