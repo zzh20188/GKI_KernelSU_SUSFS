@@ -1,5 +1,5 @@
 name: Bug report
-description: Create a bug report!
+description: Create a report to help us improve KernelSU
 labels: [Bug]
 
 body:
@@ -62,7 +62,6 @@ body:
           - OS Version:
           - KernelSU Version:
           - Kernel Version:
-          - SUSFS Version:
     validations:
         required: true
 
