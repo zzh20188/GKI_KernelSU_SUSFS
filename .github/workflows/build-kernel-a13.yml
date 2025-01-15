@@ -45,7 +45,7 @@ jobs:
       - name: Install Dependencies
         run: |
           # Install dependencies
-            sudo apt update
+            #sudo apt update
             sudo apt install -y lz4 gzip repo perl
 
       - name: Build for all configurations
