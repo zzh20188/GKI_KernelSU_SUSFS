@@ -150,7 +150,7 @@ jobs:
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
-          cd ./KernelSU-Next"
+          cd ./KernelSU-Next
           
           # Apply SUSFS patch for KernelSU
           patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
