@@ -42,11 +42,13 @@ jobs:
             exit 1
           fi
           
-      - name: Install Dependencies
+      - name: Install Repo
         run: |
           # Install dependencies
-            #sudo apt update
-            sudo apt install -y lz4 gzip repo perl
+          mkdir -p ./git-repo
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ./git-repo/repo
+          chmod a+rx ./git-repo/repo
+          echo "REPO=$GITHUB_WORKSPACE/./git-repo/repo" >> $GITHUB_ENV
           
       - name: Build for all configurations
         run: |
