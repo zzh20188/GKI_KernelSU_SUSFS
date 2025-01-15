@@ -7,6 +7,33 @@ jobs:
   build-kernel-a12-kernelsu-susfs:
     runs-on: ubuntu-22.04
     timeout-minutes: 2160  # Set maximum timeout
+    strategy:
+      matrix:
+        config:
+          - android_version: android12
+            kernel_version: "5.10"
+            sub_level: 198
+            os_patch_level: 2024-01
+          - android_version: android12
+            kernel_version: "5.10"
+            sub_level: 205
+            os_patch_level: 2024-03
+          - android_version: android12
+            kernel_version: "5.10"
+            sub_level: 209
+            os_patch_level: 2024-05
+          - android_version: android12
+            kernel_version: "5.10"
+            sub_level: 218
+            os_patch_level: 2024-08
+          - android_version: android12
+            kernel_version: "5.10"
+            sub_level: 226
+            os_patch_level: 2024-11
+          - android_version: android12
+            kernel_version: "5.10"
+            sub_level: X
+            os_patch_level: lts
 
     steps:
       - name: Maximize build space
@@ -49,52 +76,45 @@ jobs:
           curl https://storage.googleapis.com/git-repo-downloads/repo > ./git-repo/repo
           chmod a+rx ./git-repo/repo
           echo "REPO=$GITHUB_WORKSPACE/./git-repo/repo" >> $GITHUB_ENV
-          
-      - name: Build for all configurations
+
+      - name: Clone AnyKernel3 and Other Dependencies
         run: |
-          BUILD_CONFIGS=(
-            "android12-5.10-198-2024-01"
-            "android12-5.10-205-2024-03"
-            "android12-5.10-209-2024-05"
-            "android12-5.10-218-2024-08"
-            "android12-5.10-226-2024-11"
-            "android12-5.10-X-lts"
-          )
+          echo "Cloning AnyKernel3 and other dependencies..."
+          
+          git clone https://github.com/TheWildJames/AnyKernel3.git -b "${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+          git clone https://github.com/TheWildJames/kernel_patches.git
 
-          for CONFIG in "${BUILD_CONFIGS[@]}"; do
-            CONFIG_DETAILS=${CONFIG}
-            # Create directory and proceed with your steps
-            echo "Creating folder for configuration: $CONFIG..."
-            mkdir -p "$CONFIG"
-            cd "$CONFIG"
-            IFS="-" read -r ANDROID_VERSION KERNEL_VERSION SUB_LEVEL DATE <<< "$CONFIG_DETAILS"
-            FORMATTED_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-${DATE}"
+      - name: Initialize and Sync Kernel Source
+        run: |
+          CONFIG="${{ matrix.android_version }}-${{ matrix.kernel_version }}-${{ matrix.sub_level }}"
+          echo "Creating folder for configuration: $CONFIG..."
+          mkdir -p "$CONFIG"
+          cd "$CONFIG"
+          
+          # Initialize and sync kernel source
+          echo "Initializing and syncing kernel source..."
+          FORMATTED_BRANCH="${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+          $REPO init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
+          
+          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
+          DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
 
-            # Git clone
-            echo "Cloning AnyKernel3 and other dependencies..."
-            git clone https://github.com/TheWildJames/AnyKernel3.git -b "${ANDROID_VERSION}-${KERNEL_VERSION}"
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "gki-${ANDROID_VERSION}-${KERNEL_VERSION}"
-            git clone https://github.com/TheWildJames/kernel_patches.git
+          # Check if branch is deprecated
+          if grep -q deprecated <<< $REMOTE_BRANCH; then
+            echo "Found deprecated branch: $FORMATTED_BRANCH"
+            sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
+          fi
 
-            echo "Creating folder for configuration: $CONFIG..."
-            mkdir -p "$CONFIG"
-            cd "$CONFIG"
-            
-            # Initialize and sync kernel source
-            echo "Initializing and syncing kernel source..."
-            $REPO init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
-            REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
-            DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
+          # Sync repo and apply patches
+          $REPO --version
+          $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
 
-            # Check if branch is deprecated
-            if grep -q deprecated <<< $REMOTE_BRANCH; then
-              echo "Found deprecated branch: $FORMATTED_BRANCH"
-              sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
-            fi
 
-            # Sync repo and apply patches
-            $REPO --version
-            $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
+
+
+          
+     
 
             # Add KernelSU, SUSFS patches, and build the kernel
             echo "Adding KernelSU..."
