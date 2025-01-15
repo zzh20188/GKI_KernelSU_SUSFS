@@ -80,7 +80,7 @@ jobs:
             
             # Initialize and sync kernel source
             echo "Initializing and syncing kernel source..."
-            repo init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
+            $REPO init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
             REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
             DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
 
@@ -91,8 +91,8 @@ jobs:
             fi
 
             # Sync repo and apply patches
-            repo --version
-            repo --trace sync -c -j$(nproc --all) --no-tags --fail-fast
+            $REPO --version
+            $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
 
             # Add KernelSU, SUSFS patches, and build the kernel
             echo "Adding KernelSU..."
