@@ -35,7 +35,6 @@ jobs:
           sub_level: "X"
           os_patch_level: "lts"
 
-
     steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
@@ -83,8 +82,8 @@ jobs:
           echo "Cloning AnyKernel3 and other dependencies..."
     
           # Define the branch names using the matrix values
-          ANYKERNEL_BRANCH="${{ matrix.config.android_version }}-${{ matrix.config.kernel_version }}"
-          SUSFS_BRANCH="gki-${{ matrix.config.android_version }}-${{ matrix.config.kernel_version }}"
+          ANYKERNEL_BRANCH="${{ matrix.android_version }}-${{ matrix.kernel_version }}"
+          SUSFS_BRANCH="gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}"
 
           # Debug print the branches
           echo "Using branch for AnyKernel3: $ANYKERNEL_BRANCH"
