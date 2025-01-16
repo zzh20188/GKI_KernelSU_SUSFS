@@ -132,7 +132,7 @@ jobs:
         if: ${{ github.event.inputs.make_release == 'true' && needs.build-kernel-a12.result == 'success' && needs.build-kernel-a13.result == 'success' && needs.build-kernel-a14.result == 'success' }}  # Only run if make_release is true and all build jobs succeeded
         uses: softprops/action-gh-release@v1
         with:
-          files: ./downloaded-artifacts/*
+          files: ./downloaded-artifacts/*/*
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
           prerelease: true  # Mark the release as a pre-release
           name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
