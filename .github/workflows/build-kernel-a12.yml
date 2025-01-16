@@ -46,6 +46,16 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
+      - name: Set CONFIG Environment Variable
+        run: |
+          # Set CONFIG dynamically based on matrix values
+          CONFIG="${{ matrix.android_version }}-${{ matrix.kernel_version }}-${{ matrix.sub_level }}"
+          
+          # Set CONFIG as an environment variable for future steps
+          echo "CONFIG=$CONFIG" >> $GITHUB_ENV
+          
+          echo "CONFIG set to: $CONFIG"
+
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1
         with:
@@ -237,7 +247,7 @@ jobs:
           cd "$CONFIG"
           
           echo "Building the kernel..."
-          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang"
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
