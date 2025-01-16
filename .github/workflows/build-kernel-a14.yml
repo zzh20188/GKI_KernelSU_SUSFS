@@ -91,7 +91,6 @@ jobs:
             sub_level: "X"
             os_patch_level: "lts"
 
-
     steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
