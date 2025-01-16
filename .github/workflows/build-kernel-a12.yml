@@ -46,6 +46,13 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: gki-kernel-aarch64-${{ env.CONFIG }}  # Use CONFIG as the cache key
+          max-size: 2G
+          save: true  # Ensure the cache is saved
+
       - name: Download prebuilt toolchain
         run: |
           AOSP_MIRROR=https://android.googlesource.com
