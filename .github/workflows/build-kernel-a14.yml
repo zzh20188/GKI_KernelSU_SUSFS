@@ -10,30 +10,87 @@ jobs:
     strategy:
       matrix:
         include:
-        - android_version: "android12"
-          kernel_version: "5.10"
-          sub_level: "198"
-          os_patch_level: "2024-01"
-        - android_version: "android12"
-          kernel_version: "5.10"
-          sub_level: "205"
-          os_patch_level: "2024-03"
-        - android_version: "android12"
-          kernel_version: "5.10"
-          sub_level: "209"
-          os_patch_level: "2024-05"
-        - android_version: "android12"
-          kernel_version: "5.10"
-          sub_level: "218"
-          os_patch_level: "2024-08"
-        - android_version: "android12"
-          kernel_version: "5.10"
-          sub_level: "226"
-          os_patch_level: "2024-11"
-        - android_version: "android12"
-          kernel_version: "5.10"
-          sub_level: "X"
-          os_patch_level: "lts"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "131"
+            os_patch_level: "2023-11"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "137"
+            os_patch_level: "2024-01"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "144"
+            os_patch_level: "2024-03"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "148"
+            os_patch_level: "2024-05"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "149"
+            os_patch_level: "2024-06"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "153"
+            os_patch_level: "2024-07"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "158"
+            os_patch_level: "2024-08"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "167"
+            os_patch_level: "2024-11"
+          - android_version: "android14"
+            kernel_version: "5.15"
+            sub_level: "X"
+            os_patch_level: "lts"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "25"
+            os_patch_level: "2023-10"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "43"
+            os_patch_level: "2023-11"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "57"
+            os_patch_level: "2024-01"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "68"
+            os_patch_level: "2024-03"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "75"
+            os_patch_level: "2024-05"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "78"
+            os_patch_level: "2024-06"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "84"
+            os_patch_level: "2024-07"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "90"
+            os_patch_level: "2024-08"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "112"
+            os_patch_level: "2024-11"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "115"
+            os_patch_level: "2024-12"
+          - android_version: "android14"
+            kernel_version: "6.1"
+            sub_level: "X"
+            os_patch_level: "lts"
+
 
     steps:
       - name: Maximize build space
@@ -246,55 +303,25 @@ jobs:
           # Create gzip of the Image file
           gzip -n -k -f -9 ./Image > ./Image.gz
 
-      - name: Set GKI URLs and Download Kernel
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd bootimgs
-
-          GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${{ matrix.date }}"_r1.zip
-          FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
-          
-          # Check if the GKI URL is available
-          echo "Checking if GKI kernel URL is reachable: $GKI_URL"
-          status=$(curl -sL -w "%{http_code}" "$GKI_URL" -o /dev/null)
-
-          if [ "$status" = "200" ]; then
-              echo "[+] Downloading from GKI_URL"
-              curl -Lo gki-kernel.zip "$GKI_URL"
-          else
-              echo "[+] $GKI_URL not found, using $FALLBACK_URL"
-              curl -Lo gki-kernel.zip "$FALLBACK_URL"
-          fi
-
-          # Unzip the downloaded kernel and remove the zip
-          echo "Unzipping the downloaded kernel..."
-          unzip gki-kernel.zip && rm gki-kernel.zip
-
       - name: Unpack boot.img and Build Kernels
         run: |
           cd bootimgs
-          echo "Unpacking boot.img..."
-          FULL_PATH=$(pwd)/boot-5.10.img
-          echo "Unpacking using: $FULL_PATH"
-          
-          echo "Running unpack_bootimg.py..."
-          $UNPACK_BOOTIMG --boot_img="$FULL_PATH"
           
           echo "Building Image.gz"
           gzip -n -k -f -9 ./Image > ./Image.gz
           
           echo "Building boot.img"
-          $MKBOOTIMG --header_version 4 --kernel Image --output boot.img --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level "${{ matrix.date }}"
+          $MKBOOTIMG --header_version 4 --kernel Image --output boot.img
           $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
           cp ./boot.img ../${{ matrix.android_version }}-${{ matrix.kernel_version }}.${{ matrix.sub_level }}_${{ matrix.date }}-boot.img
           
           echo "Building boot-gz.img"
-          $MKBOOTIMG --header_version 4 --kernel Image.gz --output boot-gz.img --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level "${{ matrix.date }}"
+          $MKBOOTIMG --header_version 4 --kernel Image.gz --output boot-gz.img
           $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-gz.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
           cp ./boot-gz.img ../${{ matrix.android_version }}-${{ matrix.kernel_version }}.${{ matrix.sub_level }}_${{ matrix.date }}-boot-gz.img
           
           echo "Building boot-lz4.img"
-          $MKBOOTIMG --header_version 4 --kernel Image.lz4 --output boot-lz4.img --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level "${{ matrix.date }}"
+          $MKBOOTIMG --header_version 4 --kernel Image.lz4 --output boot-lz4.img
           $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-lz4.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
           cp ./boot-lz4.img ../${{ matrix.android_version }}-${{ matrix.kernel_version }}.${{ matrix.sub_level }}_${{ matrix.date }}-boot-lz4.img
 
