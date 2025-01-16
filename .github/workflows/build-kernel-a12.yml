@@ -235,22 +235,21 @@ jobs:
       - name: Create Bootimgs Folder and Copy Images
         run: |
           echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG"
+          mkdir bootimgs
           
           echo "Creating bootimgs folder and copying images..."
-          mkdir bootimgs
-          cp ./out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ../bootimgs
-          cp ./out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ../bootimgs
-          cp ./out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ../
-          cp ./out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ../
+          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ../bootimgs
+          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ../bootimgs
+          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ./
+          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ./
           
           # Create gzip of the Image file
-          gzip -n -k -f -9 ../Image > ../Image.gz
+          gzip -n -k -f -9 ./Image > ./Image.gz
 
       - name: Set GKI URLs and Download Kernel
         run: |
           echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG/bootimgs"
+          cd bootimgs
 
           GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${{ matrix.date }}"_r1.zip
           FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
@@ -273,7 +272,7 @@ jobs:
 
       - name: Unpack boot.img and Build Kernels
         run: |
-          cd "$CONFIG/bootimgs"
+          cd bootimgs
           echo "Unpacking boot.img..."
           FULL_PATH=$(pwd)/boot-5.10.img
           echo "Unpacking using: $FULL_PATH"
@@ -308,23 +307,20 @@ jobs:
           ZIP_NAME="AnyKernel3-${{ matrix.android_version }}-${{ matrix.kernel_version }}.${{ matrix.sub_level }}_${{ matrix.date }}.zip"
           echo "Creating zip file: $ZIP_NAME..."
           mv ../Image ./Image
-          zip -r "../../$ZIP_NAME" ./*
+          zip -r "../$ZIP_NAME" ./*
           rm ./Image
           
           ZIP_NAME="AnyKernel3-lz4-${{ matrix.android_version }}-${{ matrix.kernel_version }}.${{ matrix.sub_level }}_${{ matrix.date }}.zip"
           echo "Creating zip file: $ZIP_NAME..."
           mv ../Image.lz4 ./Image.lz4
-          zip -r "../../$ZIP_NAME" ./*
+          zip -r "../$ZIP_NAME" ./*
+          rm ./Image.lz4
 
           ZIP_NAME="AnyKernel3-gz-${{ matrix.android_version }}-${{ matrix.kernel_version }}.${{ matrix.sub_level }}_${{ matrix.date }}.zip"
           echo "Creating zip file: $ZIP_NAME..."
           mv ../Image.gz ./Image.gz
-          zip -r "../../$ZIP_NAME" ./*
-
-      - name: Delete $CONFIG Folder After Building
-        run: |
-          echo "Deleting $CONFIG folder..."
-          rm -rf "$CONFIG"
+          zip -r "../$ZIP_NAME" ./*
+          rm ./Image.gz
           
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
