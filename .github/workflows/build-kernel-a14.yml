@@ -102,12 +102,15 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: gki-kernel-aarch64-${{ env.CONFIG }}  # Use CONFIG as the cache key
-          max-size: 2G
-          save: true  # Ensure the cache is saved
+      - name: Set CONFIG Environment Variable
+        run: |
+          # Set CONFIG dynamically based on matrix values
+          CONFIG="${{ matrix.android_version }}-${{ matrix.kernel_version }}-${{ matrix.sub_level }}"
+          
+          # Set CONFIG as an environment variable for future steps
+          echo "CONFIG=$CONFIG" >> $GITHUB_ENV
+          
+          echo "CONFIG set to: $CONFIG"
 
       - name: Download prebuilt toolchain
         run: |
@@ -294,7 +297,7 @@ jobs:
           
           echo "Building the kernel..."
           rm -rf ./common/android/abi_gki_protected_exports_*
-          tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast --lto=thin //common:kernel_aarch64_dist
+          tools/bazel build --config=fast --lto=thin //common:kernel_aarch64_dist
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
