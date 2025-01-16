@@ -142,24 +142,20 @@ jobs:
       - name: Upload Release Assets Dynamically
         run: |
           # Loop through all files in the downloaded-artifacts directory
-          for file in ./downloaded-artifacts/**/*; do
-              # Check the file extension to set the correct content type
-              if [[ "$file" == *.zip ]]; then
-                  content_type="application/zip"
-              elif [[ "$file" == *.img ]]; then
-                  content_type="application/octet-stream"
-              else
-                  echo "Skipping unknown file type: $file"
+          for file in ./downloaded-artifacts/kernel-*/*; do
+              # Skip directories
+              if [ -d "$file" ]; then
                   continue
               fi
 
               # Upload the file to the GitHub release
-              echo "Uploading $file with content type $content_type..."
-              gh release upload ${{ env.NEW_TAG }} "$file" --content-type "$content_type" --name "$(basename "$file")"
+              echo "Uploading $file..."
+              gh release upload ${{ env.NEW_TAG }} "$file" --name "$(basename "$file")"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_TAG: ${{ env.NEW_TAG }}
+
 
       # Display Files Uploaded
       - name: Display Files Uploaded
