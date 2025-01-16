@@ -1,10 +1,10 @@
-name: Build Android 12 GKI Kernels
+name: Build Android 14 GKI Kernels
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
   
 jobs:
-  build-kernel-a12-kernelsu-susfs:
+  build-kernel-a14-kernelsu-susfs:
     runs-on: ubuntu-22.04
     timeout-minutes: 2160  # Set maximum timeout
     strategy:
