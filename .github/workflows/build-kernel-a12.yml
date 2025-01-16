@@ -238,8 +238,8 @@ jobs:
           mkdir bootimgs
           
           echo "Creating bootimgs folder and copying images..."
-          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ../bootimgs
-          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ../bootimgs
+          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ./bootimgs
+          cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ./bootimgs
           cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image ./
           cp ./$CONFIG/out/${{ matrix.android_version }}-${{ matrix.kernel_version }}/dist/Image.lz4 ./
           
