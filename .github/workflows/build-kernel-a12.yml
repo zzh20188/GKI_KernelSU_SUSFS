@@ -329,7 +329,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-artifacts-a12
+          name: ${{ env.CONFIG }}
           path: |
             *.zip
             *.img
