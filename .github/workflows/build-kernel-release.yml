@@ -130,9 +130,8 @@ jobs:
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
         if: ${{ github.event.inputs.make_release == 'true' && needs.build-kernel-a12.result == 'success' && needs.build-kernel-a13.result == 'success' && needs.build-kernel-a14.result == 'success' }}  # Only run if make_release is true and all build jobs succeeded
-        uses: softprops/action-gh-release@v1
+        uses: actions/create-release@v1
         with:
-          files: ./downloaded-artifacts/*/*
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
           prerelease: true  # Mark the release as a pre-release
           name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
@@ -140,8 +139,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Release Assets Dynamically
+        run: |
+          # Loop through all files in the downloaded-artifacts directory
+          for file in ./downloaded-artifacts/**/*; do
+            # Check the file extension to set the correct content type
+            if [[ "$file" == *.zip ]]; then
+                content_type="application/zip"
+            elif [[ "$file" == *.img ]]; then
+                content_type="application/octet-stream"
+            else
+                echo "Skipping unknown file type: $file"
+                continue
+            fi
+
+            # Upload the file to the GitHub release
+          echo "Uploading $file with content type $content_type..."
+          gh release upload ${{ env.NEW_TAG }} "$file" --content-type "$content_type" --name "$(basename "$file")"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ env.NEW_TAG }}
+
+
       # Display Files Uploaded
       - name: Display Files Uploaded
         run: |
           echo "GitHub release created with the following files:"
-          ls ./downloaded-artifacts
+          ls ./downloaded-artifacts/**/*
