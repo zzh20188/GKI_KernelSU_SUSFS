@@ -287,7 +287,7 @@ jobs:
           
           echo "Building the kernel..."
           rm -rf ./common/android/abi_gki_protected_exports_*
-          tools/bazel build --lto=full //common:kernel_aarch64_dist
+          tools/bazel build --config=fast //common:kernel_aarch64_dist
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
