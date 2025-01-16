@@ -100,13 +100,6 @@ jobs:
           
           echo "CONFIG set to: $CONFIG"
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: gki-kernel-aarch64-${{ env.CONFIG }}  # Use CONFIG as the cache key
-          max-size: 2G
-          save: true  # Ensure the cache is saved
-
       - name: Download prebuilt toolchain
         run: |
           AOSP_MIRROR=https://android.googlesource.com
@@ -280,7 +273,7 @@ jobs:
           cd "$CONFIG"
           
           echo "Building the kernel..."
-          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang"
+          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
