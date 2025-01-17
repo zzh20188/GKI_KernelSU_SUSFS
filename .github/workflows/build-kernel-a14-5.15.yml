@@ -1,10 +1,10 @@
-name: Build Android 14 GKI Kernels
+name: Build Android 14 5.15 GKI Kernels
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
   
 jobs:
-  build-kernel-a14-kernelsu-susfs:
+  build-kernel-a14-5-15-kernelsu-susfs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
