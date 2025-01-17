@@ -134,7 +134,7 @@ jobs:
         with:
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
           prerelease: true  # Mark the release as a pre-release
-          name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
+          release_name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
           body: ${{ env.RELEASE_NOTES }}  # Pass the RELEASE_NOTES to the action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
