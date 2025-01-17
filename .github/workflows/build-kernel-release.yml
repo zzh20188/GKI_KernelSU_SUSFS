@@ -122,7 +122,7 @@ jobs:
             git push origin $NEW_TAG
 
       # Download Artifacts for A12 (Only if A12 Build is successful or input is true or empty)
-      - name: Download Artifacts for A12 (Only if A12 Build is successful or skipped)
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./downloaded-artifacts
@@ -150,7 +150,7 @@ jobs:
 
               # Upload the file to the GitHub release
               echo "Uploading $file..."
-              gh release upload ${{ env.NEW_TAG }} "$file" --name "$(basename "$file")"
+              gh release upload ${{ env.NEW_TAG }} "$file"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
