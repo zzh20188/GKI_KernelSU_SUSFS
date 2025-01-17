@@ -1,4 +1,4 @@
-# Warning!
+# Wild Android Kernel
 
 ## Your warranty is no longer valid!
 
