@@ -1,10 +1,10 @@
-name: Build Android 13 GKI Kernels
+name: Build Android 13 5.10 GKI Kernels
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
   
 jobs:
-  build-kernel-a13-kernelsu-susfs:
+  build-kernel-a13-5-10-kernelsu-susfs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -39,42 +39,6 @@ jobs:
             os_patch_level: "2024-08"
           - android_version: "android13"
             kernel_version: "5.10"
-            sub_level: "X"
-            os_patch_level: "lts"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "94"
-            os_patch_level: "2023-05"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "123"
-            os_patch_level: "2023-11"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "137"
-            os_patch_level: "2024-01"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "144"
-            os_patch_level: "2024-03"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "148"
-            os_patch_level: "2024-05"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "149"
-            os_patch_level: "2024-07"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "151"
-            os_patch_level: "2024-08"
-          - android_version: "android13"
-            kernel_version: "5.15"
-            sub_level: "167"
-            os_patch_level: "2024-11"
-          - android_version: "android13"
-            kernel_version: "5.15"
             sub_level: "X"
             os_patch_level: "lts"
 
