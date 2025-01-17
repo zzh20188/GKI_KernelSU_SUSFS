@@ -32,18 +32,28 @@ on:
         default: false
 
 jobs:
-  build-kernel-a12:
-    uses: ./.github/workflows/build-kernel-a12.yml
+  build-kernel-a12-5-10:
+    uses: ./.github/workflows/build-kernel-a12-5.10.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
 
-  build-kernel-a13:
-    uses: ./.github/workflows/build-kernel-a13.yml
+  build-kernel-a13-5-10:
+    uses: ./.github/workflows/build-kernel-a13-5.10.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
 
-  build-kernel-a14:
-    uses: ./.github/workflows/build-kernel-a14.yml
+  build-kernel-a13-5-15:
+    uses: ./.github/workflows/build-kernel-a13-5.15.yml
+    secrets: inherit
+    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
+
+  build-kernel-a14-5-15:
+    uses: ./.github/workflows/build-kernel-a14-5.15.yml
+    secrets: inherit
+    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+
+  build-kernel-a14-6-1:
+    uses: ./.github/workflows/build-kernel-a14-6.1.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
 
@@ -51,9 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2160  # Set maximum timeout
     needs:
-        - build-kernel-a12
-        - build-kernel-a13
-        - build-kernel-a14  # Ensure the release only runs after the build jobs complete or are skipped
+        - build-kernel-a12-5-10
+        - build-kernel-a13-5-10
+        - build-kernel-a13-5-15
+        - build-kernel-a14-5-15
+        - build-kernel-a14-6-1
     if: ${{ github.event.inputs.make_release == 'true' }}
     env:
       REPO_OWNER: TheWildJames
