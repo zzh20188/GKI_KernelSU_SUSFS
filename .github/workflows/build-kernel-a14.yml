@@ -1,50 +1,14 @@
-name: Build Android 14 GKI Kernels
+name: Build Android 14 6.1 GKI Kernels
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
   
 jobs:
-  build-kernel-a14-kernelsu-susfs:
+  build-kernel-a14-6-1-kernelsu-susfs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
         include:
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "131"
-            os_patch_level: "2023-11"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "137"
-            os_patch_level: "2024-01"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "144"
-            os_patch_level: "2024-03"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "148"
-            os_patch_level: "2024-05"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "149"
-            os_patch_level: "2024-06"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "153"
-            os_patch_level: "2024-07"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "158"
-            os_patch_level: "2024-08"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "167"
-            os_patch_level: "2024-11"
-          - android_version: "android14"
-            kernel_version: "5.15"
-            sub_level: "X"
-            os_patch_level: "lts"
           - android_version: "android14"
             kernel_version: "6.1"
             sub_level: "25"
