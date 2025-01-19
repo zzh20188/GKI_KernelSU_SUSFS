@@ -33,27 +33,27 @@ jobs:
   build-kernel-a12-5-10:
     uses: ./.github/workflows/build-kernel-a12-5.10.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a12 == 'true' || github.event.inputs.build_a12 == '' }}
+    if: ${{ inputs.build_a12 || inputs.build_a12 == '' }}
 
   build-kernel-a13-5-10:
     uses: ./.github/workflows/build-kernel-a13-5.10.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
+    if: ${{ inputs.build_a13 == 'true' || inputs.build_a13 == '' }}
 
   build-kernel-a13-5-15:
     uses: ./.github/workflows/build-kernel-a13-5.15.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
+    if: ${{ inputs.build_a13 == 'true' || inputs.build_a13 == '' }}
 
   build-kernel-a14-5-15:
     uses: ./.github/workflows/build-kernel-a14-5.15.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+    if: ${{ inputs.build_a14 == 'true' || inputs.build_a14 == '' }}
 
   build-kernel-a14-6-1:
     uses: ./.github/workflows/build-kernel-a14-6.1.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a14 == 'true' || github.event.inputs.build_a14 == '' }}
+    if: ${{ inputs.build_a14 == 'true' || inputs.build_a14 == '' }}
 
   trigger-release:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
         - build-kernel-a13-5-15
         - build-kernel-a14-5-15
         - build-kernel-a14-6-1
-    if: ${{ github.event.inputs.make_release == 'true' }}
+    if: ${{ inputs.make_release == 'true' }}
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
@@ -138,7 +138,6 @@ jobs:
 
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
-        if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true and all build jobs succeeded
         uses: actions/create-release@v1
         with:
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
