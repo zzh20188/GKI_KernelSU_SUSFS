@@ -164,11 +164,11 @@ jobs:
       - name: Determine the branch for kernelsu
         run: |
           if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
-            echo "BRANCH=Stable" >> $GITHUB_ENV
+            echo "BRANCH=-" >> $GITHUB_ENV
           elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
-            echo "BRANCH=Dev-next" >> $GITHUB_ENV
+            echo "BRANCH=-s next" >> $GITHUB_ENV
           elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
-            echo "BRANCH=${{ inputs.next_branch_other }}" >> $GITHUB_ENV
+            echo "BRANCH=-s ${{ inputs.next_branch_other }}" >> $GITHUB_ENV
           else
             echo "Error: Custom branch not provided for 'Other'" >&2
             exit 1
@@ -223,7 +223,7 @@ jobs:
           cd "$CONFIG/common"
           # Apply additional patch
           cp ../../kernel_patches/69_hide_stuff.patch ./
-          patch -p1 -F 3 < 69_hide_stuff.patch || true
+          patch -p1 -F 3 < 69_hide_stuff.patch
 
       - name: Add SUSFS Configuration Settings
         run: |
