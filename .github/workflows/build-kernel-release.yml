@@ -37,6 +37,15 @@ on:
         required: true
         type: boolean
         default: false
+      lto_type:
+        description: "Choose the lto type"
+        required: true
+        type: choice
+        options:
+          - none
+          - thin
+          - full
+        default: thin
 
 jobs:
   build-kernel-a12-5-10:
