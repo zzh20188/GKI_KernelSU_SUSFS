@@ -47,7 +47,7 @@ on:
           - full
         default: thin
       next_branch:
-        description: "Choose the lto type"
+        description: "Choose next branch"
         required: true
         type: choice
         options:
