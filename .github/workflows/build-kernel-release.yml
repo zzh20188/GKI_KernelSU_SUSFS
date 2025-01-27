@@ -46,6 +46,20 @@ on:
           - thin
           - full
         default: thin
+      next_branch:
+        description: "Choose the lto type"
+        required: true
+        type: choice
+        options:
+          - Stable
+          - Dev
+          - Other
+        default: Stable
+      next_branch_other:
+        description: "If 'Other' is selected, specify your custom branch"
+        required: false
+        type: string  # This input is required if 'Other' is chosen
+        default: ""  # Default is empty, but can be filled in if 'Other' is selected
 
 jobs:
   build-kernel-a12-5-10:
