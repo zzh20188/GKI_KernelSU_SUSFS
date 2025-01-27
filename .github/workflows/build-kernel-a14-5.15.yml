@@ -9,7 +9,7 @@ on:
       next_branch:
         required: true
         type: string
-      next_branch_custom:
+      next_branch_other:
         required: false
         type: string
   
