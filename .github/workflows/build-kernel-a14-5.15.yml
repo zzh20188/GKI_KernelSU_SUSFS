@@ -167,8 +167,8 @@ jobs:
             echo "BRANCH=Stable" >> $GITHUB_ENV
           elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
             echo "BRANCH=Dev-next" >> $GITHUB_ENV
-          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_custom }}" ]]; then
-            echo "BRANCH=${{ inputs.next_branch_custom }}" >> $GITHUB_ENV
+          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
+            echo "BRANCH=${{ inputs.next_branch_other }}" >> $GITHUB_ENV
           else
             echo "Error: Custom branch not provided for 'Other'" >&2
             exit 1
