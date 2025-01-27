@@ -6,6 +6,12 @@ on:
       lto_type:
         required: true
         type: string
+      next_branch:
+        required: true
+        type: string
+      next_branch_other:
+        required: false
+        type: string
   
 jobs:
   build-kernel-a12-5-10-kernelsu-susfs:
