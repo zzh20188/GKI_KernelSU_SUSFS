@@ -276,7 +276,17 @@ jobs:
           
           echo "Building the kernel..."
           rm -rf ./common/android/abi_gki_protected_exports_*
-          tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
+          tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist &
+          COMMAND_PID=$!
+
+          # Monitor memory and disk usage while command.sh is running
+          while kill -0 "$COMMAND_PID" 2>/dev/null; do
+              echo "Memory Usage:"
+              free -h
+              echo "Disk Usage:"
+              df -h
+              sleep 10
+          done
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
