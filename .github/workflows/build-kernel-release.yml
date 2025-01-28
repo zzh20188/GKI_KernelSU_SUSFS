@@ -87,6 +87,7 @@ jobs:
       lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
+      runner: ${{ inputs.runner }}
 
   build-kernel-a13-5-15:
     uses: ./.github/workflows/build-kernel-a13-5.15.yml
@@ -96,6 +97,7 @@ jobs:
       lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
+      runner: ${{ inputs.runner }}
 
   build-kernel-a14-5-15:
     uses: ./.github/workflows/build-kernel-a14-5.15.yml
@@ -105,6 +107,7 @@ jobs:
       lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
+      runner: ${{ inputs.runner }}
 
   build-kernel-a14-6-1:
     uses: ./.github/workflows/build-kernel-a14-6.1.yml
@@ -114,6 +117,7 @@ jobs:
       lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
+      runner: ${{ inputs.runner }}
 
   trigger-release:
     runs-on: ubuntu-latest
