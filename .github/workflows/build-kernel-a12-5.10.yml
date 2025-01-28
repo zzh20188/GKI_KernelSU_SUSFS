@@ -12,10 +12,13 @@ on:
       next_branch_other:
         required: false
         type: string
+      runner:
+        required: true
+        type: string
   
 jobs:
   build-kernel-a12-5-10-kernelsu-susfs:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ input.runner }}
     strategy:
       matrix:
         include:
