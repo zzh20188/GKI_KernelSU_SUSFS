@@ -11,6 +11,7 @@ on:
         description: "Choose the runner"
         required: true
         default: "ubuntu-22.04"
+        type: choice
         options:
           - ubuntu-22.04
           - ubuntu-22.04-local
