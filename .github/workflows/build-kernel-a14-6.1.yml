@@ -18,7 +18,7 @@ on:
   
 jobs:
   build-kernel-a14-6-1-kernelsu-susfs:
-    runs-on: ${{ input.runner }}
+    runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
         include:
