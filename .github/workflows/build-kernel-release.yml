@@ -46,7 +46,7 @@ on:
         type: boolean
         default: false
       lto_type:
-        description: "Choose the lto type"
+        description: "Choose the lto type will fail on full if using a github hosted runner"
         required: true
         type: choice
         options:
