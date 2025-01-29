@@ -60,7 +60,7 @@ Flashing this kernel will void your warranty, and there is always a risk of bric
 
 ### If you need your kernel version added please let me know and I will build it!
 
-[Telegram](https://t.me/TheWildJames) NO DMS PLEASE! Ask in chat below! 
+[Telegram](https://t.me/TheWildJames) NO DMS PLEASE! Ask in chat below!  
 [Telegram Group](https://t.me/wildpluskernel)  
 [Build Scripts](https://github.com/TheWildJames/kernel_build_scripts)
 
