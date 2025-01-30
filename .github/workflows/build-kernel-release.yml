@@ -131,16 +131,6 @@ jobs:
         [+] Maphide LineageOS Detections
         [+] Futile Maphide for jit-zygote-cache Detections
         [+] Magic Mount Support
-
-        Special thanks to the following people for their contributions!
-        This helps me alot! <3
-
-        simonpunk - Created SUSFS!
-        sidex15 - Created module!
-        backslashxx - Helped with patches!
-        幕落 - Donation!
-
-        If you have contributed and are not here please remind me!
     steps:
       # Checkout the code
       - name: Checkout code
