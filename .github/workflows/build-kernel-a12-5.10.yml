@@ -12,13 +12,10 @@ on:
       next_branch_other:
         required: false
         type: string
-      runner:
-        required: true
-        type: string
   
 jobs:
   build-kernel-a12-5-10-kernelsu-susfs:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         include:
@@ -49,7 +46,6 @@ jobs:
 
     steps:
       - name: Maximize build space
-        if: ${{ inputs.runner == 'ubuntu-22.04' }}
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 8192
@@ -59,13 +55,6 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
-
-      - name: Clear GitHub Workspace
-        if: ${{ inputs.runner == 'ubuntu-22.04-local' }}
-        run: |
-          echo "Clearing the GitHub workspace..."
-          rm -rf $GITHUB_WORKSPACE/*
-          echo "Workspace cleared."
 
       - name: Set CONFIG Environment Variable
         run: |
