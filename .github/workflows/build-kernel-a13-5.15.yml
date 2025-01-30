@@ -3,9 +3,6 @@ name: Build Android 13 5.15 GKI Kernels
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
-      lto_type:
-        required: true
-        type: string
       next_branch:
         required: true
         type: string
@@ -264,7 +261,7 @@ jobs:
           cd "$CONFIG"
           
           echo "Building the kernel..."
-          LTO=${{ inputs.lto_type }} BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
