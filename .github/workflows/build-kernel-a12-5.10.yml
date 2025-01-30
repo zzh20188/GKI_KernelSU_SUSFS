@@ -3,9 +3,6 @@ name: Build Android 12 5.10 GKI Kernels
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
-      lto_type:
-        required: true
-        type: string
       next_branch:
         required: true
         type: string
@@ -50,7 +47,7 @@ jobs:
         with:
           root-reserve-mb: 8192
           temp-reserve-mb: 2048
-          swap-size-mb: 20000
+          swap-size-mb: 8192
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
@@ -252,7 +249,7 @@ jobs:
           cd "$CONFIG"
           
           echo "Building the kernel..."
-          LTO=${{ inputs.lto_type }} BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
