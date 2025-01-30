@@ -101,7 +101,12 @@ jobs:
         - build-kernel-a13-5-15
         - build-kernel-a14-5-15
         - build-kernel-a14-6-1
-    if: ${{ inputs.make_release }}
+    if: ${{ inputs.make_release }} && (
+        needs.build-kernel-a12-5-10.result == 'success' &&
+        needs.build-kernel-a13-5-10.result == 'success' &&
+        needs.build-kernel-a13-5-15.result == 'success' &&
+        needs.build-kernel-a14-5-15.result == 'success' &&
+        needs.build-kernel-a14-6-1.result == 'success' )
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
