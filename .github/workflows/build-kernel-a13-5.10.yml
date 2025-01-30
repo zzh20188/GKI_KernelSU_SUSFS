@@ -3,9 +3,6 @@ name: Build Android 13 5.10 GKI Kernels
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
-      lto_type:
-        required: true
-        type: string
       next_branch:
         required: true
         type: string
