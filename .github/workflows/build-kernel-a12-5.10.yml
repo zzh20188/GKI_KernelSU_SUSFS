@@ -39,10 +39,10 @@ jobs:
           kernel_version: "5.10"
           sub_level: "226"
           os_patch_level: "2024-11"
-        #- android_version: "android12"
-        #  kernel_version: "5.10"
-        #  sub_level: "X"
-        #  os_patch_level: "lts"
+        - android_version: "android12"
+          kernel_version: "5.10"
+          sub_level: "X"
+          os_patch_level: "lts"
 
     steps:
       - name: Maximize build space
@@ -50,7 +50,7 @@ jobs:
         with:
           root-reserve-mb: 8192
           temp-reserve-mb: 2048
-          swap-size-mb: 16384
+          swap-size-mb: 20000
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
