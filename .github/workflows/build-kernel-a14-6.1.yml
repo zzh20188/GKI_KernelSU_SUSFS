@@ -3,9 +3,6 @@ name: Build Android 14 6.1 GKI Kernels
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
-      lto_type:
-        required: true
-        type: string
       next_branch:
         required: true
         type: string
@@ -277,7 +274,7 @@ jobs:
           
           echo "Building the kernel..."
           rm -rf ./common/android/abi_gki_protected_exports_*
-          tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
+          tools/bazel build --config=fast --lto=thin //common:kernel_aarch64_dist
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
@@ -346,10 +343,3 @@ jobs:
           path: |
             *.zip
             *.img
-
-      - name: Clear GitHub Workspace
-        if: ${{ inputs.runner == 'ubuntu-22.04-local' }}
-        run: |
-          echo "Clearing the GitHub workspace..."
-          rm -rf $GITHUB_WORKSPACE/*
-          echo "Workspace cleared."
