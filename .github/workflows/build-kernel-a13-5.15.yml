@@ -330,10 +330,3 @@ jobs:
           path: |
             *.zip
             *.img
-
-      - name: Clear GitHub Workspace
-        if: ${{ inputs.runner == 'ubuntu-22.04-local' }}
-        run: |
-          echo "Clearing the GitHub workspace..."
-          rm -rf $GITHUB_WORKSPACE/*
-          echo "Workspace cleared."
