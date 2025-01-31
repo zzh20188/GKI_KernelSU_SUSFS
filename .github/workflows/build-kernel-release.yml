@@ -105,7 +105,7 @@ jobs:
     env:
       REPO_OWNER: TheWildJames
       REPO_NAME: GKI_KernelSU_SUSFS
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.4 *TEST BUILD*"
       RELEASE_NOTES: |
         This release contains KernelSU Next and SUSFS v1.5.4
@@ -131,6 +131,7 @@ jobs:
         [+] Maphide LineageOS Detections
         [+] Futile Maphide for jit-zygote-cache Detections
         [+] Magic Mount Support
+        
     steps:
       # Checkout the code
       - name: Checkout code
@@ -171,8 +172,6 @@ jobs:
           prerelease: true  # Mark the release as a pre-release
           release_name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
           body: ${{ env.RELEASE_NOTES }}  # Pass the RELEASE_NOTES to the action
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Assets Dynamically
         run: |
@@ -187,10 +186,6 @@ jobs:
               echo "Uploading $file..."
               gh release upload ${{ env.NEW_TAG }} "$file"
           done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_TAG: ${{ env.NEW_TAG }}
-
 
       # Display Files Uploaded
       - name: Display Files Uploaded
