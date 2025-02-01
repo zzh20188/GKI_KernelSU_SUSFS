@@ -1,4 +1,4 @@
-# Wild Plus Kernel for Android GKI 2.0 Devices
+# Wild Plus Kernels for Android GKI 2.0 Devices and Others
 
 ## Your warranty is no longer valid!
 
@@ -11,6 +11,15 @@ By flashing this kernel, **YOU** are choosing to make these modifications. If so
 ---
 
 ### Proceed at your own risk!
+
+---
+
+# Kernels:
+ 
+[GKI](https://github.com/WildPlusKernel/GKI_KernelSU_SUSFS)  
+[Sultan](https://github.com/WildPlusKernel/Sultan_KernelSU_SUSFS)  
+[OnePlus](https://github.com/WildPlusKernel/OnePlus_KernelSU_SUSFS)  
+[Legacy Pixels](https://github.com/WildPlusKernel/Pixel_KernelSU_SUSFS)  
 
 ---
 
@@ -55,8 +64,7 @@ Flashing this kernel will void your warranty, and there is always a risk of bric
 
 # To-DO
 
-- [X] Build AnyKernel3 zips
-- [X] Make GitHub Actions
+- [X] Get Stoned
 
 ---
 
