@@ -34,7 +34,7 @@ By flashing this kernel, **YOU** are choosing to make these modifications. If so
 Follow the steps for GKI:  
 [Installation](https://kernelsu.org/guide/installation.html)
 
-To get boot.img format:
+To get boot.img format:  
 [Get MyKernel Format](https://github.com/TheWildJames/Get_My_Kernel_Format)
 
 ---
