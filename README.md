@@ -23,9 +23,9 @@ By flashing this kernel, **YOU** are choosing to make these modifications. If so
 
 # Other Links
 
-[Kernel Patches](https://github.com/WildPlusKernel/kernel_patches)
-[Old Build Scripts](https://github.com/TheWildJames/kernel_build_scripts)
-[Kernel FLasher](https://github.com/capntrips/KernelFlasher/releases)
+[Kernel Patches](https://github.com/WildPlusKernel/kernel_patches)  
+[Old Build Scripts](https://github.com/TheWildJames/kernel_build_scripts)  
+[Kernel FLasher](https://github.com/capntrips/KernelFlasher/releases)  
 
 ---
 
