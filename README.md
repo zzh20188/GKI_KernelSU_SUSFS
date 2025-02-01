@@ -21,7 +21,7 @@ By flashing this kernel, **YOU** are choosing to make these modifications. If so
 [OnePlus](https://github.com/WildPlusKernel/OnePlus_KernelSU_SUSFS)  
 [Legacy Pixels](https://github.com/WildPlusKernel/Pixel_KernelSU_SUSFS)  
 
-# Other Links
+# Other Links:
 
 [Kernel Patches](https://github.com/WildPlusKernel/kernel_patches)  
 [Old Build Scripts](https://github.com/TheWildJames/kernel_build_scripts)  
