@@ -95,12 +95,12 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-    #needs:
-        #- build-kernel-a12-5-10
-        #- build-kernel-a13-5-10
-        #- build-kernel-a13-5-15
-        #- build-kernel-a14-5-15
-        #- build-kernel-a14-6-1
+    needs:
+        - build-kernel-a12-5-10
+        - build-kernel-a13-5-10
+        - build-kernel-a13-5-15
+        - build-kernel-a14-5-15
+        - build-kernel-a14-6-1
     if: ${{ inputs.make_release }}
         
     steps:
@@ -131,7 +131,7 @@ jobs:
         env:
           REPO_OWNER: WildPlusKernel
           REPO_NAME: GKI_KernelSU_SUSFS
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.4 *TEST BUILD*"
           RELEASE_NOTES: |
             This release contains KernelSU Next and SUSFS v1.5.4
