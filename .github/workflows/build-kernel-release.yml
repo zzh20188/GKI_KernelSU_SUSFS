@@ -110,14 +110,21 @@ jobs:
 
       - name: Get commit hashes for multiple branches and store in separate variables
         run: |
-          BRANCHES=("gki-android12-5.10" "gki-android13-5.10" "gki-android13-5.15" "gki-android14-5.15" "gki-android14-6.1")
-        
-          for branch in "${BRANCHES[@]}"; do
-            COMMIT_HASH=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/$branch | awk '{ print $1 }')
-            echo "$branch Commit: $COMMIT_HASH"
-          
-            # Store each commit hash in a separate environment variable
-            echo "COMMIT_HASH_$branch=$COMMIT_HASH" >> $GITHUB_ENV
+          declare -A BRANCH_MAP=(
+            ["gki_android12_5_10"]="gki-android12-5.10"
+            ["gki_android13_5_10"]="gki-android13-5.10"
+            ["gki_android13_5_15"]="gki-android13-5.15"
+            ["gki_android14_5_15"]="gki-android14-5.15"
+            ["gki_android14_6_1"]="gki-android14-6.1"
+          )
+
+          for var_name in "${!BRANCH_MAP[@]}"; do
+            branch_name="${BRANCH_MAP[$var_name]}"
+            COMMIT_HASH=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/$branch_name | awk '{ print $1 }')
+            echo "$branch_name Commit: $COMMIT_HASH"
+
+            # Store each commit hash in a separate environment variable with underscores
+            echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> $GITHUB_ENV
           done
 
       - name: Set release notes with commit hashes
@@ -128,13 +135,13 @@ jobs:
           RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.4 *TEST BUILD*"
           RELEASE_NOTES: |
             This release contains KernelSU Next and SUSFS v1.5.4
-          
+            
             Module: 
             -> https://github.com/sidex15/ksu_module_susfs
-          
+            
             Official Manager:
             -> https://github.com/tiann/KernelSU
-          
+            
             Non-Official Managers:
             -> https://github.com/rifsxd/KernelSU-Next
             -> https://github.com/backslashxx/KernelSU
@@ -142,7 +149,7 @@ jobs:
             -> https://github.com/5ec1cff/KernelSU
             -> https://github.com/silvzr/KernelSU
             -> https://github.com/sidex15/KernelSU
-          
+            
             Features:
             [+] KernelSU-Next
             [+] SUSFS v1.5.4
@@ -150,12 +157,12 @@ jobs:
             [+] Maphide LineageOS Detections
             [+] Futile Maphide for jit-zygote-cache Detections
             [+] Magic Mount Support
-          
-            gki-android12-5.10: ${{ COMMIT_HASH_gki-android12-5.10 }}
-            gki-android13-5.10: ${{ COMMIT_HASH_gki-android13-5.10 }}
-            gki-android13-5.15: ${{ COMMIT_HASH_gki-android13-5.15 }}
-            gki-android14-5.15: ${{ COMMIT_HASH_gki-android14-5.15 }}
-            gki-android14-6.1: ${{ COMMIT_HASH_gki-android14-6.1 }}
+            
+            gki-android12-5.10: ${{ env.COMMIT_HASH_gki_android12_5_10 }}
+            gki-android13-5.10: ${{ env.COMMIT_HASH_gki_android13_5_10 }}
+            gki-android13-5.15: ${{ env.COMMIT_HASH_gki_android13_5_15 }}
+            gki-android14-5.15: ${{ env.COMMIT_HASH_gki_android14_5_15 }}
+            gki-android14-6.1: ${{ env.COMMIT_HASH_gki_android14_6_1 }}
 
         run: |
           echo "Release notes prepared with commit hashes!"
