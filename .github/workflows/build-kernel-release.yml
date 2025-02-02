@@ -102,7 +102,42 @@ jobs:
     #    - build-kernel-a14-5-15
     #    - build-kernel-a14-6-1
     if: ${{ inputs.make_release }}
+    env:
+      REPO_OWNER: WildPlusKernel
+      REPO_NAME: GKI_KernelSU_SUSFS
+      GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+      RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.4 *TEST BUILD*"
+      RELEASE_NOTES: |
+        This release contains KernelSU Next and SUSFS v1.5.4
+          
+        Module: 
+        -> https://github.com/sidex15/ksu_module_susfs
+            
+        Official Manager:
+        -> https://github.com/tiann/KernelSU
         
+        Non-Official Managers:
+        -> https://github.com/rifsxd/KernelSU-Next
+        -> https://github.com/backslashxx/KernelSU
+        -> https://github.com/rsuntk/KernelSU
+        -> https://github.com/5ec1cff/KernelSU
+        -> https://github.com/silvzr/KernelSU
+        -> https://github.com/sidex15/KernelSU
+        
+        Features:
+        [+] KernelSU-Next
+        [+] SUSFS v1.5.4
+        [+] Wireguard Support
+        [+] Maphide LineageOS Detections
+        [+] Futile Maphide for jit-zygote-cache Detections
+        [+] Magic Mount Support
+            
+        gki-android12-5.10: ${{ env.COMMIT_HASH_gki_android12_5_10 }}
+        gki-android13-5.10: ${{ env.COMMIT_HASH_gki_android13_5_10 }}
+        gki-android13-5.15: ${{ env.COMMIT_HASH_gki_android13_5_15 }}
+        gki-android14-5.15: ${{ env.COMMIT_HASH_gki_android14_5_15 }}
+        gki-android14-6.1: ${{ env.COMMIT_HASH_gki_android14_6_1 }}
+
     steps:
       # Checkout the code
       - name: Checkout code
@@ -126,51 +161,6 @@ jobs:
             # Store each commit hash in a separate environment variable with underscores
             echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> $GITHUB_ENV
           done
-
-      - name: Set global environment variables
-        env:
-          REPO_OWNER: WildPlusKernel
-          REPO_NAME: GKI_KernelSU_SUSFS
-          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-          RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.4 *TEST BUILD*"
-          RELEASE_NOTES: |
-              This release contains KernelSU Next and SUSFS v1.5.4
-            
-              Module: 
-              -> https://github.com/sidex15/ksu_module_susfs
-            
-              Official Manager:
-              -> https://github.com/tiann/KernelSU
-            
-              Non-Official Managers:
-              -> https://github.com/rifsxd/KernelSU-Next
-              -> https://github.com/backslashxx/KernelSU
-              -> https://github.com/rsuntk/KernelSU
-              -> https://github.com/5ec1cff/KernelSU
-              -> https://github.com/silvzr/KernelSU
-              -> https://github.com/sidex15/KernelSU
-            
-              Features:
-              [+] KernelSU-Next
-              [+] SUSFS v1.5.4
-              [+] Wireguard Support
-              [+] Maphide LineageOS Detections
-              [+] Futile Maphide for jit-zygote-cache Detections
-              [+] Magic Mount Support
-            
-              gki-android12-5.10: ${{ env.COMMIT_HASH_gki_android12_5_10 }}
-              gki-android13-5.10: ${{ env.COMMIT_HASH_gki_android13_5_10 }}
-              gki-android13-5.15: ${{ env.COMMIT_HASH_gki_android13_5_15 }}
-              gki-android14-5.15: ${{ env.COMMIT_HASH_gki_android14_5_15 }}
-              gki-android14-6.1: ${{ env.COMMIT_HASH_gki_android14_6_1 }}
-
-        run: |
-          # Echo all variables back into $GITHUB_ENV for later steps
-          echo "REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
-          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
-          echo "GH_TOKEN=$GH_TOKEN" >> $GITHUB_ENV
-          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
-          echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
           
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
