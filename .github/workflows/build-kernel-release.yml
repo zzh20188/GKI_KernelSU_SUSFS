@@ -151,11 +151,11 @@ jobs:
             [+] Futile Maphide for jit-zygote-cache Detections
             [+] Magic Mount Support
           
-            gki-android12-5.10: ${{ env.COMMIT_HASH_gki-android12-5.10 }}
-            gki-android13-5.10: ${{ env.COMMIT_HASH_gki-android13-5.10 }}
-            gki-android13-5.15: ${{ env.COMMIT_HASH_gki-android13-5.15 }}
-            gki-android14-5.15: ${{ env.COMMIT_HASH_gki-android14-5.15 }}
-            gki-android14-6.1: ${{ env.COMMIT_HASH_gki-android14-6.1 }}
+            gki-android12-5.10: ${{ COMMIT_HASH_gki-android12-5.10 }}
+            gki-android13-5.10: ${{ COMMIT_HASH_gki-android13-5.10 }}
+            gki-android13-5.15: ${{ COMMIT_HASH_gki-android13-5.15 }}
+            gki-android14-5.15: ${{ COMMIT_HASH_gki-android14-5.15 }}
+            gki-android14-6.1: ${{ COMMIT_HASH_gki-android14-6.1 }}
 
         run: |
           echo "Release notes prepared with commit hashes!"
