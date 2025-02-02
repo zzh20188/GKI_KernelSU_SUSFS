@@ -95,12 +95,12 @@ jobs:
 
   trigger-release:
     runs-on: ubuntu-latest
-    needs:
-        - build-kernel-a12-5-10
-        - build-kernel-a13-5-10
-        - build-kernel-a13-5-15
-        - build-kernel-a14-5-15
-        - build-kernel-a14-6-1
+    #needs:
+    #    - build-kernel-a12-5-10
+    #    - build-kernel-a13-5-10
+    #    - build-kernel-a13-5-15
+    #    - build-kernel-a14-5-15
+    #    - build-kernel-a14-6-1
     if: ${{ inputs.make_release }}
         
     steps:
