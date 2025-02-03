@@ -3,6 +3,12 @@ name: Build Android 14 5.15 GKI Kernels
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
+      runner:
+        required: true
+        type: string
+      lto_type:
+        required: true
+        type: string
       next_branch:
         required: true
         type: string
@@ -12,7 +18,7 @@ on:
   
 jobs:
   build-kernel-a14-5-15-kernelsu-susfs:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
         include:
@@ -273,7 +279,7 @@ jobs:
           
           echo "Building the kernel..."
           rm -rf ./common/android/abi_gki_protected_exports_*
-          tools/bazel build --config=fast --lto=thin //common:kernel_aarch64_dist
+          tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
 
       - name: Create Bootimgs Folder and Copy Images
         run: |
