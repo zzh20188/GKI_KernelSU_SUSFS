@@ -105,6 +105,8 @@ jobs:
     secrets: inherit
     if: ${{ inputs.build_a14_5_15 }}
     with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
