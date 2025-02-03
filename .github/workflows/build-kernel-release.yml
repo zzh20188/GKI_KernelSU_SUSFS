@@ -137,8 +137,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Get commit hashes for multiple branches and store in separate variables
+      - name: Get commit hashes and generate commit URLs
         run: |
+          GITLAB_OWNER="simonpunk"
+          GITLAB_REPO="susfs4ksu"
+
           declare -A BRANCH_MAP=(
             ["gki_android12_5_10"]="gki-android12-5.10"
             ["gki_android13_5_10"]="gki-android13-5.10"
@@ -149,24 +152,32 @@ jobs:
 
           for var_name in "${!BRANCH_MAP[@]}"; do
             branch_name="${BRANCH_MAP[$var_name]}"
-            COMMIT_HASH=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/$branch_name | awk '{ print $1 }')
-            echo "$branch_name Commit: $COMMIT_HASH"
+            COMMIT_HASH=$(git ls-remote https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO.git refs/heads/$branch_name | awk '{ print $1 }')
 
-            # Store each commit hash in a separate environment variable with underscores
-            echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> $GITHUB_ENV
+            if [[ -n "$COMMIT_HASH" ]]; then
+              COMMIT_URL="https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO/-/commit/$COMMIT_HASH"
+              echo "$branch_name Commit: $COMMIT_HASH"
+              echo "$branch_name Commit URL: $COMMIT_URL"
+
+              # Store commit URL in GitHub environment
+              echo "COMMIT_URL_${var_name}=$COMMIT_URL" >> "$GITHUB_ENV"
+            fi
           done
 
-      - name: Append Commit Hashes to `RELEASE_NOTES`
+
+      - name: Append Commit Hashes & Links to `RELEASE_NOTES`
         run: |
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "gki-android12-5.10: $COMMIT_HASH_gki_android12_5_10" >> $GITHUB_ENV
-          echo "gki-android13-5.10: $COMMIT_HASH_gki_android13_5_10" >> $GITHUB_ENV
-          echo "gki-android13-5.15: $COMMIT_HASH_gki_android13_5_15" >> $GITHUB_ENV
-          echo "gki-android14-5.15: $COMMIT_HASH_gki_android14_5_15" >> $GITHUB_ENV
-          echo "gki-android14-6.1: $COMMIT_HASH_gki_android14_6_1" >> $GITHUB_ENV
+          echo "Commit Hashes & Links:" >> $GITHUB_ENV
+          echo "gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
+          echo "gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
+          echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
+          echo "gki-android14-5.15: [$COMMIT_HASH_gki_android14_5_15]($COMMIT_URL_gki_android14_5_15)" >> $GITHUB_ENV
+          echo "gki-android14-6.1: [$COMMIT_HASH_gki_android14_6_1]($COMMIT_URL_gki_android14_6_1)" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+
           
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
