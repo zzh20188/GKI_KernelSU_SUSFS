@@ -137,6 +137,66 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Determine the branch for KernelSU-Next
+        run: |
+          # Determine the branch based on user input
+          if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
+            BRANCH="Stable"
+          elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
+            BRANCH="next"
+          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
+            BRANCH="${{ inputs.next_branch_other }}"
+          else
+            echo "Error: Custom branch not provided for 'Other'" >&2
+            exit 1
+          fi
+
+          # Store the selected branch in GITHUB_ENV
+          echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: Get commit hash or tag and generate URL for KernelSU-Next
+        run: |
+          REPO_URL="https://github.com/rifsxd/KernelSU-Next.git"
+          BRANCH="${{ env.KSU_BRANCH }}"
+          
+          if [[ "$BRANCH" == "Stable" ]]; then
+            # Fetch the latest tag
+            TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
+            if [[ -z "$TAG" ]]; then
+              echo "Error: Could not fetch latest tag for KernelSU-Next" >&2
+              exit 1
+            fi
+            KSU_REF=$TAG
+            KSU_URL="https://github.com/rifsxd/KernelSU-Next/releases/tag/$TAG"
+
+          elif [[ "$BRANCH" == "next" ]]; then
+            # Fetch the latest commit from "next" branch
+            COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH | awk '{ print $1 }')
+            if [[ -z "$COMMIT_HASH" ]]; then
+              echo "Error: Could not fetch latest commit for KernelSU-Next Dev" >&2
+              exit 1
+            fi
+            KSU_REF=$COMMIT_HASH
+            KSU_URL="https://github.com/rifsxd/KernelSU-Next/commit/$COMMIT_HASH"
+
+          else
+            # Fetch the specific tag for the custom branch
+            TAG=$BRANCH
+            if git ls-remote --tags $REPO_URL | grep -q "refs/tags/$TAG"; then
+              KSU_REF=$TAG
+              KSU_URL="https://github.com/rifsxd/KernelSU-Next/releases/tag/$TAG"
+            else
+              echo "Error: Specified tag '$TAG' not found in KernelSU-Next" >&2
+              exit 1
+            fi
+          fi
+
+          # Echo the values to GitHub environment for later use
+          echo "KSU_REF=$KSU_REF" >> $GITHUB_ENV
+          echo "KSU_URL=$KSU_URL" >> $GITHUB_ENV
+          echo "KernelSU-Next Reference: $KSU_REF"
+          echo "KernelSU-Next URL: $KSU_URL"
+
       - name: Get commit hashes and generate commit URLs
         run: |
           GITLAB_OWNER="simonpunk"
@@ -159,25 +219,26 @@ jobs:
               echo "$branch_name Commit: $COMMIT_HASH"
               echo "$branch_name Commit URL: $COMMIT_URL"
 
-              # Store commit URL in GitHub environment
+              # Store commit hash and commit URL in GitHub environment
+              echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> "$GITHUB_ENV"
               echo "COMMIT_URL_${var_name}=$COMMIT_URL" >> "$GITHUB_ENV"
             fi
           done
-
-
-      - name: Append Commit Hashes & Links to `RELEASE_NOTES`
+          
+      - name: Append Commit Hashes & Links to `RELEASE_NOTES` & Append KernelSU-Next Reference to `RELEASE_NOTES`
         run: |
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
+          echo "KernelSU-Next: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
+          echo "[SUSFS4KSU](https://gitlab.com/simonpunk/susfs4ksu):" >> $GITHUB_ENV
           echo "gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
           echo "gki-android14-5.15: [$COMMIT_HASH_gki_android14_5_15]($COMMIT_URL_gki_android14_5_15)" >> $GITHUB_ENV
           echo "gki-android14-6.1: [$COMMIT_HASH_gki_android14_6_1]($COMMIT_URL_gki_android14_6_1)" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
           
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
