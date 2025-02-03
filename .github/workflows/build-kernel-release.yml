@@ -7,6 +7,23 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: "Choose runner"
+        required: true
+        type: choice
+        options:
+          - ubuntu-22.04
+          - ubuntu-local
+        default: ubuntu-22.04
+      lto_type:
+        description: "Choose LTO type (full will not run on basic runners)"
+        required: true
+        type: choice
+        options:
+          - full
+          - thin
+          - none
+        default: thin
       build_a12_5_10:
         description: 'Build Android 12 5.10 kernel?'
         required: true
@@ -58,6 +75,8 @@ jobs:
     secrets: inherit
     if: ${{ inputs.build_a12_5_10 }}
     with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
@@ -66,6 +85,8 @@ jobs:
     secrets: inherit
     if: ${{ inputs.build_a13_5_10 }}
     with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
@@ -74,6 +95,8 @@ jobs:
     secrets: inherit
     if: ${{ inputs.build_a13_5_15 }}
     with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
@@ -90,6 +113,8 @@ jobs:
     secrets: inherit
     if: ${{ inputs.build_a14_6_1 }}
     with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
