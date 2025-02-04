@@ -107,6 +107,7 @@ jobs:
         - build-kernel-a13-5-15
         - build-kernel-a14-5-15
         - build-kernel-a14-6-1
+        - build-kernel-a15-6-6
     if: ${{ inputs.make_release }}
     env:
       REPO_OWNER: WildPlusKernel
