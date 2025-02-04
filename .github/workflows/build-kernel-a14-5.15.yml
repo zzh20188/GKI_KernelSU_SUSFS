@@ -286,51 +286,14 @@ jobs:
           # Create gzip of the Image file
           gzip -n -k -f -9 ./Image > ./Image.gz
 
-      - name: Unpack boot.img and Build Kernels
-        run: |
-          cd bootimgs
-          
-          echo "Building Image.gz"
-          gzip -n -k -f -9 ./Image > ./Image.gz
-          
-          echo "Building boot.img"
-          $MKBOOTIMG --header_version 4 --kernel Image --output boot.img
-          $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
-          cp ./boot.img ../${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-boot.img
-          
-          echo "Building boot-gz.img"
-          $MKBOOTIMG --header_version 4 --kernel Image.gz --output boot-gz.img
-          $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-gz.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
-          cp ./boot-gz.img ../${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-boot-gz.img
-          
-          echo "Building boot-lz4.img"
-          $MKBOOTIMG --header_version 4 --kernel Image.lz4 --output boot-lz4.img
-          $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-lz4.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
-          cp ./boot-lz4.img ../${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-boot-lz4.img
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Create ZIP Files for Different Formats
-        run: |
-          echo "Creating zip files for all formats..."
-          cd ./AnyKernel3
-          
-          # Create and upload zip for each format
-          ZIP_NAME="${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-AnyKernel3.zip"
-          echo "Creating zip file: $ZIP_NAME..."
-          mv ../Image ./Image
-          zip -r "../$ZIP_NAME" ./*
-          rm ./Image
-          
-          ZIP_NAME="${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-AnyKernel3-lz4.zip"
-          echo "Creating zip file: $ZIP_NAME..."
-          mv ../Image.lz4 ./Image.lz4
-          zip -r "../$ZIP_NAME" ./*
-          rm ./Image.lz4
+      - name: Run Boot Image Build Script
+        run: .github/scripts/bootimg.sh
 
-          ZIP_NAME="${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-AnyKernel3-gz.zip"
-          echo "Creating zip file: $ZIP_NAME..."
-          mv ../Image.gz ./Image.gz
-          zip -r "../$ZIP_NAME" ./*
-          rm ./Image.gz
+      - name: Run AnyKernel3 ZIP Packaging Script
+        run: .github/scripts/anykernel3.sh
           
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
