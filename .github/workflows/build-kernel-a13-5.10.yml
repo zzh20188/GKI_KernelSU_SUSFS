@@ -66,6 +66,9 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
+
+      - name: Clean up workspace
+        run: rm -rf ${{ github.workspace }}/*
       
       - name: Clear GitHub Workspace
         run: |
