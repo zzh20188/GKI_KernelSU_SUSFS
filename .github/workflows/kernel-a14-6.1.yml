@@ -50,7 +50,7 @@ jobs:
     with:
       android_version: "android14"
       kernel_version: "6.1"
-      sub_level: ${{ matrix.sublevel }}
+      sub_level: ${{ matrix.sub_level }}
       os_patch_level: ${{ matrix.os_patch_level }}
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
