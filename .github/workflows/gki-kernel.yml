@@ -244,27 +244,34 @@ jobs:
           fi
 
       - name: Create Bootimgs Folder and Copy Images
+        if: ${{ inputs.android_version == 'android12' }}
         run: |
-          mkdir bootimgs
           echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG"
-
-          if [ -f "out" ]; then
-            echo "Creating bootimgs folder and copying images..."
-            cp ./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image ../bootimgs
-            cp ./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image.lz4 ../bootimgs
-            cp ./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image ../
-            cp ./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image.lz4 ../
-          else
-            echo "Creating bootimgs folder and copying images..."
-            cp ./bazel-bin/common/kernel_aarch64/Image ../bootimgs
-            cp ./bazel-bin/common/kernel_aarch64/Image.lz4 ../bootimgs
-            cp ./bazel-bin/common/kernel_aarch64/Image ../
-            cp ./bazel-bin/common/kernel_aarch64/Image.lz4 ../
-          fi
+          mkdir bootimgs
+          
+          echo "Creating bootimgs folder and copying images..."
+          cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image ./bootimgs
+          cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image.lz4 ./bootimgs
+          cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image ./
+          cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image.lz4 ./
           
           # Create gzip of the Image file
-          gzip -n -k -f -9 ../Image > ../Image.gz
+          gzip -n -k -f -9 ./Image > ./Image.gz
+
+      - name: Create Bootimgs Folder and Copy Images
+        if: ${{ inputs.android_version == 'android13' || inputs.android_version == 'android14' || inputs.android_version == 'android15' }}
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          mkdir bootimgs
+          
+          echo "Creating bootimgs folder and copying images..."
+          cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image ./bootimgs
+          cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image.lz4 ./bootimgs
+          cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image ./
+          cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image.lz4 ./
+          
+          # Create gzip of the Image file
+          gzip -n -k -f -9 ./Image > ./Image.gz
 
       - name: Create ZIP Files for Different Formats
         run: |
@@ -351,17 +358,17 @@ jobs:
           echo "Building boot.img"
           $MKBOOTIMG --header_version 4 --kernel Image --output boot.img
           $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
-          cp ./boot.img ../${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-boot.img
+          cp ./boot.img ../${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.android_version }}-${{ inputs.os_patch_level }}-boot.img
           
           echo "Building boot-gz.img"
           $MKBOOTIMG --header_version 4 --kernel Image.gz --output boot-gz.img
           $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-gz.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
-          cp ./boot-gz.img ../${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-boot-gz.img
+          cp ./boot-gz.img ../${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.android_version }}-${{ inputs.os_patch_level }}-boot-gz.img
           
           echo "Building boot-lz4.img"
           $MKBOOTIMG --header_version 4 --kernel Image.lz4 --output boot-lz4.img
           $AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image boot-lz4.img --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH
-          cp ./boot-lz4.img ../${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.android_version }}-${{ matrix.os_patch_level }}-boot-lz4.img
+          cp ./boot-lz4.img ../${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.android_version }}-${{ inputs.os_patch_level }}-boot-lz4.img
 
           
       - name: Upload Build Artifacts
