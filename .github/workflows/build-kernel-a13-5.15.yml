@@ -278,10 +278,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Boot Image Build Script
-        run: .github/scripts/bootimg.sh
+        run: |
+          chmod +x .github/scripts/bootimg.sh
+          .github/scripts/bootimg.sh
 
       - name: Run AnyKernel3 ZIP Packaging Script
-        run: .github/scripts/anykernel3.sh
+        run: |
+          chmod +x .github/scripts/anykernel3.sh
+          .github/scripts/anykernel3.sh
           
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
