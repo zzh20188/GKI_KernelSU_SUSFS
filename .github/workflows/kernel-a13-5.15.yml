@@ -44,7 +44,7 @@ jobs:
     with:
       android_version: "android13"
       kernel_version: "5.15"
-      sub_level: ${{ matrix.sublevel }}
+      sub_level: ${{ matrix.sub_level }}
       os_patch_level: ${{ matrix.os_patch_level }}
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
