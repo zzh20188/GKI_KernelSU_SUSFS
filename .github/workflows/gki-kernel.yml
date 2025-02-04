@@ -1,3 +1,5 @@
+name: GKI Kernel Build
+
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
