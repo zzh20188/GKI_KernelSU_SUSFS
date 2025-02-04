@@ -245,7 +245,7 @@ jobs:
       - name: Generate and Create New Tag
         run: |
             # Fetch the latest tags from the remote
-            git fetch --tags
+            git fetch --tags --quite
 
             # Get the latest tag from the current repository
             LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
