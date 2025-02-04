@@ -22,14 +22,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - android_version: "android15"
-            kernel_version: "6.6"
-            sub_level: "30"
-            os_patch_level: "2024-08"
-          - android_version: "android15"
-            kernel_version: "6.6"
-            sub_level: "46"
-            os_patch_level: "2024-09"
+          #- android_version: "android15"
+          #  kernel_version: "6.6"
+          #  sub_level: "30"
+          #  os_patch_level: "2024-08"
+          #- android_version: "android15"
+          #  kernel_version: "6.6"
+          #  sub_level: "46"
+          #  os_patch_level: "2024-09"
           - android_version: "android15"
             kernel_version: "6.6"
             sub_level: "50"
