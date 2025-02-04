@@ -233,7 +233,7 @@ jobs:
           echo "" >> $GITHUB_ENV
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
           echo "KernelSU-Next: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
-          echo "[SUSFS4KSU](https://gitlab.com/simonpunk/susfs4ksu):" >> $GITHUB_ENV
+          echo "SUSFS4KSU:" >> $GITHUB_ENV
           echo "gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
