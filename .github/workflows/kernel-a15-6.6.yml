@@ -50,7 +50,7 @@ jobs:
     with:
       android_version: "android15"
       kernel_version: "6.6"
-      sub_level: ${{ matrix.sublevel }}
+      sub_level: ${{ matrix.sub_level }}
       os_patch_level: ${{ matrix.os_patch_level }}
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
