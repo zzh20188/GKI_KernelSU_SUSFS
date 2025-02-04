@@ -90,7 +90,7 @@ jobs:
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
-  build-kernel-a14-6-6:
+  build-kernel-a15-6-6:
     uses: ./.github/workflows/build-kernel-a15-6.6.yml
     secrets: inherit
     with:
