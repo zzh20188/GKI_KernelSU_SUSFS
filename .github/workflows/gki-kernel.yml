@@ -29,7 +29,7 @@ on:
         type: string
       
 jobs:
-  build-kernel-a14-5-15-kernelsu-susfs:
+  build-kernel-kernelsu-susfs:
     runs-on: ${{ inputs.runner }}
 
     steps:
