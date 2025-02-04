@@ -24,31 +24,6 @@ on:
           - thin
           - none
         default: thin
-      build_a12_5_10:
-        description: 'Build Android 12 5.10 kernel?'
-        required: true
-        type: boolean
-        default: true
-      build_a13_5_10:
-        description: 'Build Android 13 5.10 kernel?'
-        required: true
-        type: boolean
-        default: true
-      build_a13_5_15:
-        description: 'Build Android 13 5.15 kernel?'
-        required: true
-        type: boolean
-        default: true
-      build_a14_5_15:
-        description: 'Build Android 14 5.15 kernel?'
-        required: true
-        type: boolean
-        default: true
-      build_a14_6_1:
-        description: 'Build Android 14 6.1 kernel?'
-        required: true
-        type: boolean
-        default: true
       make_release:
         description: 'Do you want to create a release?'
         required: true
@@ -73,7 +48,6 @@ jobs:
   build-kernel-a12-5-10:
     uses: ./.github/workflows/build-kernel-a12-5.10.yml
     secrets: inherit
-    if: ${{ inputs.build_a12_5_10 }}
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
@@ -83,7 +57,6 @@ jobs:
   build-kernel-a13-5-10:
     uses: ./.github/workflows/build-kernel-a13-5.10.yml
     secrets: inherit
-    if: ${{ inputs.build_a13_5_10 }}
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
@@ -93,7 +66,6 @@ jobs:
   build-kernel-a13-5-15:
     uses: ./.github/workflows/build-kernel-a13-5.15.yml
     secrets: inherit
-    if: ${{ inputs.build_a13_5_15 }}
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
@@ -103,7 +75,6 @@ jobs:
   build-kernel-a14-5-15:
     uses: ./.github/workflows/build-kernel-a14-5.15.yml
     secrets: inherit
-    if: ${{ inputs.build_a14_5_15 }}
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
@@ -113,7 +84,15 @@ jobs:
   build-kernel-a14-6-1:
     uses: ./.github/workflows/build-kernel-a14-6.1.yml
     secrets: inherit
-    if: ${{ inputs.build_a14_6_1 }}
+    with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
+      next_branch: ${{ inputs.next_branch }}
+      next_branch_other: ${{ inputs.next_branch_other }}
+
+  build-kernel-a14-6-6:
+    uses: ./.github/workflows/build-kernel-a14-6.6.yml
+    secrets: inherit
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
