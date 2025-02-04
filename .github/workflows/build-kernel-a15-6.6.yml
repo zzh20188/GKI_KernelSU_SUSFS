@@ -17,7 +17,7 @@ on:
         type: string
 
 jobs:
-  build-kernel-a14-6-1-kernelsu-susfs:
+  build-kernel-a15-6-6-kernelsu-susfs:
     runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
