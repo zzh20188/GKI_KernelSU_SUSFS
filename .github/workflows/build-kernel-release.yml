@@ -7,6 +7,11 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      make_release:
+        description: 'Do you want to create a release?'
+        required: true
+        type: boolean
+        default: false
       runner:
         description: "Choose runner"
         required: true
@@ -24,11 +29,6 @@ on:
           - thin
           - none
         default: thin
-      make_release:
-        description: 'Do you want to create a release?'
-        required: true
-        type: boolean
-        default: false
       next_branch:
         description: "Choose next branch"
         required: true
