@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - ubuntu-22.04
-          - ubuntu-local
+          - ubuntu-22.04-local
         default: ubuntu-22.04
       lto_type:
         description: "Choose LTO type (full will not run on basic runners)"
