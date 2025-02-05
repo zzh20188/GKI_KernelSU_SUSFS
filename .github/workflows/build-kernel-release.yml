@@ -70,7 +70,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      kernelsu_variant:: ${{ inputs.kernelsu_variant }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
       kernelsu_branch: ${{ inputs.kernelsu_branch }}
       kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
@@ -80,7 +80,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      kernelsu_variant:: ${{ inputs.kernelsu_variant }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
       kernelsu_branch: ${{ inputs.kernelsu_branch }}
       kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
@@ -90,7 +90,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      kernelsu_variant:: ${{ inputs.kernelsu_variant }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
       kernelsu_branch: ${{ inputs.kernelsu_branch }}
       kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
@@ -100,7 +100,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      kernelsu_variant:: ${{ inputs.kernelsu_variant }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
       kernelsu_branch: ${{ inputs.kernelsu_branch }}
       kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
@@ -110,7 +110,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      kernelsu_variant:: ${{ inputs.kernelsu_variant }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
       kernelsu_branch: ${{ inputs.kernelsu_branch }}
       kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
