@@ -229,7 +229,7 @@ jobs:
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "LTO TYPE: $lto_type" >> $GITHUB_ENV
+          echo "LTO TYPE: ${{ inputs.lto_type }}" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
           echo "KernelSU-Next: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
