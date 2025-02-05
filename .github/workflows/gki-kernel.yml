@@ -244,7 +244,7 @@ jobs:
           fi
 
       - name: Create Bootimgs Folder and Copy Images
-        if: ${{ inputs.android_version == 'android12' }}
+        if: ${{ inputs.android_version == 'android12' || inputs.android_version == 'android13' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           mkdir bootimgs
@@ -259,7 +259,7 @@ jobs:
           gzip -n -k -f -9 ./Image > ./Image.gz
 
       - name: Create Bootimgs Folder and Copy Images
-        if: ${{ inputs.android_version == 'android13' || inputs.android_version == 'android14' || inputs.android_version == 'android15' }}
+        if: ${{ inputs.android_version == 'android14' || inputs.android_version == 'android15' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           mkdir bootimgs
