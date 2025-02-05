@@ -29,7 +29,7 @@ on:
           - thin
           - none
         default: thin
-      kernelsu:
+      kernelsu_variant::
         description: "Choose KernelSU"
         required: true
         type: choice
@@ -39,7 +39,7 @@ on:
           - Placeholder
         default: Next
       kernelsu_branch:
-        description: "Choose next branch"
+        description: "Choose ksu branch"
         required: true
         type: choice
         options:
