@@ -112,7 +112,7 @@ jobs:
     env:
       REPO_OWNER: WildPlusKernel
       REPO_NAME: GKI_KernelSU_SUSFS
-      GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.5 *TEST BUILD*"
       RELEASE_NOTES: |
         This release contains KernelSU Next and SUSFS v1.5.5
