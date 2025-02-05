@@ -21,10 +21,13 @@ on:
       lto_type:
         required: true
         type: string
-      next_branch:
+      kernelsu_variant:
         required: true
         type: string
-      next_branch_other:
+      kernelsu_branch:
+        required: true
+        type: string
+      kernelsu_branch_other:
         required: false
         type: string
       
@@ -143,13 +146,28 @@ jobs:
           $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
 
       - name: Determine the branch for kernelsu
+        if: ${{ inputs.kernelsu-variant == 'Official' }}
         run: |
-          if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
+          if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
             echo "BRANCH=-" >> $GITHUB_ENV
-          elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" ]]; then
             echo "BRANCH=-s next" >> $GITHUB_ENV
-          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
-            echo "BRANCH=-s ${{ inputs.next_branch_other }}" >> $GITHUB_ENV
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Other" && -n "${{ inputs.kernelsu_branch_other }}" ]]; then
+            echo "BRANCH=-s ${{ inputs.kernelsu_branch_other }}" >> $GITHUB_ENV
+          else
+            echo "Error: Custom branch not provided for 'Other'" >&2
+            exit 1
+          fi
+
+      - name: Determine the branch for kernelsu-next
+        if: ${{ inputs.kernelsu_variant == 'Next' }}
+        run: |
+          if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
+            echo "BRANCH=-" >> $GITHUB_ENV
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" ]]; then
+            echo "BRANCH=-s next" >> $GITHUB_ENV
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Other" && -n "${{ inputs.kernelsu_branch_other }}" ]]; then
+            echo "BRANCH=-s ${{ inputs.kernelsu_branch_other }}" >> $GITHUB_ENV
           else
             echo "Error: Custom branch not provided for 'Other'" >&2
             exit 1
