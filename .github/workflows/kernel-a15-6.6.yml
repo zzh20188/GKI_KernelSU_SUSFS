@@ -9,6 +9,9 @@ on:
       lto_type:
         required: true
         type: string
+      kernelsu_variant:
+        required: true
+        type: string
       kernelsu_branch:
         required: true
         type: string
