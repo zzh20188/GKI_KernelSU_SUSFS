@@ -146,7 +146,7 @@ jobs:
           $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
 
       - name: Determine the branch for kernelsu
-        if: ${{ inputs.kernelsu-variant == 'Official' }}
+        if: ${{ inputs.kernelsu_variant == 'Official' }}
         run: |
           if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
             echo "BRANCH=-" >> $GITHUB_ENV
