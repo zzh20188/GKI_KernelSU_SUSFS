@@ -9,10 +9,10 @@ on:
       lto_type:
         required: true
         type: string
-      next_branch:
+      kernelsu_branch:
         required: true
         type: string
-      next_branch_other:
+      kernelsu_branch_other:
         required: false
         type: string
   
@@ -42,5 +42,5 @@ jobs:
       os_patch_level: ${{ matrix.os_patch_level }}
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      next_branch: ${{ inputs.next_branch }}
-      next_branch_other: ${{ inputs.next_branch_other }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
