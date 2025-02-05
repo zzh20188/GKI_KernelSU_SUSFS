@@ -139,7 +139,7 @@ jobs:
         -> https://github.com/rifsxd/KernelSU-Next
         
         Features:
-        [+] KernelSU-Next
+        [+] KernelSU
         [+] SUSFS v1.5.5
         [+] Wireguard Support
         [+] Maphide LineageOS Detections
@@ -169,21 +169,33 @@ jobs:
           echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Get commit hash or tag and generate URL for KernelSU-Next
+        if: ${{ inputs.kernelsu_variant == 'Next' }}
         run: |
-          REPO_URL="https://github.com/rifsxd/KernelSU-Next.git"
+          if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
+            echo "This is the Official variant"
+            REPO_URL="https://github.com/tiann/KernelSU.git"
+            REPO_URL2="tiann/KernelSU"
+          elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
+            echo "This is the Next variant"
+            REPO_URL="https://github.com/rifsxd/KernelSU-Next.git"
+            REPO_URL2="rifsxd/KernelSU-Next"
+          else
+            echo "Unknown variant"
+          fi
+          
           BRANCH="${{ env.KSU_BRANCH }}"
           
-          if [[ "$BRANCH" == "Stable" ]]; then
+          if [[ "$BRANCH" == "Stable" ||  ]]; then
             # Fetch the latest tag
             TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
             if [[ -z "$TAG" ]]; then
-              echo "Error: Could not fetch latest tag for KernelSU-Next" >&2
+              echo "Error: Could not fetch latest tag for KernelSU" >&2
               exit 1
             fi
             KSU_REF=$TAG
-            KSU_URL="https://github.com/rifsxd/KernelSU-Next/releases/tag/$TAG"
+            KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
 
-          elif [[ "$BRANCH" == "next" ]]; then
+          elif [[ "$BRANCH" == "Dev" ]]; then
             # Fetch the latest commit from "next" branch
             COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH | awk '{ print $1 }')
             if [[ -z "$COMMIT_HASH" ]]; then
@@ -191,14 +203,14 @@ jobs:
               exit 1
             fi
             KSU_REF=$COMMIT_HASH
-            KSU_URL="https://github.com/rifsxd/KernelSU-Next/commit/$COMMIT_HASH"
+            KSU_URL="https://github.com/$REPO_URL2/commit/$COMMIT_HASH"
 
           else
             # Fetch the specific tag for the custom branch
             TAG=$BRANCH
             if git ls-remote --tags $REPO_URL | grep -q "refs/tags/$TAG"; then
               KSU_REF=$TAG
-              KSU_URL="https://github.com/rifsxd/KernelSU-Next/releases/tag/$TAG"
+              KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
             else
               echo "Error: Specified tag '$TAG' not found in KernelSU-Next" >&2
               exit 1
@@ -208,8 +220,8 @@ jobs:
           # Echo the values to GitHub environment for later use
           echo "KSU_REF=$KSU_REF" >> $GITHUB_ENV
           echo "KSU_URL=$KSU_URL" >> $GITHUB_ENV
-          echo "KernelSU-Next Reference: $KSU_REF"
-          echo "KernelSU-Next URL: $KSU_URL"
+          echo "KernelSU Reference: $KSU_REF"
+          echo "KernelSU URL: $KSU_URL"
 
       - name: Get commit hashes and generate commit URLs
         run: |
@@ -247,7 +259,7 @@ jobs:
           echo "LTO TYPE: ${{ inputs.lto_type }}" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
-          echo "KernelSU-Next: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
+          echo "KernelSU-${{ inputs.kernelsu_variant }}-${{ inputs.kernelsu_branch }}: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
           echo "SUSFS4KSU:" >> $GITHUB_ENV
           echo "gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
