@@ -29,7 +29,7 @@ on:
           - thin
           - none
         default: thin
-      kernelsu_variant::
+      kernelsu_variant:
         description: "Choose KernelSU"
         required: true
         type: choice
