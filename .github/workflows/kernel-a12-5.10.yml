@@ -45,5 +45,6 @@ jobs:
       os_patch_level: ${{ matrix.os_patch_level }}
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
       kernelsu_branch: ${{ inputs.kernelsu_branch }}
       kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
