@@ -219,8 +219,13 @@ jobs:
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
           cd ./KernelSU
-          echo "Applying next SUSFS patches..."
-          patch -p1 --forward < 10_enable_susfs_for_ksu.patch          
+          
+        
+          # Apply SUSFS patch for KernelSU
+          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
+          #patch -p1 < susfs.patch
+          patch -p1 < mksu_susfs.patch
+
           
           patch -p1 < mksu_susfs.patch
 
