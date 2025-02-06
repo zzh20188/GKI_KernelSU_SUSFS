@@ -272,7 +272,7 @@ jobs:
             echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "MKSU Manager:" >> $GITHUB_ENV
-            echo "https://github.com/5ec1cff/KernelSU/tree/main" >> $GITHUB_ENV
+            echo "https://github.com/5ec1cff/KernelSU" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           else
             echo "Unknown variant"
