@@ -171,7 +171,7 @@ jobs:
             exit 1
           fi
 
-      - name: Add KernelSU
+      - name: Add KernelSU-Official
         if: ${{ inputs.kernelsu_variant == 'Official' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
@@ -180,7 +180,16 @@ jobs:
           echo "Adding KernelSU..."
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
 
-      - name: Add KernelSU
+      - name: Add KernelSU-Next
+        if: ${{ inputs.kernelsu_variant == 'Next' }}
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          cd "$CONFIG"
+
+          echo "Adding KernelSU..."
+          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash $BRANCH
+
+      - name: Add KernelSU-MKSU
         if: ${{ inputs.kernelsu_variant == 'MKSU' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
@@ -195,15 +204,6 @@ jobs:
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12063)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
-
-      - name: Add KernelSU
-        if: ${{ inputs.kernelsu_variant == 'Next' }}
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG"
-
-          echo "Adding KernelSU..."
-          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash $BRANCH
 
       - name: Apply SUSFS Patches KernelSU
         if: ${{ inputs.kernelsu_variant == 'Official' }}
