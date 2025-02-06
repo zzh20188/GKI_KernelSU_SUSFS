@@ -220,37 +220,8 @@ jobs:
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
           cd ./KernelSU
-
-
           echo "Applying SUSFS patches..."
           patch -p1 --forward < 10_enable_susfs_for_ksu.patch
-
-          # Change to common directory and apply SUSFS patch
-          cd ../common
-          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-
-      - name: Apply SUSFS Patches MagicKernelSU
-        if: ${{ inputs.kernelsu_variant == 'MKSU' }}
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG"
-
-          echo "Applying SUSFS patches..."
-
-          # Copy SUSFS patches
-          cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
-          cp ../kernel_patches/mksu_susfs.patch ./KernelSU/
-          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-
-          cd ./KernelSU
-
-
-          echo "Applying SUSFS patches..."
-          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-          echo "Applying mksu_susfs.patch"
-          patch -p1 < mksu_susfs.patch
 
           # Change to common directory and apply SUSFS patch
           cd ../common
@@ -273,6 +244,32 @@ jobs:
           echo "Applying next SUSFS patches..."
           cp ../../kernel_patches/KernelSU-Next-Implement-SUSFS-v1.5.5-Universal.patch ./
           patch -p1 --forward < KernelSU-Next-Implement-SUSFS-v1.5.5-Universal.patch || true
+
+          # Change to common directory and apply SUSFS patch
+          cd ../common
+          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+
+      - name: Apply SUSFS Patches MKSU
+        if: ${{ inputs.kernelsu_variant == 'MKSU' }}
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          cd "$CONFIG"
+
+          echo "Applying SUSFS patches..."
+
+          # Copy SUSFS patches
+          cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
+          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+
+          cd ./KernelSU
+          echo "Applying SUSFS patches..."
+          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
+          
+          echo "Applying mksu_susfs.patch"
+          cp ../kernel_patches/mksu_susfs.patch ./KernelSU/
+          patch -p1 < mksu_susfs.patch
 
           # Change to common directory and apply SUSFS patch
           cd ../common
