@@ -36,7 +36,7 @@ on:
         options:
           - Official
           - Next
-          - Placeholder
+          - MKSU
         default: Next
       kernelsu_branch:
         description: "Choose ksu branch"
@@ -134,9 +134,6 @@ jobs:
           
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
-
-        Non-Official Managers:
-        -> https://github.com/rifsxd/KernelSU-Next
         
         Features:
         [+] KernelSU
@@ -169,7 +166,6 @@ jobs:
           echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Get commit hash or tag and generate URL for KernelSU-Next
-        if: ${{ inputs.kernelsu_variant == 'Next' }}
         run: |
           if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "This is the Official variant"
@@ -179,6 +175,10 @@ jobs:
             echo "This is the Next variant"
             REPO_URL="https://github.com/rifsxd/KernelSU-Next.git"
             REPO_URL2="rifsxd/KernelSU-Next"
+          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
+            echo "This is the MKSU variant"
+            REPO_URL="https://github.com/5ec1cff/KernelSU.git"
+            REPO_URL2="5ec1cff/KernelSU"
           else
             echo "Unknown variant"
           fi
@@ -250,22 +250,52 @@ jobs:
               echo "COMMIT_URL_${var_name}=$COMMIT_URL" >> "$GITHUB_ENV"
             fi
           done
+
+      - name: Append Commit Hashes & Links to `RELEASE_NOTES` & Append KernelSU-Next Reference to `RELEASE_NOTES`
+        run: |
+          if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
+            echo "This is the Official variant"
+            echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+            echo "$RELEASE_NOTES" >> $GITHUB_ENV
+            echo "Official Manager:" >> $GITHUB_ENV
+            echo "https://github.com/tiann/KernelSU" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
+            echo "This is the Next variant"
+            echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+            echo "$RELEASE_NOTES" >> $GITHUB_ENV
+            echo "Next Manager:" >> $GITHUB_ENV
+            echo "https://github.com/rifsxd/KernelSU-Next" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
+            echo "This is the MKSU variant"
+            echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+            echo "$RELEASE_NOTES" >> $GITHUB_ENV
+            echo "MKSU Manager:" >> $GITHUB_ENV
+            echo "https://github.com/5ec1cff/KernelSU/tree/main" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "Unknown variant"
+          fi
           
       - name: Append Commit Hashes & Links to `RELEASE_NOTES` & Append KernelSU-Next Reference to `RELEASE_NOTES`
         run: |
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "LTO TYPE: ${{ inputs.lto_type }}" >> $GITHUB_ENV
+          echo "LTO: ${{ inputs.lto_type }}" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
-          echo "KernelSU-${{ inputs.kernelsu_variant }}-${{ inputs.kernelsu_branch }}: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
+          echo "KernelSU:" >> $GITHUB_ENV
+          echo "${{ inputs.kernelsu_variant }}-${{ inputs.kernelsu_branch }}: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
           echo "SUSFS4KSU:" >> $GITHUB_ENV
           echo "gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
           echo "gki-android14-5.15: [$COMMIT_HASH_gki_android14_5_15]($COMMIT_URL_gki_android14_5_15)" >> $GITHUB_ENV
           echo "gki-android14-6.1: [$COMMIT_HASH_gki_android14_6_1]($COMMIT_URL_gki_android14_6_1)" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           
       # Get the Latest Tag from GitHub
