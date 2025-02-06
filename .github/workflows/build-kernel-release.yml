@@ -131,9 +131,6 @@ jobs:
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.5 *TEST BUILD*"
       RELEASE_NOTES: |
         This release contains KernelSU Next and SUSFS v1.5.5
-          
-        Module: 
-        -> https://github.com/sidex15/ksu_module_susfs
         
         Features:
         [+] KernelSU
@@ -143,6 +140,9 @@ jobs:
         [+] Futile Maphide for jit-zygote-cache Detections
         [+] Magic Mount Support
 
+        Module: 
+        -> https://github.com/sidex15/ksu_module_susfs
+        
     steps:
       # Checkout the code
       - name: Checkout code
