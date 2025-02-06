@@ -148,7 +148,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Determine the branch for KernelSU-Next
+      - name: Determine the branch for KernelSU-${{ inputs.kernelsu_variant }}
         run: |
           # Determine the branch based on user input
           if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
@@ -165,7 +165,7 @@ jobs:
           # Store the selected branch in GITHUB_ENV
           echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
 
-      - name: Get commit hash or tag and generate URL for KernelSU-Next
+      - name: Get commit hash or tag and generate URL for KernelSU-${{ inputs.kernelsu_variant }}
         run: |
           if [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "This is the Official variant"
@@ -185,7 +185,7 @@ jobs:
           
           BRANCH="${{ env.KSU_BRANCH }}"
           
-          if [[ "$BRANCH" == "Stable" ||  ]]; then
+          if [[ "$BRANCH" == "Stable" ]]; then
             # Fetch the latest tag
             TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
             if [[ -z "$TAG" ]]; then
