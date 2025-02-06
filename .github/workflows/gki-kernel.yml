@@ -209,18 +209,6 @@ jobs:
           cd "$CONFIG"
 
           echo "Apply Addtional patches for MagicKernelSU..."
-          cp ../kernel_patches/patches/mksu_susfs.patch ./KernelSU/
-
-          cd ./KernelSU
-          patch -p1 < mksu_susfs.patch
-
-      - name: Apply Addtional Patches for MagicKernelSU
-        if: ${{inputs.kernelsu_variant == 'MKSU' }}
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG"
-
-          echo "Apply Addtional patches for MagicKernelSU..."
           cp ../kernel_patches_magic/patches/mksu_susfs.patch ./KernelSU/
 
           cd ./KernelSU
