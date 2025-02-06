@@ -107,7 +107,7 @@ jobs:
           # Clone repositories using the branch names
           git clone https://github.com/WildPlusKernel/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
-          git clone https://github.com/WildPlusKernel/kernel_patches.git
+          git clone https://github.com/MiRinChan/kernel_patches.git
 
       - name: Set CONFIG Environment Variable
         run: |
@@ -181,6 +181,19 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash $BRANCH
 
       - name: Add KernelSU
+        if: ${{ inputs.kernelsu_variant == 'MKSU' }}
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          cd "$CONFIG"
+
+          echo "Adding KernelSU..."
+          curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+          git revert -m 1 3a73585 -n
+          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12063)
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+          sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+
+      - name: Add KernelSU
         if: ${{ inputs.kernelsu_variant == 'Next' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
@@ -188,6 +201,18 @@ jobs:
 
           echo "Adding KernelSU..."
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash $BRANCH
+
+      - name: Apply Addtional Patches for MagicKernelSU
+        if: ${{inputs.kernelsu_variant == 'MKSU' }}
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          cd "$CONFIG"
+
+          echo "Apply Addtional patches for MagicKernelSU..."
+          cp ../kernel_patches/patches/mksu_susfs.patch ./KernelSU/
+
+          cd ./KernelSU
+          patch -p1 < mksu_susfs.patch
 
       - name: Apply Addtional Patches for MagicKernelSU
         if: ${{inputs.kernelsu_variant == 'MKSU' }}
