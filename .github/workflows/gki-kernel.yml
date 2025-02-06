@@ -188,6 +188,8 @@ jobs:
 
           echo "Adding KernelSU..."
           curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+
+          # Revert commit of remove pts_unix98_lookup_pre
           cd KernelSU
           git revert -m 1 3a73585 -n
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12063)
@@ -204,7 +206,31 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash $BRANCH
 
       - name: Apply SUSFS Patches KernelSU
-        if: ${{ inputs.kernelsu_variant == 'Official' || inputs.kernelsu_variant == 'MKSU' }}
+        if: ${{ inputs.kernelsu_variant == 'Official' }}
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          cd "$CONFIG"
+
+          echo "Applying SUSFS patches..."
+
+          # Copy SUSFS patches
+          cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
+          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+
+          cd ./KernelSU
+
+
+          echo "Applying SUSFS patches..."
+          patch -p1 --forward < 10_enable_susfs_for_ksu.patch
+
+          # Change to common directory and apply SUSFS patch
+          cd ../common
+          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+
+      - name: Apply SUSFS Patches MagicKernelSU
+        if: ${{ inputs.kernelsu_variant == 'MKSU' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -219,15 +245,12 @@ jobs:
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
           cd ./KernelSU
-          
-        
-          # Apply SUSFS patch for KernelSU
-          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-          echo "Appling susfs.patch"
-          patch -p1 < mksu_susfs.patch
 
-          
-          
+
+          echo "Applying SUSFS patches..."
+          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
+          echo "Applying mksu_susfs.patch"
+          patch -p1 < mksu_susfs.patch
 
           # Change to common directory and apply SUSFS patch
           cd ../common
