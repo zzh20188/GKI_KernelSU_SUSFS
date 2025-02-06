@@ -223,11 +223,11 @@ jobs:
         
           # Apply SUSFS patch for KernelSU
           patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-          #patch -p1 < susfs.patch
+          echo "Appling susfs.patch"
           patch -p1 < mksu_susfs.patch
 
           
-          patch -p1 < mksu_susfs.patch
+          
 
           # Change to common directory and apply SUSFS patch
           cd ../common
