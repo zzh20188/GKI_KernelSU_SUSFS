@@ -203,18 +203,6 @@ jobs:
           echo "Adding KernelSU..."
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash $BRANCH
 
-      - name: Apply Addtional Patches for MagicKernelSU
-        if: ${{inputs.kernelsu_variant == 'MKSU' }}
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG"
-
-          echo "Apply Addtional patches for MagicKernelSU..."
-          cp ../kernel_patches/mksu_susfs.patch ./KernelSU/
-
-          cd ./KernelSU
-          patch -p1 < mksu_susfs.patch
-
       - name: Apply SUSFS Patches KernelSU
         if: ${{ inputs.kernelsu_variant == 'Official' || inputs.kernelsu_variant == 'MKSU' }}
         run: |
@@ -226,12 +214,15 @@ jobs:
           # Copy SUSFS patches
           cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
+          cp ../kernel_patches/mksu_susfs.patch ./KernelSU/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
           cd ./KernelSU
           echo "Applying next SUSFS patches..."
           patch -p1 --forward < 10_enable_susfs_for_ksu.patch          
+          
+          patch -p1 < mksu_susfs.patch
 
           # Change to common directory and apply SUSFS patch
           cd ../common
