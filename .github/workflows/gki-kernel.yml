@@ -268,7 +268,7 @@ jobs:
           patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
           
           echo "Applying mksu_susfs.patch"
-          cp ../kernel_patches/mksu_susfs.patch ./KernelSU/
+          cp ../../kernel_patches/mksu_susfs.patch ../KernelSU/
           patch -p1 < mksu_susfs.patch
 
           # Change to common directory and apply SUSFS patch
