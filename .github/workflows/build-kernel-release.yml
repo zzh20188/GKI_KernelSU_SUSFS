@@ -258,21 +258,21 @@ jobs:
             echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "Official Manager:" >> $GITHUB_ENV
-            echo "https://github.com/tiann/KernelSU" >> $GITHUB_ENV
+            echo "-> https://github.com/tiann/KernelSU" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "This is the Next variant"
             echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "Next Manager:" >> $GITHUB_ENV
-            echo "https://github.com/rifsxd/KernelSU-Next" >> $GITHUB_ENV
+            echo "-> https://github.com/rifsxd/KernelSU-Next" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
             echo "This is the MKSU variant"
             echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "MKSU Manager:" >> $GITHUB_ENV
-            echo "https://github.com/5ec1cff/KernelSU" >> $GITHUB_ENV
+            echo "-> https://github.com/5ec1cff/KernelSU" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           else
             echo "Unknown variant"
