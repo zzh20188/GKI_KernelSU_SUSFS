@@ -61,13 +61,38 @@ jobs:
 
           echo "CONFIG set to: $CONFIG"
 
-      - name: Download prebuilt toolchain
+      #- name: Download prebuilt toolchain
+      #  run: |
+      #    AOSP_MIRROR=https://android.googlesource.com
+      #    BRANCH=main-kernel-build-2024
+      #    git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
+      #    git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
+#
+#          echo "AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool" >> $GITHUB_ENV
+#          echo "MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py" >> $GITHUB_ENV
+#          echo "UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py" >> $GITHUB_ENV
+
+      - name: Cache prebuilt toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            kernel-build-tools
+            mkbootimg
+          key: toolchain-${{ runner.os }}-${{ hashFiles('**/workflow.yml') }}
+          restore-keys: |
+            toolchain-${{ runner.os }}-
+
+      - name: Download prebuilt toolchain (if cache is missing)
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-build-2024
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
 
+      - name: Set environment variables
+        run: |
           echo "AVBTOOL=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin/avbtool" >> $GITHUB_ENV
           echo "MKBOOTIMG=$GITHUB_WORKSPACE/mkbootimg/mkbootimg.py" >> $GITHUB_ENV
           echo "UNPACK_BOOTIMG=$GITHUB_WORKSPACE/mkbootimg/unpack_bootimg.py" >> $GITHUB_ENV
