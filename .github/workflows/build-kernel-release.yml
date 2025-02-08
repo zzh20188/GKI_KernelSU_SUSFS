@@ -299,6 +299,8 @@ jobs:
           
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
             # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
             LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
