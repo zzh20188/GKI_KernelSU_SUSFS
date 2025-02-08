@@ -338,6 +338,7 @@ jobs:
       - name: Multi-line multi-command Test (Fix for random build errors)
         uses: nick-fields/retry@v3
         with:
+          timeout_minutes: 120
           max_attempts: 2
           command: |
             if [ -f "build/build.sh" ]; then
