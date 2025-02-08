@@ -224,11 +224,11 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
 
           # Revert commit of remove pts_unix98_lookup_pre
-          #cd KernelSU
-          #git revert -m 1 3a73585 -n
-          #KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12063)
-          #echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-          #sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+          cd KernelSU
+          git revert -m 1 36120da -n
+          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12063)
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+          sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
 
       - name: Apply SUSFS Patches KernelSU
         if: ${{ inputs.kernelsu_variant == 'Official' }}
