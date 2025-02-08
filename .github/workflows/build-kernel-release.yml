@@ -185,7 +185,7 @@ jobs:
           
           BRANCH="${{ env.KSU_BRANCH }}"
           
-          if [[ "$BRANCH" == "Stable" ]]; then
+          if [[ "$BRANCH" == "Stable" && "${{ inputs.kernelsu_variant }}" != "MKSU" ]]; then
             # Fetch the latest tag
             TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
             if [[ -z "$TAG" ]]; then
@@ -195,7 +195,7 @@ jobs:
             KSU_REF=$TAG
             KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
 
-          elif [[ "$BRANCH" == "Dev" ]]; then
+          elif [[ "$BRANCH" == "Dev" || "${{ inputs.kernelsu_variant }}" == "MKSU" ]]; then
             # Fetch the latest commit from "next" branch
             COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH | awk '{ print $1 }')
             if [[ -z "$COMMIT_HASH" ]]; then
