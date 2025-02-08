@@ -305,7 +305,7 @@ jobs:
             # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
             LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.5.4-0"
+              LATEST_TAG="v1.5.5-0"
             fi
             
             NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
