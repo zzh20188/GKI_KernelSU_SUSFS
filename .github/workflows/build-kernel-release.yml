@@ -11,7 +11,7 @@ on:
         description: 'Do you want to create a release?'
         required: true
         type: boolean
-        default: false
+        default: true
       runner:
         description: "Choose runner"
         required: true
