@@ -133,7 +133,7 @@ jobs:
         This release contains KernelSU ${{ inputs.kernelsu_variant }} and SUSFS v1.5.5
         
         Features:
-        [+] KernelSU
+        [+] KernelSU-${{ inputs.kernelsu_variant }}
         [+] SUSFS v1.5.5
         [+] Wireguard Support
         [+] Maphide LineageOS Detections
