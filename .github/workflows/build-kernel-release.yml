@@ -136,7 +136,7 @@ jobs:
         [+] KernelSU-${{ inputs.kernelsu_variant }}
         [+] SUSFS ඞ v1.5.5 
         [+] Wireguard Support
-        [+] Maphide LineageOS Detections
+        [+] Simple Maphide for LineageOS Detections
         [+] Futile Maphide for jit-zygote-cache Detections
         [+] Magic Mount Support
 
@@ -305,10 +305,10 @@ jobs:
             # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
             LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.5.5-0"
+              LATEST_TAG="v1.5.5-r0"
             fi
             
-            NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
+            NEW_TAG=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-r%d", $1, suffix}')
     
             # Output the new tag to be used
             echo "New tag: $NEW_TAG"
