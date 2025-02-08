@@ -1,5 +1,9 @@
 name: GKI Kernel Build
 
+permissions:
+  contents: write
+  actions: write
+
 on:
   workflow_call: # This allows this workflow to be called from another workflow
     inputs:
