@@ -184,31 +184,29 @@ jobs:
             echo "Unknown variant"
           fi
           
-          BRANCH="${{ env.KSU_BRANCH }}"
-          
-          if [[ "$BRANCH" == "Stable" && "${{ inputs.kernelsu_variant }}" != "MKSU" ]]; then
+          if [[ "${{ inputs.kernelsu_branch }}" == "Stable" && "${{ inputs.kernelsu_variant }}" != "MKSU" ]]; then
             # Fetch the latest tag
             TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
             if [[ -z "$TAG" ]]; then
-              echo "Error: Could not fetch latest tag for KernelSU" >&2
+              echo "Error: Could not fetch latest tag for Stable" >&2
               exit 1
             fi
             KSU_REF=$TAG
             KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
 
-          elif [[ "$BRANCH" == "Dev" || "${{ inputs.kernelsu_variant }}" == "MKSU" ]]; then
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" || "${{ inputs.kernelsu_variant }}" == "MKSU" ]]; then
             # Fetch the latest commit from "next" branch
-            COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH | awk '{ print $1 }')
+            COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$KSU_BRANCH | awk '{ print $1 }')
             if [[ -z "$COMMIT_HASH" ]]; then
-              echo "Error: Could not fetch latest commit for KernelSU-Next Dev" >&2
+              echo "Error: Could not fetch latest commit for Dev" >&2
               exit 1
             fi
             KSU_REF=$COMMIT_HASH
             KSU_URL="https://github.com/$REPO_URL2/commit/$COMMIT_HASH"
 
           else
-            # Fetch the specific tag for the custom branch
-            TAG=$BRANCH
+            # Fetch the specific tag
+            TAG=${{ inputs.kernelsu_branch_other }}
             if git ls-remote --tags $REPO_URL | grep -q "refs/tags/$TAG"; then
               KSU_REF=$TAG
               KSU_URL="https://github.com/$REPO_URL2/releases/tag/$TAG"
