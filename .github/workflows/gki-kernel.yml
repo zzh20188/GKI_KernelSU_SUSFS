@@ -65,10 +65,6 @@ jobs:
 
           echo "CONFIG set to: $CONFIG"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
       - name: Set up cache for toolchain
         uses: actions/cache@v4
         id: cache-toolchain
