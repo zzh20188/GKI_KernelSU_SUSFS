@@ -355,7 +355,7 @@ jobs:
       - name: Multi-line multi-command Test
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 120
           max_attempts: 2
           command: |
             echo "Changing to configuration directory: $CONFIG..."
