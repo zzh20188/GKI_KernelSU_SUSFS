@@ -133,12 +133,12 @@ jobs:
         This release contains KernelSU ${{ inputs.kernelsu_variant }} and SUSFS v1.5.5
         
         Features:
-        [+] KernelSU-${{ inputs.kernelsu_variant }}
-        [+] SUSFS ඞ v1.5.5 
-        [+] Wireguard Support
-        [+] Simple Maphide for LineageOS Detections
-        [+] Futile Maphide for jit-zygote-cache Detections
-        [+] Magic Mount Support
+        -> KernelSU-${{ inputs.kernelsu_variant }}
+        -> SUSFS ඞ v1.5.5 
+        -> Wireguard Support
+        -> Simple Maphide for LineageOS Detections
+        -> Futile Maphide for jit-zygote-cache Detections
+        -> Magic Mount Support
 
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
