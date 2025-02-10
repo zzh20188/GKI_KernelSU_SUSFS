@@ -284,7 +284,7 @@ jobs:
           echo "" >> $GITHUB_ENV
           echo "LTO: ${{ inputs.lto_type }}" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "Commit Hashes & Links:" >> $GITHUB_ENV
+          echo "Commit Hashes and Links:" >> $GITHUB_ENV
           echo "KernelSU:" >> $GITHUB_ENV
           echo "${{ inputs.kernelsu_variant }}-${{ inputs.kernelsu_branch }}: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
           echo "SUSFS4KSU:" >> $GITHUB_ENV
@@ -363,4 +363,7 @@ jobs:
           curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
             -d "chat_id=$TELEGRAM_CHAT_ID" \
             -d "message_thread_id=$TELEGRAM_MESSAGE_THREAD_ID" \
-            -d "text=Latest release: https://github.com/WildPlusKernel/GKI_KernelSU_SUSFS/releases/tag/${{ env.NEW_TAG }}"
+            -d "text=Latest release: 
+            https://github.com/WildPlusKernel/GKI_KernelSU_SUSFS/releases/tag/${{ env.NEW_TAG }}
+            
+            ${{ env.RELEASE_NOTES }}"
