@@ -1,4 +1,4 @@
-name: Build Android 12 5.10 GKI Kernels
+name: Android 12 5.10
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
