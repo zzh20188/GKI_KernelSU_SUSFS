@@ -16,5 +16,5 @@ jobs:
             -d "chat_id=$TELEGRAM_CHAT_ID" \
             -d "message_thread_id=$TELEGRAM_MESSAGE_THREAD_ID" \
             -d "text=TEST
-            test
-            test33"
+          test
+          test33"
