@@ -65,6 +65,10 @@ jobs:
 
           echo "CONFIG set to: $CONFIG"
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
       - name: Set up cache for toolchain
         uses: actions/cache@v4
         id: cache-toolchain
@@ -74,13 +78,19 @@ jobs:
             mkbootimg
           key: toolchain-${{ runner.os }}-v1
 
-      - name: Restore prebuilt toolchain from cache (if available)
-        if: steps.cache-toolchain.outputs.cache-hit == 'true'
+      - name: Check if toolchain is already cached or exists
+        id: check-toolchain
         run: |
-          echo "Toolchain restored from cache."
+          if [ -d "./kernel-build-tools" ] && [ -d "./mkbootimg" ]; then
+            echo "Toolchain already exists. Skipping download."
+            echo "cache-hit=true" >> $GITHUB_ENV
+          else
+            echo "Toolchain not found. Will download."
+            echo "cache-hit=false" >> $GITHUB_ENV
+          fi
 
-      - name: Use prebuilt toolchain (if cache is missing, download)
-        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+      - name: Download prebuilt toolchain (if cache is missing)
+        if: env.cache-hit == 'false'
         run: |
           AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-build-2024
@@ -93,6 +103,15 @@ jobs:
           mv $TEMP_DIR/mkbootimg ./mkbootimg
 
           rm -rf $TEMP_DIR
+
+      - name: Save toolchain to cache
+        if: env.cache-hit == 'false'
+        uses: actions/cache@v4
+        with:
+          path: |
+            kernel-build-tools
+            mkbootimg
+          key: toolchain-${{ runner.os }}-v1
 
       - name: Set environment variables
         run: |
