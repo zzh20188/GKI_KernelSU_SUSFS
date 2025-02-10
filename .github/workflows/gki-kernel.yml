@@ -65,49 +65,22 @@ jobs:
 
           echo "CONFIG set to: $CONFIG"
 
-      - name: Set up cache for toolchain
+      - name: Cache toolchain
         uses: actions/cache@v4
-        id: cache-toolchain
         with:
           path: |
             kernel-build-tools
             mkbootimg
           key: toolchain-${{ runner.os }}-v1
 
-      - name: Check if toolchain is already cached or exists
-        id: check-toolchain
-        run: |
-          if [ -d "./kernel-build-tools" ] && [ -d "./mkbootimg" ]; then
-            echo "Toolchain already exists. Skipping download."
-            echo "cache-hit=true" >> $GITHUB_ENV
-          else
-            echo "Toolchain not found. Will download."
-            echo "cache-hit=false" >> $GITHUB_ENV
-          fi
-
-      - name: Download prebuilt toolchain (if cache is missing)
-        if: env.cache-hit == 'false'
+      # Step 2: Download toolchain if cache was not found
+      - name: Download toolchain (if cache not found)
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-build-2024
-          TEMP_DIR=$(mktemp -d)
-
-          git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 $TEMP_DIR/kernel-build-tools
-          git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 $TEMP_DIR/mkbootimg
-
-          mv $TEMP_DIR/kernel-build-tools ./kernel-build-tools
-          mv $TEMP_DIR/mkbootimg ./mkbootimg
-
-          rm -rf $TEMP_DIR
-
-      - name: Save toolchain to cache
-        if: env.cache-hit == 'false'
-        uses: actions/cache@v4
-        with:
-          path: |
-            kernel-build-tools
-            mkbootimg
-          key: toolchain-${{ runner.os }}-v1
+          git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
+          git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
 
       - name: Set environment variables
         run: |
