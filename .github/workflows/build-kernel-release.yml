@@ -128,12 +128,12 @@ jobs:
       REPO_OWNER: WildPlusKernel
       REPO_NAME: GKI_KernelSU_SUSFS
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU ${{ inputs.kernelsu_variant }} & SUSFS v1.5.5 *TEST BUILD*"
+      RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU-${{ inputs.kernelsu_variant }} ${{ inputs.kernelsu_branch }} & SUSFS v1.5.5 *TEST BUILD*"
       RELEASE_NOTES: |
-        This release contains KernelSU ${{ inputs.kernelsu_variant }} and SUSFS v1.5.5
+        This release contains KernelSU-${{ inputs.kernelsu_variant }} ${{ inputs.kernelsu_branch }} and SUSFS v1.5.5
         
         Features:
-        -> KernelSU-${{ inputs.kernelsu_variant }}
+        -> KernelSU-${{ inputs.kernelsu_variant }}-${{ inputs.kernelsu_branch }}
         -> SUSFS ඞ v1.5.5 
         -> Wireguard Support
         -> Simple Maphide for LineageOS Detections
