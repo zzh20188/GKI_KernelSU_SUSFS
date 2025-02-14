@@ -1,4 +1,7 @@
 name: Android 12 5.10
+permissions:
+  contents: write  # Allow writing to repository contents (for pushing tags)
+  actions: write   # Allows triggering actions
 
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
