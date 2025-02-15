@@ -255,21 +255,21 @@ jobs:
           cd "$CONFIG/common"
 
           if [ "${{ inputs.kernel_version }}" == "5.10" || "${{ inputs.kernel_version }}" == "5.15" ]; then
-            cp ../../patches/legacy/linux-5.15-bore/0001-linux5.15.y-bore5.1.0.patch ./
-            cp ../../patches/legacy/linux-5.15-bore/0002-constgran-vanilla-max.patch ./
+            cp ../../bore-scheduler/patches/legacy/linux-5.15-bore/0001-linux5.15.y-bore5.1.0.patch ./
+            cp ../../bore-scheduler/patches/legacy/linux-5.15-bore/0002-constgran-vanilla-max.patch ./
             echo "Patch1"
             patch -p1 -F 3 < 0001-linux5.15.y-bore5.1.0.patch
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max.patch
           elif [ "${{ inputs.kernel_version }}" == "6.1" ]; then
-            cp ../../patches/legacy/linux-6.1-bore/0001-linux6.1.y-bore5.1.0.patch ./
-            cp ../../patches/legacy/linux-6.1-bore/0002-constgran-vanilla-max.patch ./
+            cp ../../bore-scheduler/patches/legacy/linux-6.1-bore/0001-linux6.1.y-bore5.1.0.patch ./
+            cp ../../bore-scheduler/patches/legacy/linux-6.1-bore/0002-constgran-vanilla-max.patch ./
             echo "Patch1"
             patch -p1 -F 3 < 0001-linux6.1.y-bore5.1.0.patch
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max.patch
           elif [ "${{ inputs.kernel_version }}" == "6.6" ]; then
-            cp ../../patches/stable/linux-6.6-bore/0001-linux6.6.67-bore5.9.6.patch ./
+            cp ../../bore-scheduler/patches/stable/linux-6.6-bore/0001-linux6.6.67-bore5.9.6.patch ./
             echo "Patch1"
             patch -p1 -F 3 < 0001-linux6.6.67-bore5.9.6.patch
           fi
