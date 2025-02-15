@@ -91,7 +91,7 @@ This helps me alot! <3
 
 [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git) - Created SUSFS!  
 [sidex15](https://github.com/sidex15) - Created module!  
-[backslashxx](https://github.com/backslashxx) - Helped with patches!
+[backslashxx](https://github.com/backslashxx) - Helped with patches!  
 [Teemo](https://github.com/liqideqq) - Helped with patches!  
 [幕落](https://github.com/MuLuo688) - Donation!
 
