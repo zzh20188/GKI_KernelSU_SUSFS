@@ -37,7 +37,7 @@ Follow the steps for GKI:
 [Installation](https://kernelsu.org/guide/installation.html)
 
 To get boot.img format:  
-[Telegram Bot](https://t.me/wildpluskernel/22076)
+[Telegram Bot](https://t.me/wildpluskernel/22076)  
 [Get MyKernel Format](https://github.com/TheWildJames/Get_My_Kernel_Format)
 
 ---
