@@ -255,12 +255,13 @@ jobs:
           cd "$CONFIG/common"
 
           if [[ "${{ inputs.kernel_version }}" == "5.10" || ( "${{ inputs.kernel_version }}" == "5.15" && "${{ inputs.android_version }}" == "android13" ) ]]; then
-            cp ../../bore-scheduler/patches/legacy/linux-5.4-bore/0001-linux5.4.y-bore5.1.0.patch ./
+            cp ../../kernel_patches/0001-linux5.10.y-bore5.1.0.patch ./
             cp ../../kernel_patches/0002-constgran-vanilla-max-android-5.10.patch ./
             echo "Patch1"
-            patch -p1 -F 3 < 0001-linux5.4.y-bore5.1.0.patch
+            patch -p1 -F 3 < 0001-linux5.15.y-bore5.1.0.patch
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max-android-5.10.patch
+          
           elif [[ "${{ inputs.kernel_version }}" == "5.15" && "${{ inputs.android_version }}" == "android14" && "${{ inputs.sub_level }}" < "144" ]]; then
             cp ../../kernel_patches/0001-linux5.15.y-bore5.1.0.patch ./
             cp ../../kernel_patches/0002-constgran-vanilla-max-android-5.10.patch ./
@@ -268,6 +269,7 @@ jobs:
             patch -p1 -F 3 < 0001-linux5.15.y-bore5.1.0.patch
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max-android-5.10.patch
+          
           elif [[ "${{ inputs.kernel_version }}" == "5.15" ]]; then
             cp ../../kernel_patches/0001-linux5.15.y-bore5.1.0.patch ./
             cp ../../kernel_patches/0002-constgran-vanilla-max-android-5.15.patch ./
@@ -275,6 +277,7 @@ jobs:
             patch -p1 -F 3 < 0001-linux5.15.y-bore5.1.0.patch
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max-android-5.15.patch
+          
           elif [[ "${{ inputs.kernel_version }}" == "6.1" ]]; then
             cp ../../bore-scheduler/patches/legacy/linux-6.1-bore/0001-linux6.1.y-bore5.1.0.patch ./
             cp ../../kernel_patches/0002-constgran-vanilla-max-android.patch ./
@@ -282,6 +285,7 @@ jobs:
             patch -p1 -F 3 < 0001-linux6.1.y-bore5.1.0.patch
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max-android.patch
+          
           elif [[ "${{ inputs.kernel_version }}" == "6.6" ]]; then
             cp ../../bore-scheduler/patches/stable/linux-6.6-bore/0001-linux6.6.67-bore5.9.6.patch ./
             echo "Patch1"
