@@ -259,6 +259,10 @@ jobs:
             cp ../../kernel_patches/0002-constgran-vanilla-max-android.patch ./
             echo "Patch1"
             patch -p1 -F 3 < 0001-linux5.15.y-bore5.1.0.patch
+            sed -i '/if (!entity_is_task(se)) return;/{
+            N
+            s/\(if (!entity_is_task(se)) return;\)\n\(.*task_of(se);\)/\2\n\1/
+            }' kernel/sched/fair.c
             echo "Patch2"
             patch -p1 -F 3 < 0002-constgran-vanilla-max-android.patch
           elif [[ "${{ inputs.kernel_version }}" == "6.1" ]]; then
