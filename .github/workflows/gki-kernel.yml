@@ -233,8 +233,6 @@ jobs:
           # Change to common directory and apply common SUSFS patch
           cd ../common
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-          cd ../KernelSU
-          patch -p1 < fix.patch
           
       - name: Apply Hide Stuff Patches
         run: |
