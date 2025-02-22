@@ -200,7 +200,6 @@ jobs:
           
           # Copy SUSFS patches
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
-          cp ../kernel_patches/fix.patch ./KernelSU/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
@@ -223,6 +222,9 @@ jobs:
             echo "Applying MKSU specific SUSFS patch..."
             cp ../../kernel_patches/mksu_susfs.patch ../KernelSU/
             patch -p1 < mksu_susfs.patch
+            cp ../../kernel_patches/fix.patch ./KernelSU/
+            patch -p1 < fix.patch
+            
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
