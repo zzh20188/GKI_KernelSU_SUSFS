@@ -85,7 +85,6 @@ Flashing this kernel will void your warranty, and there is always a risk of bric
 
 [Telegram](https://t.me/TheWildJames) NO DMS PLEASE! Ask in chat below!  
 [Telegram Group](https://t.me/wildpluskernel)  
-[Build Scripts](https://github.com/TheWildJames/kernel_build_scripts)
 
 # Special thanks to the following people for their contributions!
 This helps me alot! <3
