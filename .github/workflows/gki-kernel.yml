@@ -299,7 +299,7 @@ jobs:
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
-      - name: Build the Kernel
+      - name: Config Kernel Name
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -320,7 +320,7 @@ jobs:
             #tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
           fi
           
-      - name: Multi-line multi-command Test
+      - name: Build the Kernel
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 60
