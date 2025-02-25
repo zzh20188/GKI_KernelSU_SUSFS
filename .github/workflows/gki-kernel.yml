@@ -309,6 +309,7 @@ jobs:
           max_attempts: 3
           retry_on: timeout
           command: |
+            cd "$CONFIG"
             echo "Building the kernel..."
             if [ -f "build/build.sh" ]; then
               LTO=${{ inputs.lto_type }} BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
