@@ -174,8 +174,8 @@ jobs:
             REPO_URL2="tiann/KernelSU"
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "This is the Next variant"
-            REPO_URL="https://github.com/rifsxd/KernelSU-Next.git"
-            REPO_URL2="rifsxd/KernelSU-Next"
+            REPO_URL="https://github.com/KernelSU-Next/KernelSU-Next.git"
+            REPO_URL2="KernelSU-Next/KernelSU-Next"
           elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
             echo "This is the MKSU variant"
             REPO_URL="https://github.com/5ec1cff/KernelSU.git"
@@ -264,7 +264,7 @@ jobs:
             echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "Next Manager:" >> $GITHUB_ENV
-            echo "-> https://github.com/rifsxd/KernelSU-Next" >> $GITHUB_ENV
+            echo "-> https://github.com/KernelSU-Next/KernelSU-Next" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
             echo "This is the MKSU variant"
