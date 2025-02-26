@@ -40,6 +40,10 @@ on:
 jobs:
   build-kernel-kernelsu-susfs:
     runs-on: ${{ inputs.runner }}
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
 
     steps:
       - name: Maximize build space
@@ -74,14 +78,25 @@ jobs:
           key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}
           max-size: 2G
 
-      - name: Cache toolchain
-        id: cache-toolchain
+      # Install ccache
+      - name: Install ccache
+        run: sudo apt update && sudo apt install -y ccache
+
+      # Cache the ccache directory
+      - name: Cache ccache
+        id: ccache-cache
         uses: actions/cache@v4
         with:
-          path: |
-            kernel-build-tools
-            mkbootimg
-          key: toolchain-${{ runner.os }}-v1
+          path: ~/.ccache
+          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-
+
+      # Configure ccache (optional)
+      - name: Configure ccache
+        run: |
+          ccache --max-size=2G
+          ccache --set-config=compression=true
 
       # Step 2: Download toolchain if cache was not found
       - name: Download toolchain (if cache not found)
@@ -319,13 +334,12 @@ jobs:
             sed -E -i '/^CONFIG_LOCALVERSION=/ s/(.*)"$/\1-Wild+"/' ./common/arch/arm64/configs/gki_defconfig
             #tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
           fi
-          
-      - name: Build the Kernel
-        uses: nick-fields/retry@v3
+
+      - name: Build Kernel
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          timeout_minutes: 60
-          max_attempts: 3
-          command: |
+          action: owner/action-repo@version
+          with: |
             cd "$CONFIG"
             echo "Building the kernel..."
             if [ -f "build/build.sh" ]; then
