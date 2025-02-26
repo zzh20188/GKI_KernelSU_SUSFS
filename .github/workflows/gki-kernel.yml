@@ -250,7 +250,7 @@ jobs:
           cd ../common
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
 
-      - name: Apply Hide Stuff Patches
+      - name: Apply New Hooks Patches
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG/common"
@@ -331,9 +331,11 @@ jobs:
       - name: Build with retry
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 60
+          timeout_minutes: 30
           max_attempts: 3
           command: |
+            set -e
+            set -x
             cd "$CONFIG"
             echo "Building the kernel..."
             if [ -f "build/build.sh" ]; then
