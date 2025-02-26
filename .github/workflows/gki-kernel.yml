@@ -325,7 +325,6 @@ jobs:
         with:
           timeout_minutes: 60
           max_attempts: 3
-          retry_on: timeout
           command: |
             cd "$CONFIG"
             echo "Building the kernel..."
