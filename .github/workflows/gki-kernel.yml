@@ -309,11 +309,14 @@ jobs:
       - name: Config Kernel Name
         if: ${{ inputs.android_version != 'android15' }}
         run: |
-          cd "$CONFIG"
+          cd "$CONFIG/common"
           # Add bbrv3 config setting
-          cp ../kernel_patches/bbr/tcp_bbr.c ./common/net/ipv4/
-          echo "CONFIG_TCP_CONG_BBR=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_NET_SCH_FQ=y" >> ./common/arch/arm64/configs/gki_defconfig
+          cp ../../kernel_patches/bbr/tcp_bbr.c ./net/ipv4/
+          cp ../../kernel_patches/bbr/bbrv3.patch ./
+          patch -p1 -F 3 < bbrv3.patch
+          
+          echo "CONFIG_TCP_CONG_BBR=y" >> ./arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_FQ=y" >> ./arch/arm64/configs/gki_defconfig
 
       - name: Config Kernel Name
         run: |
