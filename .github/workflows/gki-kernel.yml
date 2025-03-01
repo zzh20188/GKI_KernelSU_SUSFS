@@ -312,8 +312,8 @@ jobs:
           cd "$CONFIG/common"
           # Add bbrv3 config setting
           cp ../../kernel_patches/bbr/tcp_bbr.c ./net/ipv4/
-          cp ../../kernel_patches/bbr/bbrv3.patch ./
-          patch -p1 -F 3 < bbrv3.patch
+          cp ../../kernel_patches/bbr/bbrv3-5.15+.patch ./
+          patch -p1 -F 3 < bbrv3-5.15+.patch
           
           echo "CONFIG_TCP_CONG_BBR=y" >> ./arch/arm64/configs/gki_defconfig
           echo "CONFIG_NET_SCH_FQ=y" >> ./arch/arm64/configs/gki_defconfig
