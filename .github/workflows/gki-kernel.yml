@@ -307,6 +307,7 @@ jobs:
           sed -i 's/check_defconfig//' ./common/build.config.gki
       
       - name: Config Kernel Name
+        if: ${{ inputs.android_version != 'android15' }}
         run: |
           cd "$CONFIG"
           # Add bbrv3 config setting
