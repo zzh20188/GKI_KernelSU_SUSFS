@@ -364,6 +364,7 @@ jobs:
         with:
           timeout_minutes: 30
           max_attempts: 3
+          retry_on: timeout
           command: |
             set -e
             set -x
