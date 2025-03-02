@@ -115,6 +115,7 @@ jobs:
 
         Notes:
         -> SUS SU Mode 2 will show as disabled or not compatble due to non-kprobe hooks and is not needed anymore!
+        -> Kernel Flasher is broken with latest susfs, try https://github.com/libxzr/HorizonKernelFlasher!
 
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
