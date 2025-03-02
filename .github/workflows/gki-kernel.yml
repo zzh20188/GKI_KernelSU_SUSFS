@@ -330,7 +330,7 @@ jobs:
         run: |
           cd "$CONFIG/common"
           # Add bbrv3 config setting
-          cp ../../kernel_patches/bbr/tcp_bbr.c ./net/ipv4/
+          #cp ../../kernel_patches/bbr/tcp_bbr.c ./net/ipv4/
 
           cd ..
           echo "CONFIG_TCP_CONG_ADVANCED=y" >> ./common/arch/arm64/configs/gki_defconfig 
