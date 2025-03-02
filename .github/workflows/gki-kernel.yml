@@ -309,13 +309,34 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
 
-          # Add additional tmpfs config setting
+          # Add additional config setting
           echo "CONFIG_IP_NF_TARGET_TTL=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP6_NF_TARGET_HL=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP6_NF_MATCH_HL=y" >> ./common/arch/arm64/configs/gki_defconfig
 
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
+      
+      - name: Config Kernel Name
+        if: ${{ inputs.kernel_version == '5.10' || inputs.kernel_version == '5.15' || inputs.kernel_version == '6.1' }}
+        run: |
+          cd "$CONFIG/common"
+          # Add bbrv3 config setting
+          #cp ../../kernel_patches/bbr/tcp_bbr.c ./net/ipv4/
+          #
+          #if [[ "${{ inputs.kernel_version }}" == "5.10" ]]; then
+          #  cp ../../kernel_patches/bbr/bbrv3-5.10.patch ./
+          #  patch -p1 -F 3 < bbrv3-5.10.patch
+          #else
+          #  cp ../../kernel_patches/bbr/bbrv3-5.15+.patch ./
+          #  patch -p1 -F 3 < bbrv3-5.15+.patch
+          #fi
+
+          cd ..
+          #echo "CONFIG_TCP_CONG_ADVANCED=y" >> ./common/arch/arm64/configs/gki_defconfig 
+          echo "CONFIG_TCP_CONG_BBR=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_FQ=y" >> ./common/arch/arm64/configs/gki_defconfig
+
 
       - name: Config Kernel Name
         run: |
