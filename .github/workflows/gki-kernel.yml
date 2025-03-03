@@ -340,7 +340,7 @@ jobs:
           sed -i 's/check_defconfig//' ./common/build.config.gki
       
       - name: Config Kernel Name
-        if: ${{ inputs.kernel_version != '6.6' }}
+        #if: ${{ inputs.kernel_version != '6.6' }}
         run: |
           cd "$CONFIG/common"
           # Add bbrv3 config setting
