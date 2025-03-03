@@ -111,7 +111,7 @@ jobs:
         -> Simple Maphide for LineageOS Detections
         -> Futile Maphide for jit-zygote-cache Detections
         -> Magic Mount Support
-        -> BBRv3 on 5.10-6.1
+        -> BBR Support
 
         Notes:
         -> SUS SU Mode 2 will show as disabled or not compatble due to non-kprobe hooks and is not needed anymore!
@@ -295,12 +295,6 @@ jobs:
             # Create the tag in the repository
             git tag $NEW_TAG
             git push --tags
-            
-      # Download Artifacts for A12 (Only if A12 Build is successful or input is true or empty)
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./downloaded-artifacts
 
       - name: List & Filter Kernel Artifacts
         shell: bash
