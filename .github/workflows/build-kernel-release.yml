@@ -332,17 +332,13 @@ jobs:
             git tag $NEW_TAG
             git push --tags
 
-      - name: Get Current Workflow Run ID
-        run: |
-          echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
-          echo "Current Workflow Run ID: ${{ github.run_id }}"
-
       - name: List Available Artifacts
         run: |
-          echo "Fetching artifacts from current workflow run: $RUN_ID"
-          gh run view $RUN_ID --log | grep "Artifacts:" -A 10 | sed 's/Artifacts: //' > artifacts.txt || echo "No artifacts found."
+          echo "Fetching artifacts from current workflow run..."
+          gh run list --json name -q '.[].name' > artifacts.txt || echo "No artifacts found."
 
       - name: Filter Kernel Artifacts
+        id: filter
         run: |
           echo "Filtering artifacts matching kernel-*..."
           grep "^kernel-" artifacts.txt > filtered_artifacts.txt || true
@@ -356,7 +352,7 @@ jobs:
             echo "Downloading artifact: $artifact"
             gh run download --name "$artifact" --dir ./downloaded-artifacts
           done < filtered_artifacts.txt
-
+          
       - name: List Downloaded Artifacts
         run: |
           echo "Downloaded kernel-* artifacts:"
