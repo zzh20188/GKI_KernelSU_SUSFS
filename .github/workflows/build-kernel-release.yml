@@ -296,30 +296,21 @@ jobs:
             git tag $NEW_TAG
             git push --tags
 
-      - name: List Available Artifacts in Current Workflow
+      - name: Get Current Workflow Run ID
         run: |
-          echo "Fetching artifacts from current workflow..."
-          gh run list --json databaseId -q '.[0].databaseId' | tee run_id.txt
-          RUN_ID=$(cat run_id.txt)
-          echo "Current Workflow Run ID: $RUN_ID"
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "Fetching workflow run ID..."
+          echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
+          echo "Current Workflow Run ID: ${{ github.run_id }}"
 
-          echo "Listing artifacts..."
-          gh run artifacts --json name -q '.[].name' | tee artifacts.txt
+      - name: List Available Artifacts
+        run: |
+          echo "Fetching artifacts from workflow run: $RUN_ID"
+          gh run view $RUN_ID --log | grep "Artifacts:" -A 10 || echo "No artifacts found."
 
       - name: Filter Kernel Artifacts
         run: |
           echo "Filtering artifacts matching kernel-*..."
-          grep "kernel-" artifacts.txt > filtered_artifacts.txt || true
-          cat filtered_artifacts.txt
-
-      - name: Download Filtered Artifacts
-        run: |
-          mkdir -p ./downloaded-artifacts
-          while IFS= read -r artifact; do
-            echo "Downloading artifact: $artifact"
-            gh run download --name "$artifact" --dir ./downloaded-artifacts
-          done < filtered_artifacts.txt
+          gh run download --dir ./downloaded-artifacts || echo "No artifacts found."
 
       - name: List Downloaded Artifacts
         run: |
