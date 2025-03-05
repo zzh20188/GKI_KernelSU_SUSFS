@@ -6,6 +6,11 @@ permissions:
 on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
+      make_release:
+        description: 'Do you want to create a release?'
+        required: true
+        type: boolean
+        default: true
       kernelsu_variant:
         required: true
         type: string
@@ -47,6 +52,7 @@ jobs:
     uses: ./.github/workflows/gki-kernel.yml
     secrets: inherit
     with:
+      make_release: ${{ inputs.make_release }}
       android_version: "android13"
       kernel_version: "5.15"
       sub_level: ${{ matrix.sub_level }}
