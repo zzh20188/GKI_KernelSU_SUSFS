@@ -7,7 +7,6 @@ on:
   workflow_call:  # This allows this workflow to be called from another workflow
     inputs:
       make_release:
-        description: 'Do you want to create a release?'
         required: true
         type: boolean
         default: true
