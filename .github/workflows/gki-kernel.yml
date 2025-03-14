@@ -344,7 +344,7 @@ jobs:
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
       
-      - name: Config Kernel Name
+      - name: Config BBR
         #if: ${{ inputs.kernel_version != '6.6' }}
         run: |
           cd "$CONFIG/common"
