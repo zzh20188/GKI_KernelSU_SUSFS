@@ -382,6 +382,15 @@ jobs:
               cd $GKI_ROOT/common/ && sed -i '/\$(Q)\$(MAKE) -C \$(SUBCMD_SRC) OUTPUT=\$(abspath \$(dir \$@))\/ \$(abspath \$@)/s//$(Q)$(MAKE) -C $(SUBCMD_SRC) EXTRA_CFLAGS="$(CFLAGS)" OUTPUT=$(abspath $(dir $@))\/ $(abspath $@)/' tools/bpf/resolve_btfids/Makefile || echo "No patch needed."
             fi
           fi
+
+          echo "[+] Export all symbol from abi_gki_aarch64.xml"
+          COMMON_ROOT=$GITHUB_WORKSPACE/$CONFIG/common
+          KSU_ROOT=$GITHUB_WORKSPACE/$CONFIG/KernelSU-Next
+          ABI_XML=$COMMON_ROOT/android/abi_gki_aarch64.xml
+          SYMBOL_LIST=$COMMON_ROOT/android/abi_gki_aarch64
+          # python3 $KSU_ROOT/scripts/abi_gki_all.py $ABI_XML > $SYMBOL_LIST
+          echo "[+] Add KernelSU-Next symbols"
+          cat $KSU_ROOT/kernel/export_symbol.txt | awk '{sub("[ \t]+","");print "  "$0}' >> $SYMBOL_LIST
           
           echo "Building the kernel..."
           if [ -f "build/build.sh" ]; then
