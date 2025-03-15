@@ -37,7 +37,7 @@ on:
 
 jobs:
   build-kernel-kernelsu-susfs:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
