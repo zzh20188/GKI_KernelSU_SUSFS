@@ -1,7 +1,7 @@
 {
   "android_version": "android12",
   "kernel_version": "5.10",
-  "lts": "5.10.264",
+  "lts": "5.10.265",
   "entries": [
     {
       "date": "2021-08",
