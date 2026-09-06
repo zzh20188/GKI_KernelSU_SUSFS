@@ -507,6 +507,36 @@ jobs:
             echo "KSU_LATEST_COMMIT_DATE=未知" >> $GITHUB_ENV
           fi
 
+      - name: 修复 SukiSU 内核卸载功能缺失的 setter
+        if: inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'SukiSU(40726)' || inputs.ksu_variant == 'SukiSU(40548)'
+        working-directory: ${{ env.KERNEL_ROOT }}/KernelSU
+        run: |
+          UMOUNT_FILE="kernel/feature/kernel_umount.c"
+          # 上游 d13e8a75 删除了 setter 实现但保留引用，仅在缺失时恢复
+          if [ ! -f "$UMOUNT_FILE" ] \
+            || ! grep -qE '\.set_handler[[:space:]]*=[[:space:]]*kernel_umount_feature_set' "$UMOUNT_FILE"; then
+            echo "当前 SukiSU 无需修复内核卸载 setter"
+            exit 0
+          fi
+          if grep -qE '^[[:space:]]*static[[:space:]]+int[[:space:]]+kernel_umount_feature_set[[:space:]]*\(' "$UMOUNT_FILE"; then
+            echo "SukiSU 内核卸载 setter 已存在，跳过修复"
+            exit 0
+          fi
+          if ! grep -qE '^static const struct ksu_feature_handler kernel_umount_handler = \{' "$UMOUNT_FILE"; then
+            echo "::error::无法定位 SukiSU 内核卸载功能注册结构，停止修复"
+            exit 1
+          fi
+          sed -i '/^static const struct ksu_feature_handler kernel_umount_handler = {/i\
+          static int kernel_umount_feature_set(u64 value)\
+          {\
+              bool enable = value != 0;\
+              ksu_kernel_umount_enabled = enable;\
+              pr_info("kernel_umount: set to %d\\n", enable);\
+              return 0;\
+          }\
+          ' "$UMOUNT_FILE"
+          echo "已恢复 SukiSU kernel_umount_feature_set"
+
       - name: 配置 SukiSU 管理器信息
         if: inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'SukiSU(40726)' || inputs.ksu_variant == 'SukiSU(40548)'
         working-directory: ${{ env.KERNEL_ROOT }}/KernelSU
