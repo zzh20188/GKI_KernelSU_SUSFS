@@ -131,6 +131,31 @@ fi
 
 patch -p1 < "$SUSFS_PATCH" || true
 
+# 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
+EXEC_HELPER=""
+if [[ "$KSU_VARIANT" == SukiSU* || "$KSU_VARIANT" == "ReSukiSU" ]]; then
+  if grep -qF 'ksu_install_su_fd();' fs/exec.c; then
+    EXEC_HELPER="ksu_install_su_fd"
+  elif grep -qF 'ksu_handle_post_execveat_sucompat(' fs/exec.c; then
+    EXEC_HELPER="ksu_handle_post_execveat_sucompat"
+  fi
+fi
+if [[ -n "$EXEC_HELPER" ]] \
+  && ! grep -RqsE --include='*.c' "^[[:space:]]*int[[:space:]]+${EXEC_HELPER}[[:space:]]*\(" "$KERNEL_ROOT/KernelSU/kernel"; then
+  echo "$KSU_VARIANT 尚未提供 $EXEC_HELPER，恢复旧版 exec hook"
+  sed -i '/^extern int ksu_install_su_fd(void);$/d' fs/exec.c
+  sed -i '/^extern int ksu_handle_post_execveat_sucompat(/,+1d' fs/exec.c
+  sed -i 's/is_su_session = !\(ksu_handle_execveat[^;]*;\)/\1/' fs/exec.c
+  sed -i '/^[[:space:]]*bool is_su_session = false;$/d' fs/exec.c
+  sed -i '/^[[:space:]]*if (unlikely(is_su_session && retval >= 0))$/,+1d' fs/exec.c
+  sed -i '/^[[:space:]]*if (unlikely(is_su_session))$/,+1d' fs/exec.c
+  sed -i '/^#ifdef CONFIG_KSU_SUSFS$/N;/^#ifdef CONFIG_KSU_SUSFS\n#endif \/\/ #ifdef CONFIG_KSU_SUSFS$/d' fs/exec.c
+  if grep -qE 'ksu_install_su_fd|ksu_handle_post_execveat_sucompat|is_su_session' fs/exec.c; then
+    echo "::error::$KSU_VARIANT exec hook 结构已变化，无法完成兼容修复"
+    exit 1
+  fi
+fi
+
 # 主补丁应用后立即统计冲突，提前暴露补丁失配（无需等到编译失败再翻产物）
 SUSFS_REJ_COUNT=$(find . -name '*.rej' | wc -l)
 if [ "$SUSFS_REJ_COUNT" -gt 0 ]; then
