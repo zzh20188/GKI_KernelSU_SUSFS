@@ -1,7 +1,7 @@
 {
   "android_version": "android13",
   "kernel_version": "5.15",
-  "lts": "5.15.211",
+  "lts": "5.15.216",
   "entries": [
     {
       "date": "2022-06",
