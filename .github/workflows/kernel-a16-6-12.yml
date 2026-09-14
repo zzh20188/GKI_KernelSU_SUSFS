@@ -7,6 +7,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      # ==================== 下拉选项 ====================
       kernelsu_variant:
         description: "KernelSU 变体"
         required: true
@@ -19,15 +20,15 @@ on:
           - SukiSU(40548)
           - ReSukiSU
         default: ReSukiSU
-      version:
-        description: "自定义版本名 (可选)"
-        required: false
-        type: string
-      build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
-        required: false
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
+      ksu_mode:
+        description: "KernelSU / SUSFS 模式"
+        required: true
+        type: choice
+        options:
+          - 关闭
+          - 禁用SUSFS
+          - 禁用KSU
+        default: 关闭
       use_kpm:
         description: "KPM 功能（patched 尚不支持）"
         required: true
@@ -53,11 +54,19 @@ on:
           - "仅上传 AnyKernel3.zip"
           - "上传全部"
         default: "仅上传 AnyKernel3.zip"
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+
+      # ==================== 文本输入 ====================
+      version:
+        description: "自定义版本名 (可选)"
         required: false
-        type: boolean
-        default: false
+        type: string
+      build_time:
+        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        required: false
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+
+      # ==================== 开关（默认关闭） ====================
       use_zram:
         description: "启用 ZRAM 增强算法"
         required: true
@@ -78,13 +87,13 @@ on:
         required: false
         type: boolean
         default: false
-      cancel_susfs:
-        description: "禁用 SUSFS"
-        required: true
-        type: boolean
-        default: false
       supp_op:
         description: "启用一加 8E 支持"
+        required: false
+        type: boolean
+        default: false
+      droidspaces_ntsync:
+        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
         required: false
         type: boolean
         default: false
@@ -117,9 +126,10 @@ on:
         required: false
         type: boolean
         default: false
-      cancel_susfs:
+      ksu_mode:
         required: false
-        type: boolean
+        type: string
+        default: 关闭
       supp_op:
         required: false
         type: boolean
@@ -137,6 +147,11 @@ on:
         default: false
       called_from_main:
         description: "是否从 main.yml 调用（内部使用）"
+        required: false
+        type: boolean
+        default: false
+      export_susfs_patches:
+        description: "导出 SUSFS 集成补丁（由 main.yml 传入）"
         required: false
         type: boolean
         default: false
@@ -173,8 +188,10 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
       supp_op: ${{ inputs.supp_op || false }}
-      enable_susfs: ${{ !inputs.cancel_susfs }}
+      enable_susfs: ${{ inputs.ksu_mode != '禁用SUSFS' && inputs.ksu_mode != '禁用KSU' }}
+      ksu_mode: ${{ inputs.ksu_mode || '关闭' }}
       droidspaces: ${{ inputs.droidspaces || 'off' }}
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync || false }}
       artifact_upload_mode: ${{ inputs.artifact_upload_mode }}

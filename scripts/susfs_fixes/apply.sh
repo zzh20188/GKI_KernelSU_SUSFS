@@ -115,6 +115,18 @@ if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
   fi
 fi
 
+# 新版内核在 super.c 的 internal.h 之后新增了 trace/hooks/fs.h，
+# 旧版 SUSFS 主补丁以 thaw_super_locked 为上下文插入 extern 声明，会整段被拒绝；
+# 上游 2026-09-15 起已把声明挪到 unnamed_dev_ida 之后，不再依赖这段上下文，
+# 但 ShirkNeko fork 尚未同步（固定提交的旧版补丁不改 super.c），只对旧版补丁做临时调整
+SUPER_FS_H_REMOVED=""
+if grep -q '^ static int thaw_super_locked' "$SUSFS_PATCH" \
+  && grep -qF '#include <trace/hooks/fs.h>' fs/super.c; then
+  echo "临时调整 super.c 上下文"
+  sed -i '/^#include <trace\/hooks\/fs.h>$/,+1d' fs/super.c
+  SUPER_FS_H_REMOVED=1
+fi
+
 patch -p1 < "$SUSFS_PATCH" || true
 
 # 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
@@ -140,6 +152,26 @@ if [[ -n "$EXEC_HELPER" ]] \
     echo "::error::$KSU_VARIANT exec hook 结构已变化，无法完成兼容修复"
     exit 1
   fi
+fi
+
+# 上游 5.10 补丁把 susfs_sus_kstat_spoof_vfs_statfs 的 extern 声明放在了
+# susfs_statfs_by_dentry 之后，clang -Werror 会报隐式声明；声明晚于使用时前移
+if [[ -f fs/statfs.c ]] && grep -qF 'susfs_sus_kstat_spoof_vfs_statfs(' fs/statfs.c; then
+  STATFS_USE=$(grep -n 'if (!susfs_sus_kstat_spoof_vfs_statfs(' fs/statfs.c | head -1 | cut -d: -f1)
+  STATFS_DECL=$(grep -n '^extern int susfs_sus_kstat_spoof_vfs_statfs(' fs/statfs.c | head -1 | cut -d: -f1)
+  if [[ -n "$STATFS_USE" && -n "$STATFS_DECL" && "$STATFS_DECL" -gt "$STATFS_USE" ]] \
+    && grep -q '^static int susfs_statfs_by_dentry(' fs/statfs.c; then
+    echo "前移 statfs.c 中 susfs_sus_kstat_spoof_vfs_statfs 的声明"
+    sed -i '/^static int susfs_statfs_by_dentry(/i extern int susfs_sus_kstat_spoof_vfs_statfs(struct inode *inode, struct kstatfs *buf, bool *is_fuse);' fs/statfs.c
+  fi
+fi
+
+# 上游 susfs.c 直接调用 security_sb_statfs 却没有包含 linux/security.h，
+# 5.15+ 靠其他头文件间接带入，5.10 没有这条路径，clang -Werror 报隐式声明；缺失时补上
+if [[ -f fs/susfs.c ]] && grep -qF 'security_sb_statfs(' fs/susfs.c \
+  && ! grep -qF '#include <linux/security.h>' fs/susfs.c; then
+  echo "为 susfs.c 补充 linux/security.h 头文件"
+  sed -i '0,/^#include <linux\/fs.h>$/s//#include <linux\/fs.h>\n#include <linux\/security.h>/' fs/susfs.c
 fi
 
 # 在编译前报告 SUSFS 主补丁产生的冲突文件
@@ -211,6 +243,12 @@ if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
     echo "还原 Android 16 6.12 exec.c 临时调整"
     sed -i '0,/^#include /s//#include <linux\/dma-buf.h>\n&/' fs/exec.c
   fi
+fi
+
+if [[ -n "$SUPER_FS_H_REMOVED" ]] \
+  && ! grep -qF '#include <trace/hooks/fs.h>' fs/super.c; then
+  echo "还原 super.c 临时调整"
+  sed -i '/^#include "internal.h"$/a #include <trace/hooks/fs.h>' fs/super.c
 fi
 
 fix_missing_vm_flags_clear() {
