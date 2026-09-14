@@ -115,6 +115,18 @@ if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
   fi
 fi
 
+# 新版内核在 super.c 的 internal.h 之后新增了 trace/hooks/fs.h，
+# 旧版 SUSFS 主补丁以 thaw_super_locked 为上下文插入 extern 声明，会整段被拒绝；
+# 上游 2026-09-15 起已把声明挪到 unnamed_dev_ida 之后，不再依赖这段上下文，
+# 但 ShirkNeko fork 尚未同步（固定提交的旧版补丁不改 super.c），只对旧版补丁做临时调整
+SUPER_FS_H_REMOVED=""
+if grep -q '^ static int thaw_super_locked' "$SUSFS_PATCH" \
+  && grep -qF '#include <trace/hooks/fs.h>' fs/super.c; then
+  echo "临时调整 super.c 上下文"
+  sed -i '/^#include <trace\/hooks\/fs.h>$/,+1d' fs/super.c
+  SUPER_FS_H_REMOVED=1
+fi
+
 patch -p1 < "$SUSFS_PATCH" || true
 
 # 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
@@ -211,6 +223,12 @@ if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
     echo "还原 Android 16 6.12 exec.c 临时调整"
     sed -i '0,/^#include /s//#include <linux\/dma-buf.h>\n&/' fs/exec.c
   fi
+fi
+
+if [[ -n "$SUPER_FS_H_REMOVED" ]] \
+  && ! grep -qF '#include <trace/hooks/fs.h>' fs/super.c; then
+  echo "还原 super.c 临时调整"
+  sed -i '/^#include "internal.h"$/a #include <trace/hooks/fs.h>' fs/super.c
 fi
 
 fix_missing_vm_flags_clear() {
