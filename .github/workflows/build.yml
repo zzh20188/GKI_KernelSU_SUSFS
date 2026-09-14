@@ -739,6 +739,12 @@ jobs:
           enable_config CONFIG_PID_NS
           enable_config CONFIG_DEVTMPFS
 
+          # 用户命名空间：上游文档列为可选但推荐，用于修复 docker unsafe procfs 报错。
+          # init/Kconfig 中无 depends on，且 struct cred 的 user_ns/ucounts 是无条件成员，
+          # task_struct 等结构体不含 CONFIG_USER_NS 条件编译，因此不影响 kABI 布局，
+          # 不需要像 SYSVIPC/IPC_NS 那样额外打 padding 补丁。与 wild_kernel 保持一致，全版本启用。
+          enable_config CONFIG_USER_NS
+
           # 可选: 网络相关配置 (Docker/NAT 模式)
           enable_config_if_defined CONFIG_NETFILTER_XT_MATCH_ADDRTYPE
           enable_config_if_defined CONFIG_NETFILTER_XT_TARGET_LOG
@@ -770,9 +776,7 @@ jobs:
           }
 
           if [[ "${{ inputs.android_version }}" == "android15" && "${{ inputs.kernel_version }}" == "6.6" ]]; then
-            # 1. 开启用户命名空间（必须）
-            # enable_config_if_defined CONFIG_USER_NS
-            # 2. 关闭安卓严格网络控制（必须）
+            # 关闭安卓严格网络控制，否则容器内普通用户无法联网
             disable_config CONFIG_ANDROID_PARANOID_NETWORK
           fi
 
