@@ -168,7 +168,12 @@ jobs:
           EOF
 
           mkdir -p "$GITHUB_WORKSPACE/git-repo"
-          curl -L https://storage.googleapis.com/git-repo-downloads/repo -o "$GITHUB_WORKSPACE/git-repo/repo"
+          # storage.googleapis.com 偶发 TLS 握手失败（curl 退出码 35），全量构建 80+ 个
+          # job 各跑一次，累积下来命中概率不低。--retry-all-errors 才会重试握手类错误，
+          # -f 保证 HTTP 错误页不会被当成成功写进 repo 文件。
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$GITHUB_WORKSPACE/git-repo/repo"
           chmod 0755 "$GITHUB_WORKSPACE/git-repo/repo"
           echo "$GITHUB_WORKSPACE/git-repo" >> "$GITHUB_PATH"
           echo "REPO=$GITHUB_WORKSPACE/git-repo/repo" >> $GITHUB_ENV
@@ -301,22 +306,84 @@ jobs:
       - name: 初始化并同步内核源码
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
-          git clone https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-gnu-6.4.1.git gcc
-
           FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.os_patch_level }}"
-          echo "初始化 repo，分支: common-${FORMATTED_BRANCH}"
+          MAX_ATTEMPTS=3
+          RETRY_DELAY=15
+          SYNC_TIMEOUT=15m
 
-          $REPO init --depth=1 -u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
+          # android.googlesource.com 偶发限流、连接重置或单个 project 拉取卡死，
+          # 单次失败不代表分支有问题，整轮重来通常就能成功。
+          init_repo() {
+            $REPO init --depth=1 -u https://android.googlesource.com/kernel/manifest \
+              -b common-${FORMATTED_BRANCH} --repo-rev=v2.16 || return 1
 
-          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
-          DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
+            # ls-remote 同样可能瞬时失败；失败时返回空会让弃用分支判定出错，
+            # 因此按退出码重试，全部失败就让本轮重来而不是白跑一次 sync。
+            local ok=false
+            for _ in 1 2 3; do
+              if REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH}); then
+                ok=true
+                break
+              fi
+              sleep 5
+            done
+            if [ "$ok" != true ]; then
+              echo "git ls-remote 查询 ${FORMATTED_BRANCH} 失败"
+              return 1
+            fi
 
-          if grep -q deprecated <<< $REMOTE_BRANCH; then
-            echo "检测到已弃用的分支: $FORMATTED_BRANCH"
-            sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
-          fi
+            DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
+            if grep -q deprecated <<< "$REMOTE_BRANCH"; then
+              echo "检测到已弃用的分支: $FORMATTED_BRANCH"
+              sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
+            fi
+          }
 
-          $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
+          attempt=1
+          while :; do
+            echo "第 $attempt/$MAX_ATTEMPTS 次初始化并同步，分支: common-${FORMATTED_BRANCH}（单次超时 $SYNC_TIMEOUT）"
+            df -h "$PWD" | tail -n +2 || true
+
+            rc=0
+            if init_repo; then
+              # 不加 --fail-fast：单个 project 出错时让其余 project 继续拉完，
+              # 重试只需要补齐缺失部分。-j4 与 --no-clone-bundle 是为了避免
+              # 高并发触发限流、以及跳过经常超时的 clone.bundle。
+              SYNC_FLAGS="-c -j4 --jobs-checkout=4 --no-tags --no-clone-bundle --retry-fetches=3"
+              # 第二次在原地续传（repo sync 可断点续传），第三次才整目录重来
+              [ "$attempt" -gt 1 ] && SYNC_FLAGS="$SYNC_FLAGS --force-sync"
+              timeout -k 60 "$SYNC_TIMEOUT" $REPO sync $SYNC_FLAGS || rc=$?
+              if [ "$rc" -eq 0 ]; then
+                echo "内核源码同步成功（第 $attempt 次）"
+                break
+              fi
+              if [ "$rc" -eq 124 ]; then
+                echo "repo sync 超时（$SYNC_TIMEOUT）"
+              else
+                echo "repo sync 失败，退出码 $rc"
+              fi
+            else
+              rc=1
+              echo "repo init 或分支预检失败"
+            fi
+
+            if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
+              echo "::error::内核源码同步连续 $MAX_ATTEMPTS 次失败"
+              exit "$rc"
+            fi
+
+            # 最后一次重试前彻底清空：只删 .repo 会残留半检出的 project 目录，
+            # 之后每次 sync 都会以 "Checking out local projects failed" 收场。
+            if [ "$attempt" -eq $((MAX_ATTEMPTS - 1)) ]; then
+              echo "清空工作目录后重来"
+              find "$PWD" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            fi
+
+            echo "${RETRY_DELAY}s 后重试..."
+            sleep "$RETRY_DELAY"
+            attempt=$((attempt + 1))
+          done
+
           echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> $GITHUB_ENV
 
       - name: 应用 Stock Config 伪装
