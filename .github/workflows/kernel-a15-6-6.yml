@@ -147,6 +147,11 @@ on:
         required: false
         type: boolean
         default: false
+      export_susfs_patches:
+        description: "导出 SUSFS 集成补丁（由 main.yml 传入）"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-kernels-a15-6-6:
@@ -200,6 +205,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
       supp_op: ${{ inputs.supp_op || false }}
       enable_susfs: ${{ inputs.ksu_mode != '禁用SUSFS' && inputs.ksu_mode != '禁用KSU' }}
       ksu_mode: ${{ inputs.ksu_mode || '关闭' }}

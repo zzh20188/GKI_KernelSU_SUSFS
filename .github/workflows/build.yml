@@ -64,6 +64,10 @@ on:
         required: false
         type: boolean
         default: false
+      export_susfs_patches:
+        required: false
+        type: boolean
+        default: false
       enable_susfs:
         required: true
         type: boolean
@@ -114,6 +118,7 @@ jobs:
           echo "KPM 功能      : ${{ inputs.use_kpm }}"
           echo "Re-Kernel     : ${{ inputs.use_rekernel }}"
           echo "CVE-2026-43499: ${{ inputs.cve_2026_43499_patch }}"
+          echo "SUSFS 集成补丁导出: ${{ inputs.export_susfs_patches }}"
           echo "Droidspaces   : ${{ inputs.droidspaces }}"
           echo "NTSync        : ${{ inputs.droidspaces_ntsync }}"
           echo "产物上传模式  : ${{ inputs.artifact_upload_mode }}"
@@ -664,6 +669,23 @@ jobs:
 
           echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
 
+      # ==================== SUSFS 集成补丁导出 ====================
+      # 仅 SukiSU / ReSukiSU 且启用 SUSFS 时导出，快照用临时索引生成树对象，
+      # 不创建提交，避免改变「配置内核名称」读取的 HEAD 哈希
+      - name: 记录 SUSFS 基线快照
+        if: inputs.export_susfs_patches && inputs.enable_susfs && inputs.ksu_mode != '禁用KSU' && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'ReSukiSU')
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        run: |
+          # 排除 .rej/.orig 和补丁文件本身：apply.sh 会把 SUSFS 补丁拷进 common/ 并留下 .rej
+          # 从真实索引复制一份再 add，只需哈希变动文件，避免对整棵内核树重新哈希
+          cp "$(git rev-parse --git-path index)" /tmp/susfs-base.idx
+          export GIT_INDEX_FILE=/tmp/susfs-base.idx
+          git add -A -- . ':!*.rej' ':!*.orig' ':!*.patch'
+          SUSFS_BASE_TREE=$(git write-tree)
+          echo "SUSFS_BASE_TREE=$SUSFS_BASE_TREE" >> $GITHUB_ENV
+          echo "SUSFS_PATCH_EXPORT=true" >> $GITHUB_ENV
+          echo "基线树对象: $SUSFS_BASE_TREE"
+
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs
         working-directory: ${{ env.KERNEL_ROOT }}
@@ -674,6 +696,82 @@ jobs:
           OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
           SUB_LEVEL: ${{ inputs.sub_level }}
         run: bash "$GITHUB_WORKSPACE/scripts/susfs_fixes/apply.sh"
+
+      - name: 生成 SUSFS 集成补丁
+        if: env.SUSFS_PATCH_EXPORT == 'true'
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        env:
+          OUT_DIR: ${{ github.workspace }}/susfs-patch
+        run: |
+          export_susfs_patch() {
+            cp /tmp/susfs-base.idx /tmp/susfs-after.idx || return 1
+            export GIT_INDEX_FILE=/tmp/susfs-after.idx
+            git add -A -- . ':!*.rej' ':!*.orig' ':!*.patch' || return 1
+            local after_tree
+            after_tree=$(git write-tree) || return 1
+            unset GIT_INDEX_FILE
+
+            mkdir -p "$OUT_DIR"
+            git diff --binary "$SUSFS_BASE_TREE" "$after_tree" > "$OUT_DIR/susfs.patch" || return 1
+            if [ ! -s "$OUT_DIR/susfs.patch" ]; then
+              echo "补丁内容为空"
+              return 1
+            fi
+            # 反向试打，证明补丁与当前工作树完全一致
+            git apply --check -R "$OUT_DIR/susfs.patch" || return 1
+
+            local formatted_branch gki_branch gki_commit
+            formatted_branch="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.os_patch_level }}"
+            gki_branch="$formatted_branch"
+            grep -q deprecated <<< "$REMOTE_BRANCH" && gki_branch="deprecated/$formatted_branch"
+            gki_commit=$(git rev-parse HEAD)
+
+            # KSU 与 SUSFS 提交都取本次构建实际克隆的仓库，不用 ls-remote 现查
+            local ksu_repo ksu_commit ksu_slug ksu_setup_cmd
+            ksu_repo=$(git -C "$KERNEL_ROOT/KernelSU" remote get-url origin | sed 's/\.git$//')
+            ksu_commit=$(git -C "$KERNEL_ROOT/KernelSU" rev-parse HEAD)
+            ksu_slug=${ksu_repo#https://github.com/}
+            ksu_setup_cmd="curl -LSs https://raw.githubusercontent.com/$ksu_slug/main/kernel/setup.sh | bash -s $ksu_commit"
+
+            local susfs_repo susfs_branch susfs_commit
+            susfs_repo=$(git -C "$SUSFS4KSU" remote get-url origin | sed 's/\.git$//')
+            susfs_branch="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
+            susfs_commit=$(git -C "$SUSFS4KSU" rev-parse HEAD)
+
+            local rej_count patch_sha256
+            rej_count=$(find . -type f -name '*.rej' | wc -l)
+            patch_sha256=$(sha256sum "$OUT_DIR/susfs.patch" | awk '{print $1}')
+
+            jq -n \
+              --arg android_version "${{ inputs.android_version }}" \
+              --arg kernel_version "${{ inputs.kernel_version }}" \
+              --arg sub_level "${{ inputs.sub_level }}" \
+              --arg actual_sublevel "$ACTUAL_SUBLEVEL" \
+              --arg os_patch_level "${{ inputs.os_patch_level }}" \
+              --arg gki_branch "$gki_branch" \
+              --arg gki_commit "$gki_commit" \
+              --arg ksu_variant "${{ inputs.ksu_variant }}" \
+              --arg ksu_repo "$ksu_repo" \
+              --arg ksu_commit "$ksu_commit" \
+              --arg ksu_setup_cmd "$ksu_setup_cmd" \
+              --arg susfs_repo "$susfs_repo" \
+              --arg susfs_branch "$susfs_branch" \
+              --arg susfs_commit "$susfs_commit" \
+              --argjson rej_count "$rej_count" \
+              --arg patch_sha256 "$patch_sha256" \
+              --arg generated_at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+              --arg run_id "$GITHUB_RUN_ID" \
+              '$ARGS.named' > "$OUT_DIR/manifest.json" || return 1
+
+            echo "补丁大小: $(du -h "$OUT_DIR/susfs.patch" | cut -f1)，.rej 数量: $rej_count"
+            cat "$OUT_DIR/manifest.json"
+          }
+
+          if ! export_susfs_patch; then
+            echo "::warning::SUSFS 集成补丁导出失败，本次构建不上传补丁"
+            rm -rf "$OUT_DIR"
+            echo "SUSFS_PATCH_EXPORT=false" >> $GITHUB_ENV
+          fi
 
       - name: 克隆 Droidspaces 补丁仓库
         if: inputs.droidspaces != 'off'
@@ -1085,6 +1183,7 @@ jobs:
       - name: 添加 SUSFS 配置
         if: inputs.enable_susfs
         run: |
+          LINES_BEFORE=$(wc -l < "$DEFCONFIG")
           cat >> "$DEFCONFIG" << 'EOF'
           CONFIG_KSU_SUSFS=y
           CONFIG_KSU_SUSFS_SUS_PATH=y
@@ -1097,6 +1196,12 @@ jobs:
           CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
           CONFIG_KSU_SUSFS_SUS_MAP=y
           EOF
+
+          # 把本步实际追加的行导出为配置片段，随 SUSFS 集成补丁一起分发
+          if [ "$SUSFS_PATCH_EXPORT" = "true" ] && [ -d "$GITHUB_WORKSPACE/susfs-patch" ]; then
+            tail -n +$((LINES_BEFORE + 1)) "$DEFCONFIG" > "$GITHUB_WORKSPACE/susfs-patch/susfs.config"
+            echo "已导出 SUSFS 配置片段: $(wc -l < "$GITHUB_WORKSPACE/susfs-patch/susfs.config") 行"
+          fi
 
       - name: 配置内核名称
         working-directory: ${{ env.KERNEL_ROOT }}
@@ -1416,6 +1521,16 @@ jobs:
               echo "$REL" >> "$REJECTS_DIR/index.txt"
             done
           fi
+
+      # 产物名不带 _kernel- 前缀，避免 release 的「上传内核产物」通配到补丁文件
+      - name: 上传 SUSFS 集成补丁
+        if: success() && env.SUSFS_PATCH_EXPORT == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: SUSFS-Patch-${{ inputs.ksu_variant }}-${{ env.CONFIG }}-${{ inputs.os_patch_level }}
+          path: susfs-patch/
+          if-no-files-found: warn
+          compression-level: 9
 
       - name: 上传 AnyKernel3 刷入包
         if: inputs.artifact_upload_mode != '上传全部'
