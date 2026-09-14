@@ -22,7 +22,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      # ==================== 发布配置 ====================
+      # ==================== 下拉选项 ====================
       release_type:
         description: "发布类型"
         type: choice
@@ -31,8 +31,6 @@ on:
           - Pre-Release
           - Release
         default: Actions
-
-      # ==================== KernelSU 配置 ====================
       kernelsu_variant:
         description: "KernelSU 变体"
         type: choice
@@ -44,19 +42,14 @@ on:
           - Official
           #- Next
         default: ReSukiSU
-
-      # ==================== 可选配置 ====================
-      version:
-        description: "自定义版本名 (可选)"
-        type: string
-        default: ""
-        required: false
-      build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
-        required: false
-      # ==================== 选项配置 ====================
+      ksu_mode:
+        description: "KernelSU / SUSFS 模式"
+        type: choice
+        options:
+          - 关闭
+          - 禁用SUSFS
+          - 禁用KSU
+        default: 关闭
       use_kpm:
         description: "KPM 功能（patched 尚不支持）"
         type: choice
@@ -74,42 +67,30 @@ on:
           - "123"
           - "345"
         default: "off"
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
-        type: boolean
-        default: false
 
-      # ==================== 功能开关 ====================
-      use_zram:
-        description: "启用 ZRAM 增强算法"
+      # ==================== 文本输入 ====================
+      version:
+        description: "自定义版本名 (可选)"
+        type: string
+        default: ""
+        required: false
+      build_time:
+        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+        required: false
+
+      # ==================== 开关（默认开启） ====================
+      build_all:
+        description: "构建全部版本"
         type: boolean
-        default: false
-      use_bbg:
-        description: "启用 BBG 防格机"
-        type: boolean
-        default: false
-      use_rekernel:
-        description: "启用 Re-Kernel 驱动"
-        type: boolean
-        default: false
-      cve_2026_43499_patch:
-        description: "应用 CVE-2026-43499 rtmutex 修复链"
-        type: boolean
-        default: false
+        default: true
       export_susfs_patches:
         description: "收集 SUSFS 集成补丁（仅 SukiSU / ReSukiSU）"
         type: boolean
         default: true
-      ksu_mode:
-        description: "KernelSU / SUSFS 模式"
-        type: choice
-        options:
-          - 关闭
-          - 禁用SUSFS
-          - 禁用KSU
-        default: 关闭
 
-      # ==================== 构建版本选择 ====================
+      # ==================== 开关（默认关闭） ====================
       build_a12_5_10:
         description: "Android 12 - 5.10"
         type: boolean
@@ -130,10 +111,26 @@ on:
         description: "Android 16 - 6.12"
         type: boolean
         default: false
-      build_all:
-        description: "构建全部版本"
+      use_zram:
+        description: "启用 ZRAM 增强算法"
         type: boolean
-        default: true
+        default: false
+      use_bbg:
+        description: "启用 BBG 防格机"
+        type: boolean
+        default: false
+      use_rekernel:
+        description: "启用 Re-Kernel 驱动"
+        type: boolean
+        default: false
+      cve_2026_43499_patch:
+        description: "应用 CVE-2026-43499 rtmutex 修复链"
+        type: boolean
+        default: false
+      droidspaces_ntsync:
+        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+        type: boolean
+        default: false
 
 jobs:
   # ==================== 获取管理器 ====================

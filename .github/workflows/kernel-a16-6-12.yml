@@ -7,6 +7,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      # ==================== 下拉选项 ====================
       kernelsu_variant:
         description: "KernelSU 变体"
         required: true
@@ -19,15 +20,15 @@ on:
           - SukiSU(40548)
           - ReSukiSU
         default: ReSukiSU
-      version:
-        description: "自定义版本名 (可选)"
-        required: false
-        type: string
-      build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
-        required: false
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
+      ksu_mode:
+        description: "KernelSU / SUSFS 模式"
+        required: true
+        type: choice
+        options:
+          - 关闭
+          - 禁用SUSFS
+          - 禁用KSU
+        default: 关闭
       use_kpm:
         description: "KPM 功能（patched 尚不支持）"
         required: true
@@ -53,11 +54,19 @@ on:
           - "仅上传 AnyKernel3.zip"
           - "上传全部"
         default: "仅上传 AnyKernel3.zip"
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+
+      # ==================== 文本输入 ====================
+      version:
+        description: "自定义版本名 (可选)"
         required: false
-        type: boolean
-        default: false
+        type: string
+      build_time:
+        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        required: false
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+
+      # ==================== 开关（默认关闭） ====================
       use_zram:
         description: "启用 ZRAM 增强算法"
         required: true
@@ -78,17 +87,13 @@ on:
         required: false
         type: boolean
         default: false
-      ksu_mode:
-        description: "KernelSU / SUSFS 模式"
-        required: true
-        type: choice
-        options:
-          - 关闭
-          - 禁用SUSFS
-          - 禁用KSU
-        default: 关闭
       supp_op:
         description: "启用一加 8E 支持"
+        required: false
+        type: boolean
+        default: false
+      droidspaces_ntsync:
+        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
         required: false
         type: boolean
         default: false
