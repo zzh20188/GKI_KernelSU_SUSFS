@@ -1,26 +1,29 @@
-// ===== Toast 提示 =====
+// ===== 轻提示 Toast =====
+
+@use 'mixins' as *;
 
 .toast {
+  @include mono;
   position: fixed;
-  bottom: 1.5rem;
   left: 50%;
-  transform: translateX(-50%) translateY(16px);
-  background: var(--bg-card);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
-  border-radius: 20px;
-  padding: 0.5rem 1.15rem;
-  font-size: 0.78rem;
-  font-weight: 500;
-  box-shadow: var(--shadow-lg);
+  bottom: var(--sp-6);
+  transform: translate(-50%, 8px);
+  max-width: min(360px, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--accent-fill);
+  padding: 8px 14px;
+  font-size: var(--fs-13);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
-  z-index: 2000;
-  backdrop-filter: blur(8px);
+  z-index: var(--z-toast);
+  transition: opacity var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
 
   &.show {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translate(-50%, 0);
   }
+
+  @include mobile { bottom: var(--sp-4); }
 }

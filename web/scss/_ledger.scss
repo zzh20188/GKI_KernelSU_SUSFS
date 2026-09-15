@@ -1,0 +1,451 @@
+// ===== 账册：版本列表（单列、倒序、线的语法） =====
+
+@use 'mixins' as *;
+
+.ledger {
+  margin-top: var(--sp-8);
+  border-top: 1px solid var(--rule);
+
+  @include mobile { margin-top: var(--sp-6); }
+}
+
+// 列表头：左侧「匹配 N 条」，右侧列名
+.ledger__head {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  @include meta-label;
+
+  @include below-desktop { grid-template-columns: 64px minmax(0, 1fr); }
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 0 6px;
+  }
+}
+
+.ledger__cols {
+  display: grid;
+  grid-template-columns: var(--col-date) minmax(0, 1fr) auto 24px;
+  gap: var(--sp-4);
+  align-items: center;
+  padding-left: var(--sp-4);
+
+  @include mobile {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--sp-3);
+    padding-left: 0;
+    > :nth-child(3),
+    > :nth-child(4) { display: none; }
+  }
+}
+
+.ledger__status {
+  @include mono;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-3);
+  white-space: nowrap;
+  justify-self: end;
+
+  @include mobile {
+    grid-column: 1 / -1;
+    justify-self: start;
+    white-space: normal;
+  }
+}
+
+// 表头的页边占位（手机隐藏）
+.ledger__head-margin {
+  @include mobile { display: none; }
+}
+
+// ---- 年份组 ----
+
+.year {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+
+  @include below-desktop { grid-template-columns: 64px minmax(0, 1fr); }
+  @include mobile { grid-template-columns: minmax(0, 1fr); }
+
+  &[hidden] { display: none; }
+}
+
+// 页边：年份边注（组内 sticky）+ 弃用斜纹
+.year__margin {
+  position: relative;
+  border-right: 1px solid var(--hairline);
+
+  @include mobile { display: none; }
+}
+
+.year__note {
+  @include mono;
+  position: sticky;
+  top: calc(var(--nav-h) + 12px);
+  font-size: var(--fs-20);
+  color: var(--text-2);
+  padding: 14px 0;
+  line-height: 1;
+
+  @include below-desktop { font-size: var(--fs-14); }
+}
+
+// 手机：年份变成一行等宽子标题
+.year__heading {
+  display: none;
+  @include mono;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  padding: 6px 0 4px;
+  border-top: 1px solid var(--hairline);
+  margin-top: -1px;
+
+  @include mobile { display: block; }
+}
+
+.year__rows {
+  min-width: 0;
+  list-style: none;
+}
+
+// ---- 行 ----
+
+.row {
+  position: relative;
+  border-bottom: 1px solid var(--hairline);
+
+  &[hidden] { display: none; }
+}
+
+.row__btn {
+  @include focus-ring(true);
+  appearance: none;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  display: grid;
+  grid-template-columns: var(--col-date) minmax(0, 1fr) auto 24px;
+  gap: var(--sp-4);
+  align-items: center;
+  min-height: 52px;
+  padding: 0 0 0 var(--sp-4);
+  transition: background-color var(--dur-1) var(--ease);
+
+  &:hover { background: var(--surface); }
+
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      'date marks'
+      'ver arrow';
+    row-gap: 2px;
+    column-gap: var(--sp-3);
+    min-height: 64px;
+    padding: 8px 0 8px var(--sp-3);
+  }
+}
+
+// 刚打开过弹窗的行：保留 2px 朱砂左边线
+.row.is-visited::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: -1px;
+  width: 2px;
+  background: var(--accent-fill);
+}
+
+// 刻度尺跳转定位提示
+.row.is-flash .row__btn {
+  animation: rowFlash 600ms var(--ease);
+}
+
+@keyframes rowFlash {
+  from { background: var(--surface); }
+  to { background: transparent; }
+}
+
+.row__date {
+  @include mono;
+  font-size: var(--fs-13);
+  color: var(--text-2);
+  white-space: nowrap;
+
+  @include mobile {
+    grid-area: date;
+    font-size: var(--fs-12);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+}
+
+.row__ver {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  position: relative;
+
+  @include mobile {
+    grid-area: ver;
+    gap: var(--sp-2);
+  }
+}
+
+.row__kernel {
+  @include mono;
+  font-size: var(--fs-22);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  // SUSFS 兼容：版本号前一个 6px 青色方块；有 rej 但编译成功则为空心方块
+  .row.is-susfs &::before { @include square(var(--susfs-fill)); }
+  .row.is-susfs-rej &::before {
+    @include square(transparent);
+    box-shadow: inset 0 0 0 1px var(--susfs-fill);
+  }
+
+  @include mobile { font-size: var(--fs-20); }
+}
+
+// 版本块延续行：版本号降为 13px 三级色，左缘括线
+.row.is-cont {
+  .row__kernel {
+    font-size: var(--fs-13);
+    font-weight: 400;
+    color: var(--text-3);
+  }
+
+  .row__ver::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: -18px;
+    bottom: -18px;
+    width: 1px;
+    background: var(--hairline);
+  }
+
+  @include mobile {
+    .row__ver::before { left: -8px; top: -4px; bottom: -8px; }
+  }
+}
+
+.row.is-cont-last .row__ver::before { bottom: 50%; }
+
+.row__meta {
+  @include mono;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  white-space: nowrap;
+
+  .delta { color: var(--text-3); }
+  .delta.is-big { color: var(--accent); }
+  .months { margin-left: 8px; }
+
+  @include mobile { font-size: var(--fs-11); }
+}
+
+// 标记区：只出现三种小字（SUSFS / 最新 / LTS）
+.row__marks {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-4);
+  @include meta-label;
+  white-space: nowrap;
+
+  @include mobile {
+    grid-area: marks;
+    gap: var(--sp-3);
+  }
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mark--latest { color: var(--accent); }
+.mark--latest::before { @include square(var(--accent-fill)); }
+.mark--lts { color: var(--accent); }
+.mark--susfs { color: var(--susfs); }
+.mark--susfs::before { @include square(var(--susfs-fill)); }
+.mark--susfs-rej { color: var(--susfs); }
+.mark--susfs-rej::before { @include square(transparent); box-shadow: inset 0 0 0 1px var(--susfs-fill); }
+.mark--dep {
+  color: var(--text-deprecated);
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border: 1px solid var(--text-deprecated);
+    @include hatch(var(--hatch-strong));
+  }
+}
+
+// 过滤态才出现的行内文字标签（空间语境消失时徽章才出现）；
+// 非过滤态只对视觉隐藏，读屏仍能听到「已弃用 / SUSFS」
+.ledger:not(.is-filtered) .mark--filtered-only {
+  @include visually-hidden;
+}
+
+.row__arrow {
+  color: var(--text-3);
+  font-size: var(--fs-14);
+  text-align: center;
+  transition: color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+
+  .row__btn:hover & { color: var(--text); transform: translateX(2px); }
+
+  @include mobile {
+    grid-area: arrow;
+    align-self: end;
+    padding-right: var(--sp-2);
+  }
+}
+
+// ---- 弃用行 ----
+
+.row.is-deprecated {
+  .row__date,
+  .row__kernel,
+  .row__meta { color: var(--text-deprecated); }
+
+  .row__kernel { font-weight: 400; }
+
+  @include mobile {
+    // 手机没有页边，斜纹改铺在左侧 4px 边条
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      @include hatch(var(--hatch-strong));
+      border-right: 1px solid var(--hairline);
+    }
+  }
+}
+
+// 页边斜纹：从截止线到列表末尾（年份组带 is-dep-margin 时整段页边铺纹）
+.year.is-dep-margin .year__margin {
+  @include hatch;
+}
+.year.is-dep-margin-partial .year__margin .year__hatch {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  @include hatch;
+}
+
+// 弃用折叠态：弃用行与落在弃用区内的 SUSFS 兼容线一并隐藏
+.ledger.is-dep-collapsed .row.is-deprecated { display: none; }
+.ledger.is-dep-collapsed .rule--susfs.is-in-dep { display: none; }
+
+// ---- 规则线（弃用截止 / SUSFS 阈值） ----
+
+.rule {
+  list-style: none;
+  padding: 10px 0 8px var(--sp-4);
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  @include mobile { padding-left: var(--sp-3); }
+}
+
+.rule__line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-12);
+  line-height: 1.4;
+  color: var(--text-2);
+  position: relative;
+
+  &::before {
+    content: '';
+    flex: 0 0 24px;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  &.rule__line--susfs {
+    color: var(--susfs);
+    &::before { background: var(--susfs-fill); }
+  }
+
+  &.rule__line--dep {
+    color: var(--text-deprecated);
+  }
+
+  .rule__text { flex: 1 1 auto; min-width: 0; }
+  .rule__kernel { @include mono; font-weight: 500; }
+}
+
+// 截止线本体：横贯页边 + 行，用 top border 表达
+.rule--dep { border-top: 1px solid var(--rule); margin-top: -1px; }
+.rule--susfs { border-top: 1px solid var(--susfs-fill); margin-top: -1px; }
+.rule--both {
+  border-top: 1px solid var(--susfs-fill);
+  margin-top: -1px;
+  box-shadow: inset 0 3px 0 -2px var(--rule);
+}
+
+.rule__toggle {
+  @include copy-button;
+  color: var(--text-2);
+  margin-left: auto;
+  text-decoration-color: var(--hairline);
+  &:hover { color: var(--text); }
+}
+
+@include mobile {
+  .rule__line { flex-wrap: wrap; }
+  .rule__line .rule__text { flex-basis: calc(100% - 36px); }
+  .rule__toggle { margin-left: 36px; padding: 10px 0; min-height: 44px; }
+}
+
+// 过滤态：规则线与页边斜纹隐藏，行内文字标签出现
+.ledger.is-filtered {
+  .rule { display: none; }
+  .year__note { position: static; }
+  .year__margin { background-image: none; }
+}
+
+// 无结果
+.ledger__empty {
+  padding: var(--sp-12) 0;
+  text-align: center;
+  color: var(--text-2);
+  font-size: var(--fs-15);
+  display: none;
+
+  .q { @include mono; color: var(--text); }
+
+  button {
+    @include copy-button;
+    display: block;
+    margin: var(--sp-3) auto 0;
+  }
+}
+
+.ledger.is-empty .ledger__empty { display: block; }

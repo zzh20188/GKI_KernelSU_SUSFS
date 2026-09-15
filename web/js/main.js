@@ -2,86 +2,110 @@
  * 入口模块：初始化所有子模块，加载并渲染内核数据
  */
 
-// 导入 SCSS 样式（webpack 会处理打包）
 import '../scss/main.scss';
 
-import { t } from './i18n.js';
-import { initI18n } from './i18n.js';
+import { t, initI18n } from './i18n.js';
 import { initTheme } from './theme.js';
-import { initModal, hideModal } from './modal.js';
-import { initAnnouncement, hideAnnounce } from './announcement.js';
-import { initSearch } from './search.js';
+import { initModal } from './modal.js';
+import { initAnnouncement } from './announcement.js';
+import { initSearch, filterActive, getQuery, clearSearch } from './search.js';
 import { initTimeConverter } from './time-converter.js';
 import { initBackToTop } from './back-to-top.js';
 import { showToast } from './toast.js';
-import { copyText, fetchJsonFresh } from './utils.js';
-import { DATA_FILES } from './config.js';
-import { renderTabs, renderPanels, animateCounters, initRipple } from './render.js';
+import { copyText, fetchJsonFresh, fmt, getStored } from './utils.js';
+import { DATA_FILES, PROBE_DIR } from './config.js';
+import { buildBranchModel, buildSummary } from './model.js';
+import {
+  renderTabs, renderPanels, activateBranch, renderReadout,
+  initCollapse, initRulerJump, initLegendSync, applyCollapse, readCollapsePref, getModel,
+} from './render.js';
 
-// 初始化各模块
 initI18n();
-initTheme();
+initTheme({
+  button: document.getElementById('themeToggle'),
+  labels: { light: t.light, dark: t.dark },
+});
 initModal();
 initSearch();
-initTimeConverter();
+var timeConverter = initTimeConverter();
 initBackToTop();
+initCollapse(getQuery);
+initRulerJump(clearSearch);
+initLegendSync();
 
-// ESC 关闭所有弹窗
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') { hideModal(); hideAnnounce(); }
-});
-
-// 复制按钮全局事件委托（弹窗 + 时间转换器共用）
+// 复制按钮全局事件委托（参数单、时间转换器共用）
 document.addEventListener('click', function (e) {
-  var btn = e.target.closest('.modal-copy');
+  var btn = e.target.closest('.copy-btn');
   if (!btn) return;
   var text = btn.dataset.copy;
   if (!text) return;
   copyText(text).then(function () {
+    // 连续点击时清掉上一次的还原计时器，避免按钮停在「已复制」
+    if (btn._copyTimer) clearTimeout(btn._copyTimer);
     btn.textContent = t.copied;
     btn.classList.add('copied');
-    showToast(t.tcToast);
-    setTimeout(function () {
+    showToast(btn.dataset.copyWhat ? fmt(t.copyToast, { what: btn.dataset.copyWhat }) : t.copyToastGeneric);
+    btn._copyTimer = setTimeout(function () {
       btn.textContent = t.copy;
       btn.classList.remove('copied');
-    }, 1500);
+      btn._copyTimer = null;
+    }, 1200);
   }).catch(function () {});
 });
 
-// 加载内核数据
+// 从 URL hash 读取初始分支（#android15-6.6）
+function keyFromHash() {
+  var h = (location.hash || '').replace(/^#/, '');
+  return getModel(h) ? h : null;
+}
+
 async function loadData() {
-  var results = await Promise.allSettled(
+  // 版本数据与 SUSFS 探测数据并行拉取；探测文件可缺失（缺失时退回阈值）
+  var settled = await Promise.allSettled(
     DATA_FILES.map(function (f) {
       return fetchJsonFresh('data/' + f.android + '/' + f.kernel + '.json');
-    })
+    }).concat(DATA_FILES.map(function (f) {
+      return fetchJsonFresh(PROBE_DIR + '/' + f.android + '-' + f.kernel + '.json');
+    }))
   );
+  var results = settled.slice(0, DATA_FILES.length);
+  var probes = settled.slice(DATA_FILES.length);
 
-  var datasets = [];
+  var models = [];
   for (var i = 0; i < results.length; i++) {
     if (results[i].status === 'fulfilled') {
-      datasets.push({ meta: DATA_FILES[i], data: results[i].value });
+      var probe = probes[i].status === 'fulfilled' ? probes[i].value : null;
+      models.push(buildBranchModel(results[i].value, DATA_FILES[i], probe));
     }
   }
 
-  if (datasets.length === 0) {
+  if (models.length === 0) {
     document.getElementById('content').innerHTML =
-      '<div class="error"><p>' + t.errorTitle + '</p><p style="margin-top:0.5rem;color:var(--text-muted)">' + t.errorHint + '</p></div>';
+      '<div class="error"><p>' + t.errorTitle + '</p><p>' + t.errorHint + '</p></div>';
     return;
   }
 
-  renderTabs(datasets);
-  renderPanels(datasets);
-  initRipple();
+  renderReadout(buildSummary(models));
+  renderTabs(models, function () { filterActive(); });
+  renderPanels(models);
 
-  // 激活第一个标签页并触发计数动画
-  var firstTab = document.querySelector('.tab');
-  if (firstTab) {
-    firstTab.click();
-    var firstPanel = document.querySelector('.tab-panel.active');
-    if (firstPanel) animateCounters(firstPanel);
-  }
+  // 应用弃用折叠偏好
+  models.forEach(function (m) {
+    var ledger = document.getElementById('ledger-' + m.key);
+    if (ledger) applyCollapse(ledger, readCollapsePref(), false);
+  });
+
+  // 分支优先级：URL hash > 上次访问的分支 > 最新的分支（最后一个）
+  var remembered = getStored('last_branch');
+  var initial = keyFromHash() || (getModel(remembered) ? remembered : null) || models[models.length - 1].key;
+  activateBranch(initial, false);
+  timeConverter.seed();
+
+  window.addEventListener('hashchange', function () {
+    var k = keyFromHash();
+    if (k) activateBranch(k, false);
+  });
 }
 
-// 启动
 initAnnouncement();
 loadData();

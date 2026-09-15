@@ -84,6 +84,10 @@ jobs:
         working-directory: web
         run: npm ci && npx webpack --mode production
 
+      # Pages 产物只需要页面、dist/、data/ 与 assets/，node_modules 有 40MB 以上，上传前清掉
+      - name: Trim Pages artifact
+        run: rm -rf web/node_modules
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
