@@ -88,6 +88,11 @@ on:
         required: false
         type: boolean
         default: false
+      # 工具分支 susfs-probe：以原始模式应用 SUSFS 补丁并上传探测结论
+      susfs_raw_probe:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-kernel:
@@ -119,6 +124,7 @@ jobs:
           echo "Re-Kernel     : ${{ inputs.use_rekernel }}"
           echo "CVE-2026-43499: ${{ inputs.cve_2026_43499_patch }}"
           echo "SUSFS 集成补丁导出: ${{ inputs.export_susfs_patches }}"
+          echo "SUSFS 原始探测  : ${{ inputs.susfs_raw_probe }}"
           echo "Droidspaces   : ${{ inputs.droidspaces }}"
           echo "NTSync        : ${{ inputs.droidspaces_ntsync }}"
           echo "产物上传模式  : ${{ inputs.artifact_upload_mode }}"
@@ -716,6 +722,7 @@ jobs:
           KSU_VARIANT: ${{ inputs.ksu_variant }}
           OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
           SUB_LEVEL: ${{ inputs.sub_level }}
+          SUSFS_PROBE_DIR: ${{ github.workspace }}/susfs-probe
         run: bash "$GITHUB_WORKSPACE/scripts/susfs_fixes/apply.sh"
 
       - name: 生成 SUSFS 集成补丁
@@ -988,7 +995,7 @@ jobs:
           echo "=== NTSync 补丁与配置注入完成 ==="
 
       - name: 应用 Unicode 绕过修复
-        if: inputs.enable_susfs
+        if: inputs.enable_susfs && !inputs.susfs_raw_probe
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
           if [ "${{ inputs.kernel_version }}" = "5.10" ] || [ "${{ inputs.kernel_version }}" = "5.15" ]; then
@@ -1545,6 +1552,31 @@ jobs:
             done
           fi
 
+      # ==================== SUSFS 原始补丁探测结论 ====================
+      # 无论编译成败都写出结论；探测流程没跑到补丁步骤时记为 error
+      - name: 写入 SUSFS 探测结果
+        if: always() && inputs.susfs_raw_probe
+        env:
+          ANDROID_VERSION: ${{ inputs.android_version }}
+          KERNEL_VERSION: ${{ inputs.kernel_version }}
+          SUB_LEVEL: ${{ inputs.sub_level }}
+          OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
+          KSU_VARIANT: ${{ inputs.ksu_variant }}
+          COMPILE_OUTCOME: ${{ steps.compile_kernel.outcome }}
+          SUSFS_PROBE_DIR: ${{ github.workspace }}/susfs-probe
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 "$GITHUB_WORKSPACE/scripts/susfs_probe/write_result.py"
+
+      - name: 上传 SUSFS 探测结果
+        if: always() && inputs.susfs_raw_probe
+        uses: actions/upload-artifact@v6
+        with:
+          name: SUSFS-Probe-${{ env.CONFIG }}-${{ inputs.os_patch_level }}-${{ inputs.ksu_variant }}
+          path: susfs-probe/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 9
+
       # 产物名不带 _kernel- 前缀，避免 release 的「上传内核产物」通配到补丁文件
       - name: 上传 SUSFS 集成补丁
         if: success() && env.SUSFS_PATCH_EXPORT == 'true'
@@ -1556,7 +1588,7 @@ jobs:
           compression-level: 9
 
       - name: 上传 AnyKernel3 刷入包
-        if: inputs.artifact_upload_mode != '上传全部'
+        if: inputs.artifact_upload_mode == '仅上传 AnyKernel3.zip'
         uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}-AnyKernel3

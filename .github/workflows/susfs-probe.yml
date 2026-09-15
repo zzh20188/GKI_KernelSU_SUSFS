@@ -1,0 +1,161 @@
+name: SUSFS 原始补丁探测
+
+# 工具分支 susfs-probe：用未经修补的 susfs4ksu 原始补丁对每个月份分支做全量编译，
+# 得到「原始补丁能否直接应用并编译成功」的逐条结论，用于校准网页上的 SUSFS 兼容线。
+#
+# 矩阵直接从 dev 分支的 data/*.json 现取（可用 data_source 改成别的分支），
+# 每个任务调用 build.yml 并打开 susfs_raw_probe 开关；最后一个 job 把全部结果
+# 汇总成 SUSFS-Probe-Summary 产物，其中 summary.json 的每个分支块可直接落成
+# dev 上的 data/susfs_probe/<android>-<kernel>.json。
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: "内核版本（all = 全部分支）"
+        required: true
+        type: choice
+        options:
+          - all
+          - "5.10"
+          - "5.15"
+          - "6.1"
+          - "6.6"
+          - "6.12"
+        default: all
+      kernelsu_variant:
+        description: "KernelSU 变体"
+        required: true
+        type: choice
+        options:
+          - SukiSU
+          - ReSukiSU
+          - Official
+        default: SukiSU
+      sub_level_min:
+        description: "最小子版本号（留空不限）"
+        required: false
+        type: string
+        default: ""
+      sub_level_max:
+        description: "最大子版本号（留空不限）"
+        required: false
+        type: string
+        default: ""
+      os_patch_levels:
+        description: "只探测这些安全补丁月份，逗号分隔（留空不限，如 2025-03,2025-07）"
+        required: false
+        type: string
+        default: ""
+      include_lts:
+        description: "同时探测 LTS 分支"
+        required: false
+        type: boolean
+        default: true
+      upload_kernels:
+        description: "上传编译出的 AnyKernel3 包（默认只留探测结论）"
+        required: false
+        type: boolean
+        default: false
+      max_parallel:
+        description: "最大并行任务数"
+        required: false
+        type: string
+        default: "20"
+      data_source:
+        description: "版本数据来源分支（读取该分支的 data/*.json）"
+        required: false
+        type: string
+        default: dev
+
+jobs:
+  # ==================== 生成探测矩阵 ====================
+  matrix:
+    name: 生成探测矩阵
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.build.outputs.include }}
+      count: ${{ steps.build.outputs.count }}
+    steps:
+      - name: 检出代码仓库
+        uses: actions/checkout@v7
+
+      - name: 生成探测矩阵
+        id: build
+        env:
+          KERNEL_VERSION_FILTER: ${{ inputs.kernel_version }}
+          SUB_LEVEL_MIN: ${{ inputs.sub_level_min }}
+          SUB_LEVEL_MAX: ${{ inputs.sub_level_max }}
+          OS_PATCH_LEVELS: ${{ inputs.os_patch_levels }}
+          INCLUDE_LTS: ${{ inputs.include_lts }}
+          DATA_SOURCE: ${{ inputs.data_source }}
+        run: python3 scripts/susfs_probe/build_matrix.py
+
+  # ==================== 逐个子版本全量编译 ====================
+  probe:
+    name: "${{ matrix.kernel_version }}.${{ matrix.sub_level }}-${{ matrix.os_patch_level }}"
+    needs: matrix
+    if: needs.matrix.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(inputs.max_parallel || '20') }}
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.include) }}
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      android_version: ${{ matrix.android_version }}
+      kernel_version: ${{ matrix.kernel_version }}
+      sub_level: ${{ matrix.sub_level }}
+      os_patch_level: ${{ matrix.os_patch_level }}
+      ksu_variant: ${{ inputs.kernelsu_variant }}
+      ksu_mode: 关闭
+      enable_susfs: true
+      susfs_raw_probe: true
+      use_zram: false
+      use_bbg: false
+      use_kpm: "disabled (关闭)"
+      use_rekernel: false
+      cve_2026_43499_patch: false
+      export_susfs_patches: false
+      supp_op: false
+      droidspaces: "off"
+      droidspaces_ntsync: false
+      artifact_upload_mode: ${{ inputs.upload_kernels && '仅上传 AnyKernel3.zip' || '不上传' }}
+
+  # ==================== 汇总探测结果 ====================
+  summarize:
+    name: 汇总探测结果
+    needs:
+      - matrix
+      - probe
+    if: ${{ !cancelled() && needs.matrix.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码仓库
+        uses: actions/checkout@v7
+
+      - name: 下载各任务的探测结论
+        uses: actions/download-artifact@v8
+        with:
+          path: ./probe-results
+          pattern: "SUSFS-Probe-*"
+          merge-multiple: false
+
+      - name: 汇总
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          KSU_VARIANT: ${{ inputs.kernelsu_variant }}
+        run: python3 scripts/susfs_probe/aggregate.py ./probe-results ./susfs-probe-summary
+
+      - name: 上传汇总结果
+        uses: actions/upload-artifact@v6
+        with:
+          name: SUSFS-Probe-Summary
+          path: susfs-probe-summary/
+          if-no-files-found: error
+          compression-level: 9
