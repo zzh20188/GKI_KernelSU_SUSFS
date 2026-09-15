@@ -219,11 +219,12 @@ function buildChapter(m) {
   if (m.allSusfs) susfsText = t.legendSusfsAll;
   else if (m.hasSusfs && m.susfsContiguous) susfsText = fmt(t.legendSusfs, { kernel: m.susfsMinKernel });
   else if (m.hasSusfs) susfsText = t.legendSusfsSparse;
+  var unknownNote = (m.probe && m.susfsUnknownCount > 0) ? ' · ' + esc(fmt(t.legendSusfsUnknown, { n: m.susfsUnknownCount })) : '';
   if (susfsText) {
     legend += '<div class="legend__item legend__item--susfs"><span class="legend__sym legend__sym--susfs" aria-hidden="true"></span><span>' + esc(susfsText) +
-      (m.probe ? ' · ' + esc(probeSource(m)) : '') + susfsLink + probeLink + '</span></div>';
+      (m.probe ? ' · ' + esc(probeSource(m)) : '') + unknownNote + susfsLink + probeLink + '</span></div>';
   } else if (m.probe) {
-    legend += '<div class="legend__item"><span class="legend__sym" aria-hidden="true"></span><span>' + esc(t.legendSusfsProbeNone) + ' · ' + esc(probeSource(m)) + susfsLink + probeLink + '</span></div>';
+    legend += '<div class="legend__item"><span class="legend__sym" aria-hidden="true"></span><span>' + esc(t.legendSusfsProbeNone) + ' · ' + esc(probeSource(m)) + unknownNote + susfsLink + probeLink + '</span></div>';
   } else if (m.susfsMinKernel) {
     legend += '<div class="legend__item"><span class="legend__sym" aria-hidden="true"></span><span>' + esc(fmt(t.legendSusfsNone, { kernel: m.susfsMinKernel })) + '</span></div>';
   }
@@ -327,7 +328,7 @@ function buildLedger(m) {
     : null;
 
   var probeAttrs = m.probe
-    ? ' data-probe-variant="' + esc(m.probe.variant) + '" data-probe-date="' + esc(m.probe.probedAt) + '" data-probe-commit="' + esc(m.probe.commitShort) + '"'
+    ? ' data-probe-variant="' + esc(m.probe.variant) + '" data-probe-date="' + esc(m.probe.probedAt) + '" data-probe-commit="' + esc(m.probe.commitShort) + '" data-probe-repo="' + esc(m.probe.repo) + '"'
     : '';
   var html = '<section class="ledger" id="ledger-' + esc(m.key) + '" data-key="' + esc(m.key) + '" data-dep-count="' + m.deprecatedCount + '" data-susfs-min="' + esc(m.susfsMinKernel) + '"' + probeAttrs + '>' +
     '<h3 class="visually-hidden">' + esc(t.ledgerHeading) + '</h3>' +

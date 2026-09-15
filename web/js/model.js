@@ -96,11 +96,17 @@ export function buildBranchModel(data, meta, probe) {
   var key = meta.android + '-' + meta.kernel;
   var probeInfo = normalizeProbe(probe);
 
-  // 单条记录的 SUSFS 结论：有探测结果用探测结果，否则按阈值
+  // 单条记录的 SUSFS 结论：有探测文件时只认探测结果（缺失的月份视为未探测，不再按阈值猜测），
+  // 没有探测文件时才按阈值兜底；LTS 分支会前进，探测到的版本与当前 lts 不一致时也视为未探测
   function susfsOf(date, kernel) {
-    var r = probeInfo ? probeInfo.results[date] : null;
-    if (r) return { susfs: r.verdict === 'clean', rej: r.verdict === 'built_with_rej', failed: r.verdict === 'failed', probed: true, rejCount: r.rej };
-    return { susfs: isSusfsCompat(kernel, meta.kernel), rej: false, failed: false, probed: false, rejCount: 0 };
+    if (probeInfo) {
+      var r = probeInfo.results[date];
+      if (r && (!r.kernel || r.kernel === kernel)) {
+        return { susfs: r.verdict === 'clean', rej: r.verdict === 'built_with_rej', failed: r.verdict === 'failed', probed: true, unknown: false, rejCount: r.rej };
+      }
+      return { susfs: false, rej: false, failed: false, probed: false, unknown: true, rejCount: 0 };
+    }
+    return { susfs: isSusfsCompat(kernel, meta.kernel), rej: false, failed: false, probed: false, unknown: false, rejCount: 0 };
   }
 
   // ---- 逐行基础字段（时间正序） ----
@@ -134,6 +140,7 @@ export function buildBranchModel(data, meta, probe) {
       susfsRej: s.rej,
       susfsFailed: s.failed,
       susfsProbed: s.probed,
+      susfsUnknown: s.unknown,
       susfsRejCount: s.rejCount,
       latest: i === entries.length - 1,
       isLts: false,
@@ -194,7 +201,7 @@ export function buildBranchModel(data, meta, probe) {
 
   var first = rows.length ? rows[0] : null;
   var last = rows.length ? rows[rows.length - 1] : null;
-  var ltsState = lts ? susfsOf('lts', lts) : { susfs: false, rej: false, failed: false, probed: false, rejCount: 0 };
+  var ltsState = lts ? susfsOf('lts', lts) : { susfs: false, rej: false, failed: false, probed: false, unknown: false, rejCount: 0 };
 
   // 兼容线起点：探测且连续时取该行版本，否则退回阈值
   var susfsMinKernel = '';
@@ -258,6 +265,7 @@ export function buildBranchModel(data, meta, probe) {
     hasSusfs: anySusfs,
     allSusfs: rows.length > 0 && susfsFirstIndex === 0,
     hasSusfsRej: rows.some(function (r) { return r.susfsRej; }),
+    susfsUnknownCount: rows.filter(function (r) { return r.susfsUnknown; }).length,
     months: months,
   };
 }

@@ -44,7 +44,9 @@ export function showParams(p) {
   var manifestBranch = 'common-' + branch;
   var repoInitCmd = 'repo init --depth=1 -u ' + LINKS.aospManifest + ' -b ' + manifestBranch + ' --repo-rev=' + REPO_REV;
   var susfsBranch = 'gki-' + p.android + '-' + p.kernel;
-  var susfsCloneCmd = 'git clone ' + LINKS.susfs + '.git -b ' + susfsBranch;
+  // 有探测数据时，克隆命令指向探测实际用的仓库（SukiSU 用 ShirkNeko fork）
+  var susfsRepo = /^https?:\/\//.test(p.probeRepo || '') ? p.probeRepo.replace(/\.git$/, '') : LINKS.susfs;
+  var susfsCloneCmd = 'git clone ' + susfsRepo + '.git -b ' + susfsBranch;
   var version = p.version || (p.kernel + '.' + p.sublevel);
 
   // 上游实际位置：优先用数据里的 ref；LTS 与缺 ref 的条目退回按分支名猜测
@@ -170,6 +172,7 @@ export function initModal() {
       probeVariant: ledger ? ledger.dataset.probeVariant : '',
       probeDate: ledger ? ledger.dataset.probeDate : '',
       probeCommit: ledger ? ledger.dataset.probeCommit : '',
+      probeRepo: ledger ? ledger.dataset.probeRepo : '',
       trigger: btn,
     });
   });
