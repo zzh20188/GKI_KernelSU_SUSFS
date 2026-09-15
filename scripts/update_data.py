@@ -22,22 +22,25 @@ def update_target(android_ver: str, kernel_ver: str,
     end = get_end_date(date_end)
     changed = False
 
-    # 读取现有数据
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         entries = data.get("entries", [])
+        # 同步 deprecated_cutoff（来源从 TARGETS，不在 JSON 里手动维护）
+        if data.get("deprecated_cutoff", "") != dep_cutoff:
+            data["deprecated_cutoff"] = dep_cutoff
+            changed = True
     else:
         data = {
             "android_version": android_ver,
             "kernel_version": kernel_ver,
+            "deprecated_cutoff": dep_cutoff,
             "lts": None,
             "entries": [],
         }
         entries = []
 
-    # 确定需要抓取的日期范围
-    # 从 date_start 开始扫描，过滤掉已有日期，可自动填补之前遗漏的月份
+    # 扫描完整日期范围并排除已有月份，以补齐历史缺失数据
     existing_dates = {e["date"] for e in entries}
     all_dates = make_date_range(date_start, end)
     new_dates = [d for d in all_dates if d not in existing_dates]
@@ -67,10 +70,8 @@ def update_target(android_ver: str, kernel_ver: str,
             print(f"-> {detail}")
             time.sleep(0.3)
 
-    # 按日期排序
     entries.sort(key=lambda e: e["date"])
 
-    # 更新 LTS
     lts_label = f"{android_ver}-{kernel_ver}-lts"
     print(f"  [{lts_label}] ", end="", flush=True)
     lts_text = fetch_lts(android_ver, kernel_ver)
@@ -91,7 +92,6 @@ def update_target(android_ver: str, kernel_ver: str,
                 print(f"-> {lts_value} (unchanged)")
             data["lts"] = lts_value
 
-    # 保存
     data["entries"] = entries
     if changed:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -122,5 +122,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nFATAL: {e}", file=sys.stderr)
         sys.exit(1)
-    # Exit 0 = data changed, 2 = no changes (both are success)
+    # 退出码 0 表示有变更，2 表示无变更；异常返回 1
     sys.exit(0 if changed else 2)

@@ -1,6 +1,7 @@
 {
   "android_version": "android12",
   "kernel_version": "5.10",
+  "deprecated_cutoff": "2024-08",
   "lts": "5.10.269",
   "entries": [
     {

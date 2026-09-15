@@ -1,6 +1,7 @@
 {
   "android_version": "android13",
   "kernel_version": "5.15",
+  "deprecated_cutoff": "2024-09",
   "lts": "5.15.216",
   "entries": [
     {

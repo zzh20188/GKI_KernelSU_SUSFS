@@ -4,11 +4,11 @@
 
 // 内核数据文件配置
 export const DATA_FILES = [
-  { android: 'android12', kernel: '5.10', label: 'android12 / 5.10', deprecatedCutoff: '2024-08' },
-  { android: 'android13', kernel: '5.15', label: 'android13 / 5.15', deprecatedCutoff: '2024-09' },
-  { android: 'android14', kernel: '6.1',  label: 'android14 / 6.1',  deprecatedCutoff: '2024-09' },
-  { android: 'android15', kernel: '6.6',  label: 'android15 / 6.6',  deprecatedCutoff: '' },
-  { android: 'android16', kernel: '6.12', label: 'android16 / 6.12', deprecatedCutoff: '' },
+  { android: 'android12', kernel: '5.10', label: 'android12 / 5.10' },
+  { android: 'android13', kernel: '5.15', label: 'android13 / 5.15' },
+  { android: 'android14', kernel: '6.1',  label: 'android14 / 6.1'  },
+  { android: 'android15', kernel: '6.6',  label: 'android15 / 6.6'  },
+  { android: 'android16', kernel: '6.12', label: 'android16 / 6.12' },
 ];
 
 // 运行时缓存键（每次加载页面生成新的，防止缓存）
