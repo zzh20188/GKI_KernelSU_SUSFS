@@ -6,31 +6,38 @@
   "entries": [
     {
       "date": "2025-06",
-      "kernel": "6.12.23"
+      "kernel": "6.12.23",
+      "ref": "refs/heads/deprecated/android16-6.12-2025-06"
     },
     {
       "date": "2025-07",
-      "kernel": "6.12.30"
+      "kernel": "6.12.30",
+      "ref": "refs/tags/android16-6.12-2025-07_r29"
     },
     {
       "date": "2025-08",
-      "kernel": "6.12.38"
+      "kernel": "6.12.38",
+      "ref": "refs/tags/android16-6.12-2025-08_r26"
     },
     {
       "date": "2025-09",
-      "kernel": "6.12.38"
+      "kernel": "6.12.38",
+      "ref": "refs/heads/android16-6.12-2025-09"
     },
     {
       "date": "2025-12",
-      "kernel": "6.12.58"
+      "kernel": "6.12.58",
+      "ref": "refs/heads/android16-6.12-2025-12"
     },
     {
       "date": "2026-03",
-      "kernel": "6.12.69"
+      "kernel": "6.12.69",
+      "ref": "refs/heads/android16-6.12-2026-03"
     },
     {
       "date": "2026-06",
-      "kernel": "6.12.81"
+      "kernel": "6.12.81",
+      "ref": "refs/heads/android16-6.12-2026-06"
     }
   ]
 }
