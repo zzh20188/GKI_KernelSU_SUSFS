@@ -13,7 +13,7 @@ import { initTimeConverter } from './time-converter.js';
 import { initBackToTop } from './back-to-top.js';
 import { showToast } from './toast.js';
 import { copyText, fetchJsonFresh, fmt, getStored } from './utils.js';
-import { DATA_FILES } from './config.js';
+import { DATA_FILES, PROBE_DIR } from './config.js';
 import { buildBranchModel, buildSummary } from './model.js';
 import {
   renderTabs, renderPanels, activateBranch, renderReadout,
@@ -60,16 +60,22 @@ function keyFromHash() {
 }
 
 async function loadData() {
-  var results = await Promise.allSettled(
+  // 版本数据与 SUSFS 探测数据并行拉取；探测文件可缺失（缺失时退回阈值）
+  var settled = await Promise.allSettled(
     DATA_FILES.map(function (f) {
       return fetchJsonFresh('data/' + f.android + '/' + f.kernel + '.json');
-    })
+    }).concat(DATA_FILES.map(function (f) {
+      return fetchJsonFresh(PROBE_DIR + '/' + f.android + '-' + f.kernel + '.json');
+    }))
   );
+  var results = settled.slice(0, DATA_FILES.length);
+  var probes = settled.slice(DATA_FILES.length);
 
   var models = [];
   for (var i = 0; i < results.length; i++) {
     if (results[i].status === 'fulfilled') {
-      models.push(buildBranchModel(results[i].value, DATA_FILES[i]));
+      var probe = probes[i].status === 'fulfilled' ? probes[i].value : null;
+      models.push(buildBranchModel(results[i].value, DATA_FILES[i], probe));
     }
   }
 
@@ -83,13 +89,10 @@ async function loadData() {
   renderTabs(models, function () { filterActive(); });
   renderPanels(models);
 
-  // 每个账册记录 SUSFS 阈值，供参数单状态行使用；并应用弃用折叠偏好
+  // 应用弃用折叠偏好
   models.forEach(function (m) {
     var ledger = document.getElementById('ledger-' + m.key);
-    if (ledger) {
-      ledger.dataset.susfsMin = m.susfsMinKernel;
-      applyCollapse(ledger, readCollapsePref(), false);
-    }
+    if (ledger) applyCollapse(ledger, readCollapsePref(), false);
   });
 
   // 分支优先级：URL hash > 上次访问的分支 > 最新的分支（最后一个）

@@ -4,7 +4,16 @@
 
 import { t, lang } from './i18n.js';
 import { esc, fmt, prefersReducedMotion, getStored, setStored } from './utils.js';
-import { isSusfsCompat } from './model.js';
+
+// 探测来源说明（变体 / 日期 / susfs4ksu 提交），供图注与参数单复用
+function probeSource(m) {
+  if (!m.probe) return '';
+  return fmt(t.probeSource, {
+    variant: m.probe.variant || '?',
+    date: m.probe.probedAt || '?',
+    commit: m.probe.commitShort || '?',
+  });
+}
 
 var activeKey = null;
 // 用无原型对象存分支模型，避免 #constructor 之类的 hash 命中 Object.prototype
@@ -176,10 +185,11 @@ function branchStatus(m) {
 function buildChapter(m) {
   var status = branchStatus(m);
   var ltsBranch = m.meta.android + '-' + m.meta.kernel + '-lts';
-  var ltsSusfs = m.lts ? isSusfsCompat(m.lts, m.meta.kernel) : false;
+  var ltsSusfs = m.ltsSusfs;
+  var ltsProbe = m.ltsSusfsState && m.ltsSusfsState.probed ? m.ltsSusfsState : null;
 
   var ltsHtml = m.lts
-    ? '<button type="button" class="chapter__lts" data-lts="1" data-android="' + esc(m.meta.android) + '" data-kernel="' + esc(m.meta.kernel) + '" data-sublevel="' + esc(m.ltsSublevel) + '" data-patch="lts" data-version="' + esc(m.lts) + '" data-susfs="' + (ltsSusfs ? '1' : '0') + '" title="' + esc(fmt(t.ltsHint, { branch: ltsBranch })) + '">' +
+    ? '<button type="button" class="chapter__lts" data-lts="1" data-android="' + esc(m.meta.android) + '" data-kernel="' + esc(m.meta.kernel) + '" data-sublevel="' + esc(m.ltsSublevel) + '" data-patch="lts" data-version="' + esc(m.lts) + '" data-susfs="' + (ltsSusfs ? '1' : '0') + '"' + (ltsProbe ? ' data-probe="' + (ltsProbe.susfs ? 'clean' : ltsProbe.rej ? 'built_with_rej' : 'failed') + '" data-probe-rej="' + ltsProbe.rejCount + '"' : '') + ' title="' + esc(fmt(t.ltsHint, { branch: ltsBranch })) + '">' +
         '<span class="lts__label">' + esc(t.lts) + '</span>' +
         '<span class="lts__value">' + esc(m.lts) + '</span>' +
         '<span class="lts__arrow" aria-hidden="true">→</span>' +
@@ -201,12 +211,24 @@ function buildChapter(m) {
   if (m.deprecatedCount > 0) {
     legend += '<div class="legend__item legend__item--dep"><span class="legend__sym legend__sym--dep" aria-hidden="true"></span><span>' + esc(fmt(t.legendDep, { cutoff: m.cutoff })) + '</span></div>';
   }
-  if (m.allSusfs) {
-    legend += '<div class="legend__item legend__item--susfs"><span class="legend__sym legend__sym--susfs" aria-hidden="true"></span><span>' + esc(t.legendSusfsAll) + ' <a class="legend__link" href="' + esc(t.susfsUrl) + '" target="_blank" rel="noopener">susfs4ksu ↗</a></span></div>';
-  } else if (m.hasSusfs) {
-    legend += '<div class="legend__item legend__item--susfs"><span class="legend__sym legend__sym--susfs" aria-hidden="true"></span><span>' + esc(fmt(t.legendSusfs, { kernel: m.susfsMinKernel })) + ' <a class="legend__link" href="' + esc(t.susfsUrl) + '" target="_blank" rel="noopener">susfs4ksu ↗</a></span></div>';
+  // SUSFS 图注：有探测数据时写明来源；探测结果不连续时只按逐行标记
+  var susfsRepoUrl = (m.probe && m.probe.repo) ? m.probe.repo : t.susfsUrl;
+  var susfsLink = ' <a class="legend__link" href="' + esc(susfsRepoUrl) + '" target="_blank" rel="noopener">susfs4ksu ↗</a>';
+  var probeLink = (m.probe && m.probe.runUrl) ? ' <a class="legend__link" href="' + esc(m.probe.runUrl) + '" target="_blank" rel="noopener">' + esc(t.probeRun) + ' ↗</a>' : '';
+  var susfsText = '';
+  if (m.allSusfs) susfsText = t.legendSusfsAll;
+  else if (m.hasSusfs && m.susfsContiguous) susfsText = fmt(t.legendSusfs, { kernel: m.susfsMinKernel });
+  else if (m.hasSusfs) susfsText = t.legendSusfsSparse;
+  if (susfsText) {
+    legend += '<div class="legend__item legend__item--susfs"><span class="legend__sym legend__sym--susfs" aria-hidden="true"></span><span>' + esc(susfsText) +
+      (m.probe ? ' · ' + esc(probeSource(m)) : '') + susfsLink + probeLink + '</span></div>';
+  } else if (m.probe) {
+    legend += '<div class="legend__item"><span class="legend__sym" aria-hidden="true"></span><span>' + esc(t.legendSusfsProbeNone) + ' · ' + esc(probeSource(m)) + susfsLink + probeLink + '</span></div>';
   } else if (m.susfsMinKernel) {
     legend += '<div class="legend__item"><span class="legend__sym" aria-hidden="true"></span><span>' + esc(fmt(t.legendSusfsNone, { kernel: m.susfsMinKernel })) + '</span></div>';
+  }
+  if (m.hasSusfsRej) {
+    legend += '<div class="legend__item legend__item--susfs"><span class="legend__sym legend__sym--susfs-rej" aria-hidden="true"></span><span>' + esc(t.legendSusfsRej) + '</span></div>';
   }
   legend += '<div class="legend__item"><span class="legend__sym legend__sym--latest" aria-hidden="true"></span><span>' + esc(t.legendLatest) + '</span></div>';
   legend += '<div class="legend__item"><span class="legend__sym legend__sym--delta" aria-hidden="true">+N</span><span>' + esc(t.legendDelta) + '</span></div>';
@@ -299,11 +321,15 @@ function buildLedger(m) {
 
   // 规则线位置：在展示顺序里「第一条弃用行」之前、「第一条非兼容行」之前
   var firstDepRow = rowsDesc.find(function (r) { return r.deprecated; });
-  var firstNonSusfsRow = m.hasSusfs && !m.allSusfs && m.monotonic
+  // 兼容线只在「从某行起全部兼容」时才画（探测结果不连续时只逐行标记）
+  var firstNonSusfsRow = m.hasSusfs && !m.allSusfs && m.susfsContiguous
     ? rowsDesc.find(function (r) { return !r.susfs; })
     : null;
 
-  var html = '<section class="ledger" id="ledger-' + esc(m.key) + '" data-key="' + esc(m.key) + '" data-dep-count="' + m.deprecatedCount + '">' +
+  var probeAttrs = m.probe
+    ? ' data-probe-variant="' + esc(m.probe.variant) + '" data-probe-date="' + esc(m.probe.probedAt) + '" data-probe-commit="' + esc(m.probe.commitShort) + '"'
+    : '';
+  var html = '<section class="ledger" id="ledger-' + esc(m.key) + '" data-key="' + esc(m.key) + '" data-dep-count="' + m.deprecatedCount + '" data-susfs-min="' + esc(m.susfsMinKernel) + '"' + probeAttrs + '>' +
     '<h3 class="visually-hidden">' + esc(t.ledgerHeading) + '</h3>' +
     '<div class="ledger__head">' +
       '<div class="ledger__head-margin" aria-hidden="true"></div>' +
@@ -360,6 +386,7 @@ function buildRow(m, row, depRuleId) {
   var cls = ['row'];
   if (row.deprecated) cls.push('is-deprecated');
   if (row.susfs) cls.push('is-susfs');
+  if (row.susfsRej) cls.push('is-susfs-rej');
   if (row.runCont) cls.push('is-cont');
   if (row.runCont && row.runPos === 0) cls.push('is-cont-last');
   if (row.latest) cls.push('is-latest');
@@ -376,6 +403,7 @@ function buildRow(m, row, depRuleId) {
   var marks = '';
   if (row.deprecated) marks += '<span class="mark mark--dep mark--filtered-only">' + esc(t.deprecated) + '</span>';
   if (row.susfs) marks += '<span class="mark mark--susfs mark--filtered-only">' + esc(t.susfsCompat) + '</span>';
+  if (row.susfsRej) marks += '<span class="mark mark--susfs-rej mark--filtered-only">' + esc(t.susfsRejMark) + '</span>';
   if (row.isLts) marks += '<span class="mark mark--lts">' + esc(t.lts) + '</span>';
   if (row.latest) marks += '<span class="mark mark--latest">' + esc(t.newBadge) + '</span>';
 
@@ -383,13 +411,14 @@ function buildRow(m, row, depRuleId) {
   var tags = [];
   if (row.deprecated) tags.push('deprecated', t.deprecated);
   if (row.susfs) tags.push('susfs', t.susfsCompat);
+  if (row.susfsRej) tags.push('susfs', 'rej', t.susfsRejMark);
   if (row.latest) tags.push('latest', 'new', t.newBadge);
   if (row.isLts) tags.push('lts');
 
   var describedBy = row.deprecated ? ' aria-describedby="' + esc(depRuleId) + '"' : '';
 
   return '<li class="' + cls.join(' ') + '" id="row-' + esc(m.key) + '-' + esc(row.date) + '" data-date="' + esc(row.date) + '" data-kernel="' + esc(row.kernel) + '" data-tags="' + esc(tags.join(' ').toLowerCase()) + '">' +
-    '<button type="button" class="row__btn" data-android="' + esc(m.meta.android) + '" data-kernel="' + esc(m.meta.kernel) + '" data-sublevel="' + esc(row.sublevel) + '" data-patch="' + esc(row.date) + '" data-version="' + esc(row.kernel) + '" data-deprecated="' + (row.deprecated ? '1' : '0') + '" data-susfs="' + (row.susfs ? '1' : '0') + '" data-lts="' + (row.isLts ? '1' : '0') + '" data-ref="' + esc(row.ref) + '"' + describedBy + '>' +
+    '<button type="button" class="row__btn" data-android="' + esc(m.meta.android) + '" data-kernel="' + esc(m.meta.kernel) + '" data-sublevel="' + esc(row.sublevel) + '" data-patch="' + esc(row.date) + '" data-version="' + esc(row.kernel) + '" data-deprecated="' + (row.deprecated ? '1' : '0') + '" data-susfs="' + (row.susfs ? '1' : '0') + '" data-lts="' + (row.isLts ? '1' : '0') + '" data-ref="' + esc(row.ref) + '"' + (row.susfsProbed ? ' data-probe="' + (row.susfs ? 'clean' : row.susfsRej ? 'built_with_rej' : 'failed') + '" data-probe-rej="' + row.susfsRejCount + '"' : '') + describedBy + '>' +
       '<span class="row__date">' + esc(row.date) + '</span>' +
       '<span class="row__ver"><span class="row__kernel">' + esc(row.kernel) + '</span>' + metaHtml + '</span>' +
       '<span class="row__marks">' + marks + '</span>' +

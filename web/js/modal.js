@@ -76,7 +76,15 @@ export function showParams(p) {
   var status = '';
   if (p.isLts) status += '<div class="status-line"><span>' + esc(fmt(t.statusLts, { branch: branch })) + '</span></div>';
   if (p.deprecated) status += '<div class="status-line status-line--dep"><span>' + esc(t.statusDep) + '</span></div>';
-  if (p.susfs) status += '<div class="status-line status-line--susfs"><span>' + esc(fmt(t.statusSusfs, { kernel: p.susfsMinKernel || '' })) + '</span></div>';
+  if (p.probe) {
+    // 有探测数据：直接给出原始补丁的 rej 数与编译结果
+    var probeVars = { rej: p.probeRej || 0, variant: p.probeVariant || '?', date: p.probeDate || '?', commit: p.probeCommit || '?' };
+    if (p.probe === 'clean') status += '<div class="status-line status-line--susfs"><span>' + esc(fmt(t.statusProbeClean, probeVars)) + '</span></div>';
+    else if (p.probe === 'built_with_rej') status += '<div class="status-line status-line--susfs-rej"><span>' + esc(fmt(t.statusProbeRej, probeVars)) + '</span></div>';
+    else status += '<div class="status-line status-line--upstream"><span>' + esc(fmt(t.statusProbeFailed, probeVars)) + '</span></div>';
+  } else if (p.susfs) {
+    status += '<div class="status-line status-line--susfs"><span>' + esc(fmt(t.statusSusfs, { kernel: p.susfsMinKernel || '' })) + '</span></div>';
+  }
   if (refKind === 'deprecated') status += '<div class="status-line status-line--upstream"><span>' + esc(t.statusUpstreamMoved) + '</span></div>';
   if (refKind === 'tag') status += '<div class="status-line status-line--upstream"><span>' + esc(fmt(t.statusUpstreamTag, { tag: tagName })) + '</span></div>';
 
@@ -157,6 +165,11 @@ export function initModal() {
       isLts: btn.dataset.lts === '1',
       ref: btn.dataset.ref || '',
       susfsMinKernel: ledger ? ledger.dataset.susfsMin : '',
+      probe: btn.dataset.probe || '',
+      probeRej: btn.dataset.probeRej || '0',
+      probeVariant: ledger ? ledger.dataset.probeVariant : '',
+      probeDate: ledger ? ledger.dataset.probeDate : '',
+      probeCommit: ledger ? ledger.dataset.probeCommit : '',
       trigger: btn,
     });
   });

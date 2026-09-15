@@ -227,6 +227,7 @@
 }
 
 .legend__sym--susfs::before { @include square(var(--susfs-fill)); }
+.legend__sym--susfs-rej::before { @include square(transparent); box-shadow: inset 0 0 0 1px var(--susfs-fill); }
 .legend__sym--latest::before { @include square(var(--accent-fill)); }
 .legend__sym--dep {
   width: 20px;
