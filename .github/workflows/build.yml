@@ -377,9 +377,25 @@ jobs:
             fi
 
             DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
+            TAG_FALLBACK=""
             if grep -q deprecated <<< "$REMOTE_BRANCH"; then
               echo "检测到已弃用的分支: $FORMATTED_BRANCH"
               sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
+            elif [ -z "$REMOTE_BRANCH" ]; then
+              # Google 会把过期的月度分支整个删掉（既不在活跃也不在 deprecated/ 下），
+              # 但 manifest 仍指向该分支。发布 tag 不会被删，回退到编号最大的 _rN tag。
+              # 必须写成 refs/tags/ 全路径，裸 tag 名会被 repo 当成分支去 refs/heads/ 下找。
+              local latest_tag
+              latest_tag=$(git ls-remote https://android.googlesource.com/kernel/common "refs/tags/${FORMATTED_BRANCH}_r*" 2>/dev/null \
+                | awk '{print $2}' | grep -v '\^{}$' | sed 's|refs/tags/||' \
+                | awk -F'_r' '{print $NF+0, $0}' | sort -n | tail -n 1 | cut -d' ' -f2- || true)
+              if [ -z "$latest_tag" ]; then
+                echo "::error::分支 ${FORMATTED_BRANCH} 在上游既无分支也无发布 tag"
+                return 1
+              fi
+              echo "分支 ${FORMATTED_BRANCH} 已被上游删除，回退到发布 tag: $latest_tag"
+              sed -i "/path=\"common\"/ s|revision=\"${FORMATTED_BRANCH}\"|revision=\"refs/tags/${latest_tag}\"|" $DEFAULT_MANIFEST_PATH
+              TAG_FALLBACK="$latest_tag"
             fi
           }
 
@@ -429,6 +445,7 @@ jobs:
           done
 
           echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> $GITHUB_ENV
+          echo "TAG_FALLBACK=$TAG_FALLBACK" >> $GITHUB_ENV
 
       - name: 应用 Stock Config 伪装
         run: |
@@ -728,6 +745,8 @@ jobs:
             formatted_branch="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.os_patch_level }}"
             gki_branch="$formatted_branch"
             grep -q deprecated <<< "$REMOTE_BRANCH" && gki_branch="deprecated/$formatted_branch"
+            # 分支已被上游删除时，实际检出的是发布 tag
+            [ -n "$TAG_FALLBACK" ] && gki_branch="refs/tags/$TAG_FALLBACK"
             gki_commit=$(git rev-parse HEAD)
 
             # KSU 与 SUSFS 提交都取本次构建实际克隆的仓库，不用 ls-remote 现查
