@@ -1,0 +1,537 @@
+// ===== 章首页：大数字 + 规格表 + 图注/工具 + 月份刻度尺 =====
+
+@use 'mixins' as *;
+
+.chapter {
+  padding-top: var(--sp-8);
+
+  @include mobile { padding-top: var(--sp-4); }
+}
+
+.chapter__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 4fr) minmax(0, 4fr);
+  gap: var(--sp-6);
+  align-items: start;
+
+  @include below-desktop {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    .chapter__aside { grid-column: 1 / -1; }
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+  }
+}
+
+// ---- 章名：大数字 + LTS ----
+
+.chapter__name { min-width: 0; }
+
+.chapter__eyebrow {
+  @include meta-label;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+// 分支标识符不做大写转换，保持与数据一致
+.chapter__id {
+  @include mono;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.chapter__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0.02em;
+
+  &::before {
+    @include square(var(--text-3));
+  }
+
+  &.is-active::before { background: var(--susfs-fill); }
+  &.is-partly::before { background: var(--text-3); }
+  &.is-deprecated::before { background: var(--text-deprecated); }
+}
+
+.chapter__num {
+  @include mono;
+  font-size: var(--fs-display);
+  font-weight: 400;
+  line-height: 1;
+  margin-top: var(--sp-2);
+  color: var(--text);
+
+  @include mobile { font-size: 3rem; }
+}
+
+.chapter__lts {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  @include text-button;
+  color: var(--text-2);
+
+  &::after { bottom: -1px; transform: scaleX(1); }
+  &:hover::after { background: var(--accent-hover); }
+
+  .lts__label { @include meta-label; }
+  .lts__value {
+    @include mono;
+    font-size: var(--fs-20);
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .lts__arrow {
+    font-size: var(--fs-13);
+    color: var(--accent);
+  }
+}
+
+// ---- 规格表 ----
+
+.spec {
+  @include mono;
+  font-size: var(--fs-15);
+  border-top: 1px solid var(--hairline);
+
+  @include mobile { font-size: var(--fs-14); }
+}
+
+.spec__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+
+  @include mobile { padding: 6px 0; }
+}
+
+.spec__label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  flex: 0 0 auto;
+  min-width: 12ch;
+}
+
+.spec__value {
+  color: var(--text);
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  &.is-number { font-weight: 500; }
+}
+
+// 章首页的规格表在手机上改为 2×2：标签在上、值在下
+.chapter .spec {
+  @include mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 0;
+
+    .spec__row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      padding: 8px 0;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 0;
+
+      &:nth-child(odd) { padding-right: var(--sp-3); }
+      &:nth-child(even) { padding-left: var(--sp-3); border-left: 1px solid var(--hairline); }
+    }
+
+    .spec__label { min-width: 0; }
+    .spec__value { text-align: left; }
+  }
+}
+
+// ---- 图注 + 工具 ----
+
+.chapter__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+// 图注：桌面常显，手机收进 details（summary 仅手机可见）
+.legend-wrap {
+  .legend-wrap__summary {
+    display: none;
+    @include meta-label;
+    list-style: none;
+    cursor: pointer;
+    padding: 10px 0;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 40px;
+    border-top: 1px solid var(--hairline);
+    user-select: none;
+    @include focus-ring(true);
+
+    &::-webkit-details-marker { display: none; }
+
+    &::after {
+      content: '+';
+      @include mono;
+      font-size: var(--fs-13);
+      color: var(--text-3);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+  }
+
+  &[open] > .legend-wrap__summary::after { content: '−'; }
+
+  @include mobile {
+    .legend-wrap__summary { display: flex; }
+    .legend { padding-bottom: var(--sp-3); }
+  }
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  line-height: 1.5;
+
+  @include mobile { font-size: var(--fs-11); gap: 6px; }
+}
+
+.legend__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+
+.legend__sym {
+  flex-shrink: 0;
+  width: 20px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.legend__sym--susfs::before { @include square(var(--susfs-fill)); }
+.legend__sym--latest::before { @include square(var(--accent-fill)); }
+.legend__sym--dep {
+  width: 20px;
+  height: 14px;
+  @include hatch(var(--hatch-strong));
+  border: 1px solid var(--hairline);
+}
+.legend__sym--delta {
+  @include mono;
+  font-size: var(--fs-11);
+  color: var(--text-3);
+}
+
+.legend__item--susfs { color: var(--susfs); }
+
+.legend__link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+
+  &:hover { text-decoration-thickness: 2px; }
+}
+.legend__item--dep { color: var(--text-deprecated); }
+
+// 时间转换器：原生 details，一行「时间转换器（→ UTC）」带上下细线
+.tools {
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.tools__summary {
+  @include meta-label;
+  color: var(--text-2);
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  user-select: none;
+  min-height: 40px;
+  @include focus-ring(true);
+
+  &::-webkit-details-marker { display: none; }
+
+  &::after {
+    content: '+';
+    @include mono;
+    font-size: var(--fs-13);
+    color: var(--text-3);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .tools[open] > &::after { content: '−'; }
+
+  &:hover { color: var(--text); }
+}
+
+.tc {
+  padding: var(--sp-2) 0 var(--sp-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--sp-2) var(--sp-3);
+}
+
+.tc__hint {
+  grid-column: 1 / -1;
+  font-size: var(--fs-12);
+  color: var(--text-3);
+  margin-bottom: 2px;
+}
+
+.tc__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tc__label {
+  @include meta-label;
+  font-size: 10px;
+}
+
+.tc__input {
+  @include mono;
+  appearance: none;
+  background: var(--sunken);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-1);
+  color: var(--text);
+  font-size: var(--fs-13);
+  padding: 6px 8px;
+  min-height: 34px;
+  min-width: 0;
+  width: 100%;
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease);
+
+  &:focus { border-color: var(--accent); }
+  &::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+
+  // 手机：16px 避免 iOS 聚焦缩放，44px 触控高度
+  @include mobile { font-size: 16px; min-height: 44px; }
+}
+
+.tc__result {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--sunken);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--accent-fill);
+  padding: 6px 10px;
+  min-height: 36px;
+}
+
+.tc__value {
+  @include mono;
+  font-size: var(--fs-13);
+  color: var(--text);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tc__copy { @include copy-button; }
+
+// ---- 月份刻度尺 ----
+
+.ruler {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--rule);
+  position: relative;
+
+  @include mobile {
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-2);
+  }
+}
+
+.ruler__track {
+  display: flex;
+  align-items: flex-end;
+  height: 28px;
+  position: relative;
+  outline: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 4px;
+  }
+
+  @include mobile { height: 16px; }
+}
+
+.tick {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  display: block;
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+
+  // 刻度本体
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 1px;
+    height: 8px;
+    background: var(--text-3);
+    transform: translateX(-50%);
+  }
+
+  &.on::before {
+    height: 16px;
+    background: var(--text);
+  }
+
+  &.on.susfs::before { background: var(--susfs-fill); }
+
+  &.dep { @include hatch; }
+  &.dep::before { background: var(--text-deprecated); }
+  &.dep.on::before { background: var(--text-deprecated); }
+
+  // 弃用截止：右缘一条结构线
+  &.cutoff::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--rule);
+  }
+
+  // 最新月：6px 朱砂方块（优先级高于 SUSFS 青色与弃用灰）
+  &.latest::before,
+  &.on.susfs.latest::before,
+  &.dep.on.latest::before {
+    width: 6px;
+    height: 6px;
+    background: var(--accent-fill);
+    bottom: 5px;
+  }
+
+  // LTS 所在月：刻度顶端一个 4px 空心方块
+  &.lts .tick__lts {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 5px;
+    height: 5px;
+    border: 1px solid var(--text);
+    transform: translateX(-50%);
+  }
+
+  // SUSFS 阈值：刻度尺上方一个青色小三角
+  &.threshold .tick__tri {
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--susfs-fill);
+    transform: translateX(-50%);
+  }
+
+  &.on {
+    cursor: pointer;
+    @include focus-ring(true);
+
+    &:hover::before,
+    &:focus-visible::before { background: var(--accent-fill); }
+  }
+
+  // 悬停提示（桌面）
+  .tick__tip {
+    @include mono;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--overlay);
+    color: var(--text);
+    border: 1px solid var(--rule);
+    padding: 2px 6px;
+    font-size: var(--fs-11);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 2;
+    transition: opacity var(--dur-1) var(--ease);
+  }
+
+  &:hover .tick__tip,
+  &:focus-visible .tick__tip { opacity: 1; }
+
+  &:first-child .tick__tip { left: 0; transform: none; }
+  &:last-child .tick__tip { left: auto; right: 0; transform: none; }
+
+  @include mobile {
+    pointer-events: none;
+    .tick__tip { display: none; }
+  }
+}
+
+.ruler__years {
+  display: flex;
+  position: relative;
+  height: 16px;
+  margin-top: 4px;
+}
+
+.ruler__year {
+  @include mono;
+  position: absolute;
+  top: 0;
+  font-size: var(--fs-11);
+  color: var(--text-3);
+  white-space: nowrap;
+  border-left: 1px solid var(--hairline);
+  padding-left: 4px;
+}
+
+.ruler__caption {
+  @include mono;
+  font-size: var(--fs-11);
+  color: var(--text-3);
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}

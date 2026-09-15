@@ -1,12 +1,15 @@
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
+// 两个入口：仪表盘（index.html）与教程页（guide.html）共用同一套设计令牌与基础模块
 module.exports = {
-  // 入口：ES Module 主文件（内部导入了 SCSS）
-  entry: './js/main.js',
+  entry: {
+    app: './js/main.js',
+    guide: './js/guide.js',
+  },
 
   output: {
-    filename: 'app.bundle.js',
+    filename: '[name].bundle.js',
     path: path.resolve(__dirname, 'dist'),
     clean: true,
   },
@@ -14,7 +17,6 @@ module.exports = {
   module: {
     rules: [
       {
-        // 处理 SCSS 文件：sass-loader → css-loader → 提取为独立 CSS 文件
         test: /\.scss$/,
         use: [
           MiniCssExtractPlugin.loader,
@@ -27,11 +29,10 @@ module.exports = {
 
   plugins: [
     new MiniCssExtractPlugin({
-      filename: 'style.bundle.css',
+      filename: '[name].bundle.css',
     }),
   ],
 
-  // 生产模式自动启用 terser 压缩 JS + CSS
   optimization: {
     minimize: true,
   },

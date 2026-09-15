@@ -2,7 +2,7 @@
  * 全局配置常量
  */
 
-// 内核数据文件配置
+// 内核数据文件配置（顺序即分支导航顺序）
 export const DATA_FILES = [
   { android: 'android12', kernel: '5.10', label: 'android12 / 5.10' },
   { android: 'android13', kernel: '5.15', label: 'android13 / 5.15' },
@@ -22,3 +22,14 @@ export var SUSFS_COMPAT_MIN = {
   '6.6': 98,
   '6.12': 0,
 };
+
+// 外部链接
+export var LINKS = {
+  repo: 'https://github.com/zzh20188/GKI_KernelSU_SUSFS',
+  susfs: 'https://gitlab.com/simonpunk/susfs4ksu',
+  aospCommon: 'https://android.googlesource.com/kernel/common',
+  aospManifest: 'https://android.googlesource.com/kernel/manifest',
+};
+
+// repo init 使用的 repo 工具版本
+export var REPO_REV = 'v2.16';

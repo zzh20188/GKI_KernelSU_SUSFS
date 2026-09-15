@@ -1,0 +1,141 @@
+// ===== 设计令牌：颜色（深色 / 浅色）、字体、间距、圆角、动效 =====
+// 视觉语言「内核年鉴」：只有两个彩色色相（朱砂 = 当前/可操作，青 = SUSFS 兼容），
+// 弃用用「少墨的灰 + 斜纹」，层级靠线而不是色块。
+
+:root {
+  // 颜色 —— 深色主题（默认）
+  --bg: #111214;
+  --surface: #18191c;
+  --overlay: #1f2024;
+  --sunken: #0d0e10;
+  --hairline: #2e3136;
+  --rule: #45484f;
+  --text: #ecedef;
+  --text-2: #9a9ea6;
+  --text-3: #868b94;
+  --text-deprecated: #858a93;
+  --accent: #ff6b3d;
+  --accent-hover: #ff8560;
+  --accent-fill: #ff6b3d;
+  --on-accent: #111214;
+  --susfs: #3fc1b0;
+  --susfs-fill: #3fc1b0;
+  --hatch: rgba(255, 255, 255, 0.04);
+  --hatch-strong: rgba(255, 255, 255, 0.07);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --code-bg: #0d0e10;
+  --code-text: #ecedef;
+  --shadow-dialog: none;
+  --focus: #ff6b3d;
+
+  // 字体
+  --font-sans: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono",
+    Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC", monospace;
+
+  // 字号阶梯
+  --fs-11: 0.6875rem;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-15: 0.9375rem;
+  --fs-17: 1.0625rem;
+  --fs-20: 1.25rem;
+  --fs-22: 1.375rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --fs-display: clamp(3rem, 6vw, 4.5rem);
+
+  // 元数据小标签：英文大写 + 字距；中文无大小写，改用 12px 与较小字距
+  --meta-fs: var(--fs-11);
+  --meta-ls: 0.08em;
+  --meta-tt: uppercase;
+
+  // 间距（4px 基线）
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  // 版面
+  --content-max: 1120px;
+  --page-pad: 32px;
+  --nav-h: 64px;
+  --toolbar-h: 32px;
+  // 账册日期列宽（表头与行共用，避免 ch 基准不同导致错位）
+  --col-date: 108px;
+
+  // 圆角（全站无胶囊）
+  --r-0: 0;
+  --r-1: 2px;
+  --r-2: 4px;
+  --r-sheet: 8px;
+
+  // 动效
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+  --dur-3: 240ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  // 层级
+  --z-nav: 100;
+  --z-top: 900;
+  --z-dialog: 1000;
+  --z-toast: 2000;
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --overlay: #ffffff;
+  --sunken: #efeee9;
+  --hairline: #dcdad3;
+  --rule: #b3b0a7;
+  --text: #17181a;
+  --text-2: #5c5f66;
+  --text-3: #6c6f77;
+  --text-deprecated: #666a72;
+  --accent: #b93a15;
+  --accent-hover: #9c2f0f;
+  --accent-fill: #d9491f;
+  --on-accent: #ffffff;
+  --susfs: #0b6e62;
+  --susfs-fill: #16968a;
+  --hatch: rgba(0, 0, 0, 0.045);
+  --hatch-strong: rgba(0, 0, 0, 0.08);
+  --scrim: rgba(23, 24, 26, 0.4);
+  --code-bg: #0d0e10;
+  --code-text: #ecedef;
+  --shadow-dialog: 0 16px 40px -16px rgba(23, 24, 26, 0.28);
+  --focus: #b93a15;
+
+  color-scheme: light;
+}
+
+:lang(zh-CN) {
+  --meta-fs: var(--fs-12);
+  --meta-ls: 0.05em;
+  --meta-tt: none;
+}
+
+// 手机版面
+@media (max-width: 767px) {
+  :root {
+    --page-pad: 16px;
+    --nav-h: 56px;
+    --toolbar-h: 40px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  :root {
+    --page-pad: 24px;
+  }
+}

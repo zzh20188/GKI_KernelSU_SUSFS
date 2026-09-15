@@ -1,0 +1,281 @@
+// ===== 教程页专用样式（与仪表盘共用令牌、工具条、报头、页脚） =====
+
+@use 'mixins' as *;
+
+// 教程页没有吸顶导航，锚点不需要避让
+html { scroll-padding-top: var(--sp-6); }
+
+.guide {
+  padding-top: var(--sp-8);
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--sp-12);
+  align-items: start;
+
+  @include below-desktop {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+    padding-top: var(--sp-6);
+  }
+}
+
+// 目录：桌面左栏 sticky
+.toc {
+  position: sticky;
+  top: calc(var(--sp-6));
+  border-top: 1px solid var(--rule);
+  padding-top: var(--sp-3);
+
+  @include below-desktop { position: static; }
+}
+
+.toc__title {
+  @include meta-label;
+  margin-bottom: var(--sp-2);
+}
+
+.toc ol {
+  list-style: none;
+  counter-reset: toc -1;
+}
+
+.toc li {
+  counter-increment: toc;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.toc a {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: 8px 0;
+
+  @include mobile { padding: 11px 0; }
+  font-size: var(--fs-13);
+  color: var(--text-2);
+  transition: color var(--dur-1) var(--ease);
+
+  &::before {
+    content: counter(toc, decimal-leading-zero);
+    @include mono;
+    font-size: var(--fs-11);
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+
+  &:hover,
+  &.is-active { color: var(--text); }
+  &.is-active::before { color: var(--accent); }
+}
+
+.guide__main { min-width: 0; }
+
+// 步骤
+.step {
+  border-top: 1px solid var(--rule);
+  padding: var(--sp-4) 0 var(--sp-8);
+  scroll-margin-top: var(--sp-6);
+
+  @include mobile { padding-bottom: var(--sp-6); }
+}
+
+.step__head {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: baseline;
+  margin-bottom: var(--sp-4);
+
+  @include mobile { grid-template-columns: 48px minmax(0, 1fr); }
+}
+
+.step__num {
+  @include mono;
+  font-size: var(--fs-40);
+  line-height: 1;
+  color: var(--accent);
+  font-weight: 400;
+
+  @include mobile { font-size: var(--fs-28); }
+}
+
+.step__title {
+  font-size: var(--fs-22);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+
+  small {
+    display: block;
+    @include meta-label;
+    margin-top: 4px;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+
+  @include mobile { font-size: var(--fs-20); }
+}
+
+.step__body {
+  padding-left: calc(64px + var(--sp-4));
+  color: var(--text-2);
+  font-size: var(--fs-15);
+  line-height: 1.7;
+
+  @include below-desktop { padding-left: 0; }
+  @include mobile { font-size: var(--fs-14); }
+
+  p { margin-bottom: var(--sp-3); }
+
+  ol, ul {
+    list-style: none;
+    margin-bottom: var(--sp-4);
+    counter-reset: li;
+  }
+
+  ol li, ul li {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 8px;
+  }
+
+  ol li { counter-increment: li; }
+
+  ol li::before {
+    content: counter(li);
+    @include mono;
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: var(--fs-12);
+    color: var(--text-3);
+    width: 20px;
+    text-align: right;
+  }
+
+  ul li::before {
+    content: '—';
+    position: absolute;
+    left: 4px;
+    color: var(--text-3);
+  }
+
+  strong { color: var(--text); font-weight: 600; }
+
+  a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    &:hover { color: var(--accent-hover); text-decoration-thickness: 2px; }
+  }
+
+  code {
+    font-size: var(--fs-13);
+    background: var(--sunken);
+    border: 1px solid var(--hairline);
+    padding: 1px 5px;
+    border-radius: var(--r-1);
+    color: var(--text);
+  }
+}
+
+// 提示块
+.notice {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  margin: var(--sp-3) 0 var(--sp-4);
+  border-left: 2px solid var(--rule);
+  background: var(--surface);
+  font-size: var(--fs-14);
+  line-height: 1.6;
+
+  p { margin: 0; }
+  strong { color: var(--text); }
+}
+
+.notice__label {
+  @include meta-label;
+  flex-shrink: 0;
+  padding-top: 3px;
+  min-width: 4ch;
+}
+
+.notice--info { border-left-color: var(--susfs-fill); .notice__label { color: var(--susfs); } }
+.notice--warn { border-left-color: var(--accent-fill); .notice__label { color: var(--accent); } }
+
+// 截图
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-4);
+  margin-top: var(--sp-3);
+  align-items: start;
+}
+
+.shot {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  padding: 0;
+  cursor: zoom-in;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--dur-1) var(--ease);
+  @include focus-ring;
+
+  &:hover { border-color: var(--rule); }
+
+  img {
+    display: block;
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    background: var(--sunken);
+  }
+}
+
+.shot__cap {
+  @include mono;
+  font-size: var(--fs-11);
+  color: var(--text-2);
+  padding: 8px 10px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+
+  .shot__idx { color: var(--accent); flex-shrink: 0; }
+}
+
+// 灯箱
+.lightbox {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+
+  &[open] { display: flex; animation: backdropIn var(--dur-2) var(--ease); }
+  &::backdrop { background: rgba(0, 0, 0, 0.85); }
+
+  img {
+    max-width: 95vw;
+    max-height: 90vh;
+    border: 1px solid var(--rule);
+    background: var(--sunken);
+  }
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
