@@ -3,14 +3,21 @@ name: SUSFS 原始补丁探测
 # 工具分支 susfs-probe：用未经修补的 susfs4ksu 原始补丁对每个月份分支做全量编译，
 # 得到「原始补丁能否直接应用并编译成功」的逐条结论，用于校准网页上的 SUSFS 兼容线。
 #
-# 矩阵直接从 dev 分支的 data/*.json 现取（可用 data_source 改成别的分支），
-# 每个任务调用 build.yml 并打开 susfs_raw_probe 开关；最后一个 job 把全部结果
-# 汇总成 SUSFS-Probe-Summary 产物，其中 summary.json 的每个分支块可直接落成
+# GitHub 只会列出默认分支上存在的 workflow_dispatch 工作流，因此 dev 上放了一个同名、
+# 同输入的空壳；在 Actions 页面用「Use workflow from」选择 susfs-probe 分支即可运行本文件。
+#
+# 矩阵直接从 data_source 分支（默认 dev）的 data/*.json 现取；每个任务调用 build.yml 并打开
+# susfs_raw_probe 开关；最后一个 job 把全部结果与该分支上已有的 data/susfs_probe/*.json 合并，
+# 汇总成 SUSFS-Probe-Summary 产物，其中 summary.json 的每个分支块可用 split_summary.py 拆成
 # dev 上的 data/susfs_probe/<android>-<kernel>.json。
 
 permissions:
   contents: write
   actions: write
+
+concurrency:
+  group: susfs-probe-${{ inputs.kernelsu_variant }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -56,6 +63,16 @@ on:
         required: false
         type: boolean
         default: true
+      susfs_side_fixes:
+        description: "保留与子版本无关的 SUSFS 侧修复（5.10 上游补丁自身的两处编译缺陷）"
+        required: false
+        type: boolean
+        default: false
+      susfs_pin_time:
+        description: "susfs4ksu 固定到该时刻之前的最后一次提交（ISO 8601，留空 = 本次运行开始时刻）"
+        required: false
+        type: string
+        default: ""
       upload_kernels:
         description: "上传编译出的 AnyKernel3 包（默认只留探测结论）"
         required: false
@@ -67,7 +84,7 @@ on:
         type: string
         default: "20"
       data_source:
-        description: "版本数据来源分支（读取该分支的 data/*.json）"
+        description: "版本数据与已有探测结果的来源分支"
         required: false
         type: string
         default: dev
@@ -80,9 +97,22 @@ jobs:
     outputs:
       include: ${{ steps.build.outputs.include }}
       count: ${{ steps.build.outputs.count }}
+      pin_time: ${{ steps.pin.outputs.time }}
     steps:
       - name: 检出代码仓库
         uses: actions/checkout@v7
+
+      - name: 确定 susfs4ksu 固定时刻
+        id: pin
+        env:
+          PIN_INPUT: ${{ inputs.susfs_pin_time }}
+        run: |
+          # 全量跑要持续几个小时，所有任务固定到同一时刻，避免中途上游推送导致结论混用
+          if [ -n "$PIN_INPUT" ]; then
+            echo "time=$PIN_INPUT" >> "$GITHUB_OUTPUT"
+          else
+            echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: 生成探测矩阵
         id: build
@@ -116,6 +146,8 @@ jobs:
       ksu_mode: 关闭
       enable_susfs: true
       susfs_raw_probe: true
+      susfs_side_fixes: ${{ inputs.susfs_side_fixes }}
+      susfs_pin_time: ${{ needs.matrix.outputs.pin_time }}
       use_zram: false
       use_bbg: false
       use_kpm: "disabled (关闭)"
@@ -128,12 +160,13 @@ jobs:
       artifact_upload_mode: ${{ inputs.upload_kernels && '仅上传 AnyKernel3.zip' || '不上传' }}
 
   # ==================== 汇总探测结果 ====================
+  # 手动取消长跑后也要汇总已完成的部分
   summarize:
     name: 汇总探测结果
     needs:
       - matrix
       - probe
-    if: ${{ !cancelled() && needs.matrix.result == 'success' }}
+    if: ${{ always() && needs.matrix.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码仓库
@@ -150,6 +183,9 @@ jobs:
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           KSU_VARIANT: ${{ inputs.kernelsu_variant }}
+          MATRIX_INCLUDE: ${{ needs.matrix.outputs.include }}
+          PROBE_PARTIAL: ${{ (inputs.sub_level_min != '' || inputs.sub_level_max != '' || inputs.os_patch_levels != '') && 'true' || 'false' }}
+          MERGE_FROM_BRANCH: ${{ inputs.data_source }}
         run: python3 scripts/susfs_probe/aggregate.py ./probe-results ./susfs-probe-summary
 
       - name: 上传汇总结果
@@ -158,4 +194,5 @@ jobs:
           name: SUSFS-Probe-Summary
           path: susfs-probe-summary/
           if-no-files-found: error
+          overwrite: true
           compression-level: 9

@@ -13,8 +13,11 @@
   GITHUB_OUTPUT / GITHUB_STEP_SUMMARY  由 Actions 提供
 """
 
+from __future__ import annotations
+
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -33,46 +36,69 @@ def env(name: str, default: str = "") -> str:
     return os.environ.get(name, default).strip()
 
 
-def load_branch_data(android_ver: str, kernel_ver: str, repo: str, branch: str) -> dict | None:
-    """优先从 raw.githubusercontent.com 读取指定分支的数据，失败时退回本地文件"""
-    if repo and branch:
-        url = f"https://raw.githubusercontent.com/{repo}/{branch}/data/{android_ver}/{kernel_ver}.json"
-        try:
-            with urllib.request.urlopen(url, timeout=30) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError) as e:
-            print(f"  远程读取失败（{e}），退回本地数据")
+def fetch_branch_json(path: str, repo: str, branch: str) -> dict | None:
+    """从 raw.githubusercontent.com 读取指定分支的 JSON，失败返回 None"""
+    if not repo or not branch:
+        return None
+    url = f"https://raw.githubusercontent.com/{repo}/{branch}/{path}"
+    try:
+        with urllib.request.urlopen(url, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError) as e:
+        print(f"  远程读取 {url} 失败：{e}")
+        return None
+
+
+def load_branch_data(android_ver: str, kernel_ver: str, repo: str, branch: str) -> tuple[dict | None, str]:
+    """优先读远程分支的数据，失败时退回本地文件；返回 (数据, 来源)"""
+    data = fetch_branch_json(f"data/{android_ver}/{kernel_ver}.json", repo, branch)
+    if data is not None:
+        return data, "remote"
     local = os.path.join(PROJECT_ROOT, "data", android_ver, f"{kernel_ver}.json")
     if not os.path.exists(local):
-        return None
+        return None, "none"
     with open(local, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return json.load(f), "local"
 
 
-def parse_int(value: str) -> int | None:
-    return int(value) if value.isdigit() else None
+def parse_int_or_fail(name: str) -> int | None:
+    value = env(name)
+    if not value:
+        return None
+    if not value.isdigit():
+        print(f"::error::{name} 必须是非负整数，收到 {value!r}")
+        sys.exit(1)
+    return int(value)
 
 
 def main() -> int:
     kernel_filter = env("KERNEL_VERSION_FILTER", "all")
-    sub_min = parse_int(env("SUB_LEVEL_MIN"))
-    sub_max = parse_int(env("SUB_LEVEL_MAX"))
+    sub_min = parse_int_or_fail("SUB_LEVEL_MIN")
+    sub_max = parse_int_or_fail("SUB_LEVEL_MAX")
     patch_levels = {p.strip() for p in env("OS_PATCH_LEVELS").split(",") if p.strip()}
+    bad = [p for p in patch_levels if not re.fullmatch(r"\d{4}-\d{2}", p)]
+    if bad:
+        print(f"::error::OS_PATCH_LEVELS 必须是 YYYY-MM，收到 {bad}")
+        return 1
     include_lts = env("INCLUDE_LTS", "true").lower() == "true"
     data_source = env("DATA_SOURCE", "dev")
     repo = env("GITHUB_REPOSITORY")
 
     include: list[dict] = []
     summary_rows: list[str] = []
+    used_local = False
 
     for (android_ver, kernel_ver) in TARGETS:
         if kernel_filter != "all" and kernel_ver != kernel_filter:
             continue
         print(f"=== {android_ver} / {kernel_ver} ===")
-        data = load_branch_data(android_ver, kernel_ver, repo, data_source)
+        data, source = load_branch_data(android_ver, kernel_ver, repo, data_source)
         if data is None:
             print("  没有数据，跳过")
             continue
+        if source == "local":
+            used_local = True
+            print(f"::warning::{android_ver}/{kernel_ver} 远程数据读取失败，使用工具分支本地的旧数据")
 
         picked = 0
         for entry in data.get("entries", []):
@@ -81,9 +107,9 @@ def main() -> int:
             if not date or not kernel.startswith(f"{kernel_ver}."):
                 continue
             sub_level = kernel.rsplit(".", 1)[-1]
-            sub = parse_int(sub_level)
-            if sub is None:
+            if not sub_level.isdigit():
                 continue
+            sub = int(sub_level)
             if patch_levels and date not in patch_levels:
                 continue
             if sub_min is not None and sub < sub_min:
@@ -108,8 +134,8 @@ def main() -> int:
             })
             lts_picked = True
 
-        print(f"  选中 {picked} 个月份分支" + ("，含 LTS" if lts_picked else ""))
-        summary_rows.append(f"| {android_ver} / {kernel_ver} | {picked} | {'是' if lts_picked else '否'} |")
+        print(f"  选中 {picked} 个月份分支" + ("，含 LTS" if lts_picked else "") + f"（数据来源：{source}）")
+        summary_rows.append(f"| {android_ver} / {kernel_ver} | {picked} | {'是' if lts_picked else '否'} | {source} |")
 
     count = len(include)
     if count == 0:
@@ -122,12 +148,14 @@ def main() -> int:
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
         out.write("include=" + json.dumps(include, ensure_ascii=False, separators=(",", ":")) + "\n")
         out.write(f"count={count}\n")
+        out.write(f"source={'local' if used_local else 'remote'}\n")
 
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
         with open(summary_path, "a", encoding="utf-8") as summary:
-            summary.write(f"## 探测矩阵：{count} 个任务（数据来源 `{data_source}`）\n\n")
-            summary.write("| 分支 | 月份分支数 | LTS |\n|---|---:|:-:|\n")
+            summary.write(f"## 探测矩阵：{count} 个任务（数据来源分支 `{data_source}`"
+                          + ("，部分退回本地旧数据" if used_local else "") + "）\n\n")
+            summary.write("| 分支 | 月份分支数 | LTS | 来源 |\n|---|---:|:-:|---|\n")
             summary.write("\n".join(summary_rows) + "\n")
 
     print(f"\n共 {count} 个任务")

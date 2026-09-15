@@ -93,6 +93,16 @@ on:
         required: false
         type: boolean
         default: false
+      # 探测时是否保留与子版本无关的 SUSFS 侧修复
+      susfs_side_fixes:
+        required: false
+        type: boolean
+        default: false
+      # susfs4ksu 固定到该时刻之前的最后一次提交（ISO 8601），留空不固定
+      susfs_pin_time:
+        required: false
+        type: string
+        default: ""
 
 jobs:
   build-kernel:
@@ -200,8 +210,15 @@ jobs:
             exit 1
           fi
 
+          # 探测矩阵里同一子版本会跨多个月份出现，产物名需要带上月份才不会撞名
+          ARTIFACT_SUFFIX=""
+          if [ "${{ inputs.susfs_raw_probe }}" = "true" ]; then
+            ARTIFACT_SUFFIX="-${{ inputs.os_patch_level }}"
+          fi
+
           cat >> $GITHUB_ENV << EOF
           CONFIG=$CONFIG
+          ARTIFACT_SUFFIX=$ARTIFACT_SUFFIX
           KERNEL_ROOT=$KERNEL_ROOT
           LEGACY_SUKISU_CONFIG=$LEGACY_SUKISU_CONFIG
           DEFCONFIG=$KERNEL_ROOT/common/arch/arm64/configs/gki_defconfig
@@ -254,6 +271,7 @@ jobs:
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       - name: 恢复 ccache 缓存
+        if: ${{ !inputs.susfs_raw_probe }}
         uses: actions/cache@v5
         with:
           path: ~/.ccache
@@ -263,8 +281,28 @@ jobs:
 
       # 仅 6.1+ 走 bazel 构建，持久化 --disk_cache 目录以加速后续构建
       - name: 恢复 bazel 磁盘缓存
-        if: inputs.android_version != 'android12' && inputs.android_version != 'android13'
+        if: ${{ !inputs.susfs_raw_probe && inputs.android_version != 'android12' && inputs.android_version != 'android13' }}
         uses: actions/cache@v5
+        with:
+          path: ~/.cache/bazel
+          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-bazel-${{ github.sha }}
+          restore-keys: |
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-bazel-
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-bazel-
+
+      # 探测模式：一次性任务只恢复缓存不保存，避免 130 个任务把仓库 10GB 缓存配额里 dev 的热缓存挤掉
+      - name: 恢复 ccache 缓存（探测，只读）
+        if: ${{ inputs.susfs_raw_probe }}
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.ccache
+          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-
+
+      - name: 恢复 bazel 磁盘缓存（探测，只读）
+        if: ${{ inputs.susfs_raw_probe && inputs.android_version != 'android12' && inputs.android_version != 'android13' }}
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/bazel
           key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-bazel-${{ github.sha }}
@@ -340,6 +378,15 @@ jobs:
                 git checkout "$CUSTOM_COMMIT"
                 cd ..
               fi
+            fi
+          fi
+
+          # 探测时把 susfs4ksu 固定到指定时刻之前的最后一次提交，几小时的全量跑才会用同一提交
+          if [ -n "${{ inputs.susfs_pin_time }}" ]; then
+            PIN_COMMIT=$(git -C susfs4ksu rev-list -1 --before="${{ inputs.susfs_pin_time }}" HEAD)
+            if [ -n "$PIN_COMMIT" ]; then
+              git -C susfs4ksu checkout -q "$PIN_COMMIT"
+              echo "susfs4ksu 固定到 ${{ inputs.susfs_pin_time }} 之前的提交: $PIN_COMMIT"
             fi
           fi
 
@@ -723,6 +770,7 @@ jobs:
           OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
           SUB_LEVEL: ${{ inputs.sub_level }}
           SUSFS_PROBE_DIR: ${{ github.workspace }}/susfs-probe
+          SUSFS_PROBE_SIDE_FIXES: ${{ inputs.susfs_side_fixes && '1' || '' }}
         run: bash "$GITHUB_WORKSPACE/scripts/susfs_fixes/apply.sh"
 
       - name: 生成 SUSFS 集成补丁
@@ -1412,7 +1460,7 @@ jobs:
             echo "SUSFS 提交日期: ${SUSFS_LATEST_COMMIT_DATE:-未知}"
           } > "$LOG_DIR/summary.txt"
 
-          printf '%s\n' "${{ inputs.ksu_variant }}_kernel-${CONFIG}-Build-Logs" > "$LOG_DIR/artifact-name.txt"
+          printf '%s\n' "${{ inputs.ksu_variant }}_kernel-${CONFIG}${ARTIFACT_SUFFIX}-Build-Logs" > "$LOG_DIR/artifact-name.txt"
 
           df -h "$GITHUB_WORKSPACE" > "$LOG_DIR/disk-usage.txt" 2>&1 || true
           ccache -s > "$LOG_DIR/ccache-stats.txt" 2>&1 || true
@@ -1421,10 +1469,11 @@ jobs:
         if: ${{ always() && steps.compile_kernel.outcome == 'failure' }}
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}-Build-Logs
+          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}${{ env.ARTIFACT_SUFFIX }}-Build-Logs
           path: build-logs/
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: ${{ inputs.susfs_raw_probe && 30 || 7 }}
+          overwrite: true
           compression-level: 9
 
       # - name: 应用 KPM 补丁 (SukiSU/ReSukiSU/Next)
@@ -1449,6 +1498,7 @@ jobs:
       #     mv oImage Image
 
       - name: 准备 Boot 镜像
+        if: inputs.artifact_upload_mode != '不上传'
         run: |
           mkdir -p bootimgs
 
@@ -1473,12 +1523,12 @@ jobs:
           zip -r "../$ZIP_NAME" ./*
 
       - name: 准备 AnyKernel3 目录
-        if: inputs.artifact_upload_mode != '上传全部'
+        if: inputs.artifact_upload_mode == '仅上传 AnyKernel3.zip'
         run: |
           mv ./Image "$ANYKERNEL3/Image"
 
       - name: 构建 Boot 镜像 (Android 12)
-        if: inputs.android_version == 'android12'
+        if: inputs.artifact_upload_mode != '不上传' && inputs.android_version == 'android12'
         working-directory: bootimgs
         run: |
           GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-${{ inputs.os_patch_level }}_${{ inputs.revision }}.zip
@@ -1509,7 +1559,7 @@ jobs:
           cp ./boot-lz4.img ../${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.os_patch_level }}-boot-lz4.img
 
       - name: 构建 Boot 镜像 (Android 13+)
-        if: inputs.android_version == 'android13' || inputs.android_version == 'android14' || inputs.android_version == 'android15' || inputs.android_version == 'android16'
+        if: inputs.artifact_upload_mode != '不上传' && (inputs.android_version == 'android13' || inputs.android_version == 'android14' || inputs.android_version == 'android15' || inputs.android_version == 'android16')
         working-directory: bootimgs
         run: |
           gzip -n -k -f -9 ./Image > ./Image.gz
@@ -1571,10 +1621,11 @@ jobs:
         if: always() && inputs.susfs_raw_probe
         uses: actions/upload-artifact@v6
         with:
-          name: SUSFS-Probe-${{ env.CONFIG }}-${{ inputs.os_patch_level }}-${{ inputs.ksu_variant }}
+          name: SUSFS-Probe-${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-${{ inputs.os_patch_level }}-${{ inputs.ksu_variant }}
           path: susfs-probe/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
+          overwrite: true
           compression-level: 9
 
       # 产物名不带 _kernel- 前缀，避免 release 的「上传内核产物」通配到补丁文件
@@ -1591,8 +1642,9 @@ jobs:
         if: inputs.artifact_upload_mode == '仅上传 AnyKernel3.zip'
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}-AnyKernel3
+          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}${{ env.ARTIFACT_SUFFIX }}-AnyKernel3
           path: AnyKernel3/*
+          overwrite: true
           compression-level: 9
 
       - name: 上传全部构建产物
@@ -1609,7 +1661,8 @@ jobs:
         if: always() && env.REJ_COUNT > 0
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}-Rejects
+          name: ${{ inputs.ksu_variant }}_kernel-${{ env.CONFIG }}${{ env.ARTIFACT_SUFFIX }}-Rejects
           path: patch-rejects/
           if-no-files-found: ignore
+          overwrite: true
           compression-level: 9
