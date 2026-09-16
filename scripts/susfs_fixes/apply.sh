@@ -7,6 +7,22 @@
 # 调用前必须将工作目录设为 $KERNEL_ROOT
 set -eo pipefail
 
+# 列出当前目录下不属于上游的 .rej（相对路径，已排序）。
+# 上游分支可能自带已提交的 .rej（如 android15-6.6-2026-04 的 mm/rmap.c.rej，
+# 是上游解决合并冲突时的残留），那不是本补丁的冲突；但 patch 失败时会覆盖同名文件，
+# 所以只有「被 git 跟踪且未改动」的才视为上游自带。
+# 不在 git 仓库里（本地 verify_context.sh）时 git 命令为空，退回全部 .rej
+list_upstream_rej() {
+  git ls-files -- '*.rej' 2>/dev/null | while IFS= read -r f; do
+    git diff --quiet -- "$f" 2>/dev/null && echo "$f"
+  done
+}
+list_untracked_rej() {
+  comm -23 \
+    <(find . -type f -name '*.rej' | sed 's|^\./||' | sort) \
+    <(list_upstream_rej | sort)
+}
+
 echo "应用 SUSFS 补丁..."
 
 SUSFS_PATCH="50_add_susfs_in_gki-$ANDROID_VERSION-$KERNEL_VERSION.patch"
@@ -174,11 +190,12 @@ if [[ -f fs/susfs.c ]] && grep -qF 'security_sb_statfs(' fs/susfs.c \
   sed -i '0,/^#include <linux\/fs.h>$/s//#include <linux\/fs.h>\n#include <linux\/security.h>/' fs/susfs.c
 fi
 
-# 在编译前报告 SUSFS 主补丁产生的冲突文件
-SUSFS_REJ_COUNT=$(find . -name '*.rej' | wc -l)
+# 在编译前报告 SUSFS 主补丁产生的冲突文件，上游自带的 .rej 不计入
+mapfile -t SUSFS_REJ_FILES < <(list_untracked_rej)
+SUSFS_REJ_COUNT=${#SUSFS_REJ_FILES[@]}
 if [ "$SUSFS_REJ_COUNT" -gt 0 ]; then
   echo "::warning title=SUSFS 补丁冲突::SUSFS 主补丁产生了 ${SUSFS_REJ_COUNT} 个 .rej 冲突文件，可能导致后续编译失败（详见 Rejects 产物）"
-  find . -name '*.rej' -print
+  printf '%s\n' "${SUSFS_REJ_FILES[@]}"
 fi
 
 # 还原仅用于补丁匹配的临时源码调整

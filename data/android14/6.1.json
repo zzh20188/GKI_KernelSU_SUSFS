@@ -158,6 +158,11 @@
       "date": "2026-06",
       "kernel": "6.1.172",
       "ref": "refs/heads/android14-6.1-2026-06"
+    },
+    {
+      "date": "2026-09",
+      "kernel": "6.1.176",
+      "ref": "refs/heads/android14-6.1-2026-09"
     }
   ]
 }
