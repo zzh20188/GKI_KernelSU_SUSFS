@@ -762,7 +762,11 @@ jobs:
             susfs_commit=$(git -C "$SUSFS4KSU" rev-parse HEAD)
 
             local rej_count patch_sha256
-            rej_count=$(find . -type f -name '*.rej' | wc -l)
+            # 上游自带且未改动的 .rej（如 android15-6.6-2026-04 的 mm/rmap.c.rej）不算冲突；
+            # patch 失败会覆盖同名文件，所以被改动过的仍要计入
+            rej_count=$(comm -23 \
+              <(find . -type f -name '*.rej' | sed 's|^\./||' | sort) \
+              <(git ls-files -- '*.rej' | while IFS= read -r f; do git diff --quiet -- "$f" && echo "$f"; done | sort) | wc -l)
             patch_sha256=$(sha256sum "$OUT_DIR/susfs.patch" | awk '{print $1}')
 
             jq -n \
@@ -991,6 +995,12 @@ jobs:
         if: inputs.enable_susfs
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
+          # 上游 2023-11、2024-01、2024-03 月度分支已带有 "unicode: Don't special case ignorable code points"，
+          # patch --forward 会判定为已应用并跳过，但被忽略的 hunk 仍会写成 .rej，先做幂等检查
+          if [ -f fs/unicode/mkutf8data.c ] && ! grep -q 'ignore_init' fs/unicode/mkutf8data.c; then
+            echo "源码已包含 Unicode 绕过修复，跳过补丁"
+            exit 0
+          fi
           if [ "${{ inputs.kernel_version }}" = "5.10" ] || [ "${{ inputs.kernel_version }}" = "5.15" ]; then
             patch -p1 --forward < "$ACTION_BUILD/patches/unicode_bypass_fix_6.1-.patch" || true
           else
@@ -1525,7 +1535,19 @@ jobs:
           REJECTS_DIR="$GITHUB_WORKSPACE/patch-rejects"
           mkdir -p "$REJECTS_DIR"
 
-          mapfile -t REJS < <(find "$KERNEL_ROOT" -type f -name '*.rej')
+          # 跳过上游自带的 .rej：上游分支可能自带已提交的 .rej
+          # （如 android15-6.6-2026-04 的 mm/rmap.c.rej），那不是本项目补丁的冲突；
+          # patch 失败会覆盖同名文件，所以只跳过「被 git 跟踪且未改动」的
+          mapfile -t REJS < <(
+            find "$KERNEL_ROOT" -type f -name '*.rej' | sort | while IFS= read -r rej; do
+              if git -C "$(dirname "$rej")" ls-files --error-unmatch -- "$(basename "$rej")" >/dev/null 2>&1 \
+                && git -C "$(dirname "$rej")" diff --quiet -- "$(basename "$rej")" 2>/dev/null; then
+                echo "跳过上游自带的 .rej: ${rej#"$KERNEL_ROOT"/}" >&2
+                continue
+              fi
+              echo "$rej"
+            done
+          )
           REJ_COUNT=${#REJS[@]}
           echo "发现 $REJ_COUNT 个 .rej 文件"
           echo "REJ_COUNT=$REJ_COUNT" >> $GITHUB_ENV
