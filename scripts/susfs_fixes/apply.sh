@@ -59,7 +59,8 @@ if os.path.exists(os.environ["PATCH_LOG"]):
 def to_int(value):
     return int(value) if value not in ("", None) else None
 
-# patch 对找不到目标文件、疑似已应用的 hunk 只会「ignored」，不产生 .rej，必须单独计数
+# patch 对找不到目标文件、疑似已应用的 hunk 只报「ignored」而不报 FAILED，必须单独计数；
+# 前者不产生 .rej，后者仍会把被忽略的 hunk 写进 .rej（"saving rejects to file"）
 ignored = sum(int(m) for m in re.findall(r"^(\d+) out of \d+ hunks? ignored", log, re.M))
 result = {
     "patch": os.environ["SUSFS_PATCH"],
@@ -138,7 +139,12 @@ fi
 
 # 统计主补丁留下的 .rej（只看 common/，此时还没有别的补丁介入；
 # common/drivers/kernelsu 是符号链接，find 默认不跟随，KSU 侧 .rej 已在上面单独统计）
-mapfile -t REJ_FILES < <(find . -name '*.rej' -type f | sed 's|^\./||' | sort)
+# 排除上游自带的 .rej：上游分支可能自带已提交的 .rej（如 android15-6.6-2026-04 的 mm/rmap.c.rej，
+# 是上游解决合并冲突时的残留），那不是补丁冲突，计入会把该月份误判为 built_with_rej；
+# patch 失败会覆盖同名文件，所以只排除「被 git 跟踪且未改动」的
+mapfile -t REJ_FILES < <(comm -23 \
+  <(find . -name '*.rej' -type f | sed 's|^\./||' | sort) \
+  <(git ls-files -- '*.rej' 2>/dev/null | while IFS= read -r f; do git diff --quiet -- "$f" 2>/dev/null && echo "$f"; done | sort))
 if [ "${#REJ_FILES[@]}" -gt 0 ]; then
   echo "::warning title=SUSFS 原始补丁冲突::原始补丁产生了 ${#REJ_FILES[@]} 个 .rej 文件"
   printf '  %s\n' "${REJ_FILES[@]}"
