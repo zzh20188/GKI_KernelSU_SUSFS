@@ -118,7 +118,7 @@ on:
 
 jobs:
   resolve-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       android_version: ${{ steps.resolve.outputs.android_version }}
       sub_level: ${{ steps.resolve.outputs.sub_level }}

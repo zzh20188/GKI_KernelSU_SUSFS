@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   update-data:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       data-changed: ${{ steps.commit.outputs.changed }}
     steps:
@@ -62,7 +62,7 @@ jobs:
   deploy-pages:
     if: ${{ github.repository == 'zzh20188/GKI_KernelSU_SUSFS' }}
     needs: update-data
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -1,10 +1,10 @@
 name: GetManager
 permissions:
-  contents: write  # Allow writing to repository contents (for pushing tags)
-  actions: read   # Allows triggering actions
+  contents: write
+  actions: read
 
 on:
-  workflow_call: # This allows this workflow to be called from another workflow
+  workflow_call:
     inputs:
       kernelsu_variant:
         required: true
@@ -20,11 +20,9 @@ on:
 
 jobs:
   get_ksu_manager:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
-      # 输出1: KSU版本号
       ksuVer: ${{ steps.get_version.outputs.kversion }}
-      # 输出2: SUSFS版本号
       susVer: ${{ steps.get_version.outputs.sversion }}
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
@@ -92,7 +90,6 @@ jobs:
 
           cd KernelSU
 
-          # 计算KSU版本号
           KSU_GIT_VERSION=$(git rev-list --count HEAD)
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
@@ -111,7 +108,6 @@ jobs:
           echo $KSU_VERSION
           echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
 
-          # 计算SUSFS版本号
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             SUS_VERSION="v2.1.0"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40548)" ]; then
@@ -122,7 +118,6 @@ jobs:
           fi
           echo $SUS_VERSION
 
-          # 导出这两个值给release
           echo "kversion=$KSU_VERSION" >> $GITHUB_OUTPUT
           echo "sversion=$SUS_VERSION" >> $GITHUB_OUTPUT
 
@@ -274,7 +269,6 @@ jobs:
           fi
           echo "选择 Manager 构建 $BEST_BUILD_ID ($BEST_BRANCH), KSU $BEST_VERSION"
 
-          # 下载并解压所有 Manager 产物
           echo "$DOWNLOAD_LIST" | while IFS=$'\t' read -r NAME URL; do
             SAFE_NAME=$(echo "$NAME" | tr '/ ' '__')
             ZIP_NAME="${{ inputs.kernelsu_variant }}-${SAFE_NAME}(${{ env.KSU_VERSION }}).zip"
@@ -329,22 +323,18 @@ jobs:
 
           echo $DOWNLOAD_URL
           echo $NAME
-          # 下载 Manager 文件
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o "$NAME" "$DOWNLOAD_URL"
           echo "$NAME 文件已下载.zip"
 
 
-          # 解压 artifact zip 获取里面的模块文件
           mkdir -p susfs-module
           unzip "$NAME" -d susfs-temp
 
-          # 检查解压后的内容：如果是散装文件则打包成 zip
+          # 统一输出模块 ZIP：保留已有 ZIP，否则重新打包解压内容
           cd susfs-temp
           if ls *.zip 1>/dev/null 2>&1; then
-            # 里面已经是 zip 文件，直接移动
             mv *.zip ../susfs-module/
           else
-            # 是散装文件，打包成 zip
             zip -r "../susfs-module/ksu_module_susfs.zip" .
           fi
           cd ..

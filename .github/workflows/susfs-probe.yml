@@ -81,7 +81,7 @@ on:
 jobs:
   notice:
     name: 请选择 susfs-probe 分支运行
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 提示
         run: |
