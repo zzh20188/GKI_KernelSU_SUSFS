@@ -60,6 +60,10 @@ on:
         required: false
         type: boolean
         default: false
+      use_nomount:
+        required: false
+        type: boolean
+        default: false
       cve_2026_43499_patch:
         required: false
         type: boolean
@@ -808,6 +812,32 @@ jobs:
 
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
+
+      - name: 集成 NoMount 挂载元模块
+        if: inputs.use_nomount
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        run: |
+          # NoMount 是挂载元模块，在 fs/ 目录注册子系统，与 SUSFS sus_mount 不冲突，可与任意 KSU 变体共存。
+          # 必须在「生成 SUSFS 集成补丁」之后运行，避免 NoMount 改动被计入 susfs.patch；
+          # 且在「备份基准 defconfig」之后追加 CONFIG，确保 6.1+ 的 bazel fragment diff 能捕获 CONFIG_NOMOUNT。
+          set -euo pipefail
+          # 拉取 NoMount 内核集成脚本（dev 分支最新提交），脚本会克隆仓库、建立 fs/nomount 软链接并注册 Kconfig/Makefile（内部含幂等守卫）
+          curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+            https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
+
+          if [ ! -L "fs/nomount" ]; then
+            echo "::error::NoMount 集成失败：fs/nomount 软链接缺失"
+            exit 1
+          fi
+          echo "NoMount 集成完成，commit: $(git -C NoMount rev-parse HEAD)"
+
+          # 启用 NoMount defconfig（幂等）
+          if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+            echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+            echo "已启用 CONFIG_NOMOUNT=y"
+          else
+            echo "CONFIG_NOMOUNT=y 已存在，跳过"
+          fi
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
