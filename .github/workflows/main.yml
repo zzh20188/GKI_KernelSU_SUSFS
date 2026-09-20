@@ -123,6 +123,10 @@ on:
         description: "启用 Re-Kernel 驱动"
         type: boolean
         default: false
+      use_nomount:
+        description: "启用 NoMount 挂载元模块"
+        type: boolean
+        default: false
       cve_2026_43499_patch:
         description: "应用 CVE-2026-43499 rtmutex 修复链"
         type: boolean
@@ -154,6 +158,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -175,6 +180,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -196,6 +202,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -217,6 +224,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -238,6 +246,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -250,7 +259,7 @@ jobs:
   # 汇总所有构建任务中的 .rej 文件，方便调试补丁问题
   collect-rejects:
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build-a12-5-10
       - build-a13-5-15
@@ -289,7 +298,7 @@ jobs:
   # 按构建名称汇总所有失败日志，方便统一下载和定位问题
   collect-build-logs:
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build-a12-5-10
       - build-a13-5-15
@@ -369,7 +378,7 @@ jobs:
   # 仅 SukiSU / ReSukiSU 且启用 SUSFS 时有产物
   collect-susfs-patches:
     if: ${{ !cancelled() && inputs.export_susfs_patches && inputs.ksu_mode == '关闭' && (inputs.kernelsu_variant == 'SukiSU' || inputs.kernelsu_variant == 'ReSukiSU') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build-a12-5-10
       - build-a13-5-15
@@ -533,7 +542,7 @@ jobs:
   # 仅限原仓库运行，fork 仓库跳过此步骤
   release:
     if: ${{ always() && !cancelled() && inputs.release_type != 'Actions' && github.repository == 'zzh20188/GKI_KernelSU_SUSFS' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       actions: write

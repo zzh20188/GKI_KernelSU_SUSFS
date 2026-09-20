@@ -100,6 +100,11 @@ on:
         required: false
         type: boolean
         default: false
+      use_nomount:
+        description: "启用 NoMount 挂载元模块"
+        required: false
+        type: boolean
+        default: false
       cve_2026_43499_patch:
         description: "应用 CVE-2026-43499 rtmutex 修复链"
         required: false
@@ -118,7 +123,7 @@ on:
 
 jobs:
   resolve-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       android_version: ${{ steps.resolve.outputs.android_version }}
       sub_level: ${{ steps.resolve.outputs.sub_level }}
@@ -209,6 +214,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel || false }}
+      use_nomount: ${{ inputs.use_nomount || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       supp_op: ${{ inputs.supp_op || false }}
       enable_susfs: ${{ inputs.ksu_mode != '禁用SUSFS' && inputs.ksu_mode != '禁用KSU' }}

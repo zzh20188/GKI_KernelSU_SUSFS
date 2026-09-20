@@ -182,14 +182,6 @@ if [[ -f fs/statfs.c ]] && grep -qF 'susfs_sus_kstat_spoof_vfs_statfs(' fs/statf
   fi
 fi
 
-# 上游 susfs.c 直接调用 security_sb_statfs 却没有包含 linux/security.h，
-# 5.15+ 靠其他头文件间接带入，5.10 没有这条路径，clang -Werror 报隐式声明；缺失时补上
-if [[ -f fs/susfs.c ]] && grep -qF 'security_sb_statfs(' fs/susfs.c \
-  && ! grep -qF '#include <linux/security.h>' fs/susfs.c; then
-  echo "为 susfs.c 补充 linux/security.h 头文件"
-  sed -i '0,/^#include <linux\/fs.h>$/s//#include <linux\/fs.h>\n#include <linux\/security.h>/' fs/susfs.c
-fi
-
 # 在编译前报告 SUSFS 主补丁产生的冲突文件，上游自带的 .rej 不计入
 mapfile -t SUSFS_REJ_FILES < <(list_untracked_rej)
 SUSFS_REJ_COUNT=${#SUSFS_REJ_FILES[@]}
