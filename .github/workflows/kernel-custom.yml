@@ -7,7 +7,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      # ==================== 内核版本配置 ====================
+      # ==================== 下拉选项 ====================
       kernel_version:
         description: "内核版本"
         required: true
@@ -19,13 +19,6 @@ on:
           - "6.6"
           - "6.12"
         default: "5.10"
-      os_patch_level:
-        description: "安全补丁级别 (如 2022-01, lts)"
-        required: true
-        type: string
-        default: "2022-01"
-
-      # ==================== KernelSU 配置 ====================
       kernelsu_variant:
         description: "KernelSU 变体"
         required: true
@@ -38,19 +31,15 @@ on:
           - SukiSU(40548)
           - ReSukiSU
         default: ReSukiSU
-
-      # ==================== 可选配置 ====================
-      version:
-        description: "自定义版本名 (可选)"
-        required: false
-        type: string
-      build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
-        required: false
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
-
-      # ==================== 选项配置 ====================
+      ksu_mode:
+        description: "KernelSU / SUSFS 模式"
+        required: true
+        type: choice
+        options:
+          - 关闭
+          - 禁用SUSFS
+          - 禁用KSU
+        default: 关闭
       use_kpm:
         description: "KPM 功能（patched 尚不支持）"
         required: true
@@ -78,13 +67,24 @@ on:
           - "仅上传 AnyKernel3.zip"
           - "上传全部"
         default: "仅上传 AnyKernel3.zip"
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
-        required: false
-        type: boolean
-        default: false
 
-      # ==================== 功能开关 ====================
+      # ==================== 文本输入 ====================
+      os_patch_level:
+        description: "安全补丁级别 (如 2022-01, lts)"
+        required: true
+        type: string
+        default: "2022-01"
+      version:
+        description: "自定义版本名 (可选)"
+        required: false
+        type: string
+      build_time:
+        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        required: false
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+
+      # ==================== 开关（默认关闭） ====================
       use_zram:
         description: "启用 ZRAM 增强算法"
         required: true
@@ -100,14 +100,14 @@ on:
         required: false
         type: boolean
         default: false
-      cve_2026_43499_patch:
-        description: "应用 CVE-2026-43499 rtmutex 修复链"
+      use_nomount:
+        description: "启用 NoMount 挂载元模块"
         required: false
         type: boolean
         default: false
-      cancel_susfs:
-        description: "禁用 SUSFS"
-        required: true
+      cve_2026_43499_patch:
+        description: "应用 CVE-2026-43499 rtmutex 修复链"
+        required: false
         type: boolean
         default: false
       supp_op:
@@ -115,10 +115,15 @@ on:
         required: false
         type: boolean
         default: false
+      droidspaces_ntsync:
+        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   resolve-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       android_version: ${{ steps.resolve.outputs.android_version }}
       sub_level: ${{ steps.resolve.outputs.sub_level }}
@@ -209,9 +214,11 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel || false }}
+      use_nomount: ${{ inputs.use_nomount || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       supp_op: ${{ inputs.supp_op || false }}
-      enable_susfs: ${{ !inputs.cancel_susfs }}
+      enable_susfs: ${{ inputs.ksu_mode != '禁用SUSFS' && inputs.ksu_mode != '禁用KSU' }}
+      ksu_mode: ${{ inputs.ksu_mode || '关闭' }}
       droidspaces: ${{ inputs.droidspaces || 'off' }}
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync || false }}
       artifact_upload_mode: ${{ inputs.artifact_upload_mode }}

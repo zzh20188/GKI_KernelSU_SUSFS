@@ -3,10 +3,7 @@ name: Emergency Release Cleanup
 on:
   workflow_dispatch:
     inputs:
-      target_tag:
-        description: '目标发布标签 (Target Release Tag)'
-        required: true
-        type: string
+      # ==================== 下拉选项 ====================
       issue_type:
         description: '问题类型 (Issue Type)'
         required: true
@@ -15,6 +12,12 @@ on:
           - Normal
           - Bug
           - Critical
+
+      # ==================== 文本输入 ====================
+      target_tag:
+        description: '目标发布标签 (Target Release Tag)'
+        required: true
+        type: string
       reference:
         description: '问题链接或说明 (Issue link or description, optional)'
         required: false
@@ -22,7 +25,7 @@ on:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 仅允许仓库所有者执行
     if: github.actor == github.repository_owner
 

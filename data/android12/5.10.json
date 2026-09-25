@@ -1,151 +1,188 @@
 {
   "android_version": "android12",
   "kernel_version": "5.10",
-  "lts": "5.10.264",
+  "deprecated_cutoff": "2024-08",
+  "lts": "5.10.269",
   "entries": [
     {
       "date": "2021-08",
-      "kernel": "5.10.43"
+      "kernel": "5.10.43",
+      "ref": "refs/heads/deprecated/android12-5.10-2021-08"
     },
     {
       "date": "2021-09",
-      "kernel": "5.10.43"
+      "kernel": "5.10.43",
+      "ref": "refs/heads/deprecated/android12-5.10-2021-09"
     },
     {
       "date": "2021-10",
-      "kernel": "5.10.43"
+      "kernel": "5.10.43",
+      "ref": "refs/heads/deprecated/android12-5.10-2021-10"
     },
     {
       "date": "2021-11",
-      "kernel": "5.10.66"
+      "kernel": "5.10.66",
+      "ref": "refs/heads/deprecated/android12-5.10-2021-11"
     },
     {
       "date": "2021-12",
-      "kernel": "5.10.66"
+      "kernel": "5.10.66",
+      "ref": "refs/heads/deprecated/android12-5.10-2021-12"
     },
     {
       "date": "2022-01",
-      "kernel": "5.10.66"
+      "kernel": "5.10.66",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-01"
     },
     {
       "date": "2022-02",
-      "kernel": "5.10.81"
+      "kernel": "5.10.81",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-02"
     },
     {
       "date": "2022-03",
-      "kernel": "5.10.81"
+      "kernel": "5.10.81",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-03"
     },
     {
       "date": "2022-04",
-      "kernel": "5.10.101"
+      "kernel": "5.10.101",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-04"
     },
     {
       "date": "2022-05",
-      "kernel": "5.10.101"
+      "kernel": "5.10.101",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-05"
     },
     {
       "date": "2022-06",
-      "kernel": "5.10.110"
+      "kernel": "5.10.110",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-06"
     },
     {
       "date": "2022-07",
-      "kernel": "5.10.110"
+      "kernel": "5.10.110",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-07"
     },
     {
       "date": "2022-08",
-      "kernel": "5.10.117"
+      "kernel": "5.10.117",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-08"
     },
     {
       "date": "2022-09",
-      "kernel": "5.10.117"
+      "kernel": "5.10.117",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-09"
     },
     {
       "date": "2022-10",
-      "kernel": "5.10.136"
+      "kernel": "5.10.136",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-10"
     },
     {
       "date": "2022-11",
-      "kernel": "5.10.136"
+      "kernel": "5.10.136",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-11"
     },
     {
       "date": "2022-12",
-      "kernel": "5.10.149"
+      "kernel": "5.10.149",
+      "ref": "refs/heads/deprecated/android12-5.10-2022-12"
     },
     {
       "date": "2023-01",
-      "kernel": "5.10.149"
+      "kernel": "5.10.149",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-01"
     },
     {
       "date": "2023-02",
-      "kernel": "5.10.160"
+      "kernel": "5.10.160",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-02"
     },
     {
       "date": "2023-03",
-      "kernel": "5.10.160"
+      "kernel": "5.10.160",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-03"
     },
     {
       "date": "2023-04",
-      "kernel": "5.10.168"
+      "kernel": "5.10.168",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-04"
     },
     {
       "date": "2023-05",
-      "kernel": "5.10.168"
+      "kernel": "5.10.168",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-05"
     },
     {
       "date": "2023-06",
-      "kernel": "5.10.177"
+      "kernel": "5.10.177",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-06"
     },
     {
       "date": "2023-07",
-      "kernel": "5.10.177"
+      "kernel": "5.10.177",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-07"
     },
     {
       "date": "2023-09",
-      "kernel": "5.10.185"
+      "kernel": "5.10.185",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-09"
     },
     {
       "date": "2023-11",
-      "kernel": "5.10.198"
+      "kernel": "5.10.198",
+      "ref": "refs/heads/deprecated/android12-5.10-2023-11"
     },
     {
       "date": "2024-01",
-      "kernel": "5.10.198"
+      "kernel": "5.10.198",
+      "ref": "refs/heads/deprecated/android12-5.10-2024-01"
     },
     {
       "date": "2024-03",
-      "kernel": "5.10.205"
+      "kernel": "5.10.205",
+      "ref": "refs/heads/deprecated/android12-5.10-2024-03"
     },
     {
       "date": "2024-05",
-      "kernel": "5.10.209"
+      "kernel": "5.10.209",
+      "ref": "refs/heads/deprecated/android12-5.10-2024-05"
     },
     {
       "date": "2024-08",
-      "kernel": "5.10.218"
+      "kernel": "5.10.218",
+      "ref": "refs/heads/deprecated/android12-5.10-2024-08"
     },
     {
       "date": "2024-11",
-      "kernel": "5.10.226"
+      "kernel": "5.10.226",
+      "ref": "refs/heads/deprecated/android12-5.10-2024-11"
     },
     {
       "date": "2025-02",
-      "kernel": "5.10.233"
+      "kernel": "5.10.233",
+      "ref": "refs/heads/deprecated/android12-5.10-2025-02"
     },
     {
       "date": "2025-05",
-      "kernel": "5.10.236"
+      "kernel": "5.10.236",
+      "ref": "refs/heads/deprecated/android12-5.10-2025-05"
     },
     {
       "date": "2025-06",
-      "kernel": "5.10.237"
+      "kernel": "5.10.237",
+      "ref": "refs/heads/android12-5.10-2025-06"
     },
     {
       "date": "2025-09",
-      "kernel": "5.10.240"
+      "kernel": "5.10.240",
+      "ref": "refs/heads/android12-5.10-2025-09"
     },
     {
       "date": "2025-12",
-      "kernel": "5.10.246"
+      "kernel": "5.10.246",
+      "ref": "refs/heads/android12-5.10-2025-12"
     }
   ]
 }

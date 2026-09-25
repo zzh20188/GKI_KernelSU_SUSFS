@@ -22,7 +22,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      # ==================== 发布配置 ====================
+      # ==================== 下拉选项 ====================
       release_type:
         description: "发布类型"
         type: choice
@@ -31,8 +31,6 @@ on:
           - Pre-Release
           - Release
         default: Actions
-
-      # ==================== KernelSU 配置 ====================
       kernelsu_variant:
         description: "KernelSU 变体"
         type: choice
@@ -44,19 +42,14 @@ on:
           - Official
           #- Next
         default: ReSukiSU
-
-      # ==================== 可选配置 ====================
-      version:
-        description: "自定义版本名 (可选)"
-        type: string
-        default: ""
-        required: false
-      build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
-        required: false
-      # ==================== 选项配置 ====================
+      ksu_mode:
+        description: "KernelSU / SUSFS 模式"
+        type: choice
+        options:
+          - 关闭
+          - 禁用SUSFS
+          - 禁用KSU
+        default: 关闭
       use_kpm:
         description: "KPM 功能（patched 尚不支持）"
         type: choice
@@ -74,34 +67,30 @@ on:
           - "123"
           - "345"
         default: "off"
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
-        type: boolean
-        default: false
 
-      # ==================== 功能开关 ====================
-      use_zram:
-        description: "启用 ZRAM 增强算法"
-        type: boolean
-        default: false
-      use_bbg:
-        description: "启用 BBG 防格机"
-        type: boolean
-        default: false
-      use_rekernel:
-        description: "启用 Re-Kernel 驱动"
-        type: boolean
-        default: false
-      cve_2026_43499_patch:
-        description: "应用 CVE-2026-43499 rtmutex 修复链"
-        type: boolean
-        default: false
-      cancel_susfs:
-        description: "禁用 SUSFS"
-        type: boolean
-        default: false
+      # ==================== 文本输入 ====================
+      version:
+        description: "自定义版本名 (可选)"
+        type: string
+        default: ""
+        required: false
+      build_time:
+        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        type: string
+        default: "Sun Dec 01 08:10:00 UTC 2024"
+        required: false
 
-      # ==================== 构建版本选择 ====================
+      # ==================== 开关（默认开启） ====================
+      build_all:
+        description: "构建全部版本"
+        type: boolean
+        default: true
+      export_susfs_patches:
+        description: "收集 SUSFS 集成补丁（仅 SukiSU / ReSukiSU）"
+        type: boolean
+        default: true
+
+      # ==================== 开关（默认关闭） ====================
       build_a12_5_10:
         description: "Android 12 - 5.10"
         type: boolean
@@ -122,10 +111,30 @@ on:
         description: "Android 16 - 6.12"
         type: boolean
         default: false
-      build_all:
-        description: "构建全部版本"
+      use_zram:
+        description: "启用 ZRAM 增强算法"
         type: boolean
-        default: true
+        default: false
+      use_bbg:
+        description: "启用 BBG 防格机"
+        type: boolean
+        default: false
+      use_rekernel:
+        description: "启用 Re-Kernel 驱动"
+        type: boolean
+        default: false
+      use_nomount:
+        description: "启用 NoMount 挂载元模块"
+        type: boolean
+        default: false
+      cve_2026_43499_patch:
+        description: "应用 CVE-2026-43499 rtmutex 修复链"
+        type: boolean
+        default: false
+      droidspaces_ntsync:
+        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+        type: boolean
+        default: false
 
 jobs:
   # ==================== 获取管理器 ====================
@@ -149,8 +158,10 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches }}
+      ksu_mode: ${{ inputs.ksu_mode }}
       droidspaces: ${{ inputs.droidspaces }}
       artifact_upload_mode: "上传全部"
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
@@ -169,8 +180,10 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches }}
+      ksu_mode: ${{ inputs.ksu_mode }}
       droidspaces: ${{ inputs.droidspaces }}
       artifact_upload_mode: "上传全部"
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
@@ -189,8 +202,10 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches }}
+      ksu_mode: ${{ inputs.ksu_mode }}
       droidspaces: ${{ inputs.droidspaces }}
       artifact_upload_mode: "上传全部"
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
@@ -209,8 +224,10 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches }}
+      ksu_mode: ${{ inputs.ksu_mode }}
       droidspaces: ${{ inputs.droidspaces }}
       artifact_upload_mode: "上传全部"
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
@@ -229,8 +246,10 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
+      use_nomount: ${{ inputs.use_nomount }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
-      cancel_susfs: ${{ inputs.cancel_susfs }}
+      export_susfs_patches: ${{ inputs.export_susfs_patches }}
+      ksu_mode: ${{ inputs.ksu_mode }}
       droidspaces: ${{ inputs.droidspaces }}
       artifact_upload_mode: "上传全部"
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
@@ -240,7 +259,7 @@ jobs:
   # 汇总所有构建任务中的 .rej 文件，方便调试补丁问题
   collect-rejects:
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build-a12-5-10
       - build-a13-5-15
@@ -279,7 +298,7 @@ jobs:
   # 按构建名称汇总所有失败日志，方便统一下载和定位问题
   collect-build-logs:
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - build-a12-5-10
       - build-a13-5-15
@@ -354,12 +373,176 @@ jobs:
             fi
           done <<< "$ARTIFACT_IDS"
 
+  # ==================== 收集 SUSFS 集成补丁 ====================
+  # 汇总各构建任务导出的 SUSFS 集成补丁，打成一个 zip 供 Release 分发
+  # 仅 SukiSU / ReSukiSU 且启用 SUSFS 时有产物
+  collect-susfs-patches:
+    if: ${{ !cancelled() && inputs.export_susfs_patches && inputs.ksu_mode == '关闭' && (inputs.kernelsu_variant == 'SukiSU' || inputs.kernelsu_variant == 'ReSukiSU') }}
+    runs-on: ubuntu-24.04
+    needs:
+      - build-a12-5-10
+      - build-a13-5-15
+      - build-a14-6-1
+      - build-a15-6-6
+      - build-a16-6-12
+    steps:
+      - name: 下载 SUSFS 集成补丁
+        uses: actions/download-artifact@v8
+        with:
+          path: ./downloaded-susfs-patches
+          pattern: 'SUSFS-Patch-*'
+          merge-multiple: false
+
+      - name: 整理 SUSFS 集成补丁
+        env:
+          KSU_VARIANT: ${{ inputs.kernelsu_variant }}
+        run: |
+          BUNDLE="susfs-patches"
+          mkdir -p "$BUNDLE"
+          found=0
+
+          # 按 manifest 中的字段归档：android14-6.1/6.1.148-2025-12/
+          place_patch() {
+            local src="$1" manifest="$src/manifest.json"
+            if [ ! -f "$manifest" ] || [ ! -s "$src/susfs.patch" ]; then
+              echo "::warning::$src 缺少 manifest.json 或 susfs.patch，跳过"
+              return 0
+            fi
+            local android_version kernel_version actual_sublevel os_patch_level
+            android_version=$(jq -r '.android_version' "$manifest")
+            kernel_version=$(jq -r '.kernel_version' "$manifest")
+            actual_sublevel=$(jq -r '.actual_sublevel' "$manifest")
+            os_patch_level=$(jq -r '.os_patch_level' "$manifest")
+            local dest="$BUNDLE/${android_version}-${kernel_version}/${kernel_version}.${actual_sublevel}-${os_patch_level}"
+            mkdir -p "$dest"
+            cp "$src/susfs.patch" "$src/manifest.json" "$dest/"
+            [ -f "$src/susfs.config" ] && cp "$src/susfs.config" "$dest/"
+            found=$((found + 1))
+          }
+
+          for dir in ./downloaded-susfs-patches/SUSFS-Patch-*; do
+            [ -d "$dir" ] || continue
+            place_patch "$dir"
+          done
+          # download-artifact 仅匹配一个产物时会直接解压到目标目录
+          if [ "$found" -eq 0 ] && [ -f ./downloaded-susfs-patches/manifest.json ]; then
+            place_patch ./downloaded-susfs-patches
+          fi
+
+          if [ "$found" -eq 0 ]; then
+            echo "::warning::没有可汇总的 SUSFS 集成补丁"
+            exit 0
+          fi
+          echo "共汇总 $found 份补丁"
+
+          # 顶层索引：合并全部 manifest，按内核版本排序
+          find "$BUNDLE" -name manifest.json -print0 | sort -z | xargs -0 jq -s \
+            --arg ksu_variant "$KSU_VARIANT" \
+            --arg generated_at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{
+              ksu_variant: $ksu_variant,
+              generated_at: $generated_at,
+              run_id: $run_id,
+              run_url: $run_url,
+              count: length,
+              patches: (map(. + {
+                path: ("\(.android_version)-\(.kernel_version)/\(.kernel_version).\(.actual_sublevel)-\(.os_patch_level)/")
+              }) | sort_by(.android_version, (.actual_sublevel | tonumber)))
+            }' > "$BUNDLE/index.json"
+
+          cat > "$BUNDLE/README.md" << 'EOF'
+          # SUSFS 集成补丁
+
+          本压缩包由 GKI_KernelSU_SUSFS 的构建流程自动导出，每个目录对应一个 GKI 分支，
+          内容是「添加 KernelSU 之后、应用 SUSFS 补丁之后」两个时间点之间 `common/` 的全部差异，
+          已包含该分支所需的上下文修复，且对应内核已编译通过。
+
+          目录结构：`<android版本>-<内核版本>/<内核版本>.<子版本>-<安全补丁级别>/`
+
+          | 文件 | 说明 |
+          |:---|:---|
+          | `susfs.patch` | SUSFS 内核侧补丁（`git diff --binary` 格式） |
+          | `susfs.config` | 需追加到 defconfig 的 SUSFS 配置片段 |
+          | `manifest.json` | 生成信息：GKI 分支与提交、KernelSU 提交、SUSFS 提交、.rej 数量等 |
+          | `index.json` | 顶层索引，汇总全部 manifest |
+
+          ## 使用步骤
+
+          1. 确认内核源码 `Makefile` 中的 `VERSION`、`PATCHLEVEL`、`SUBLEVEL` 与目录名一致，
+             不一致时可先尝试最接近的子版本。
+          2. 在内核源码上级目录（`common/` 的父目录）执行 `manifest.json` 中的 `ksu_setup_cmd`，
+             按记录的提交哈希添加 KernelSU。补丁内容与该 KernelSU 提交配套，请勿改用其他分支。
+          3. 进入 `common/` 应用补丁：
+
+             ```bash
+             git apply -3 /path/to/susfs.patch
+             # 源码不是 git 仓库时退回：
+             patch -p1 < /path/to/susfs.patch
+             ```
+
+          4. 把 `susfs.config` 追加到 defconfig（GKI 为 `arch/arm64/configs/gki_defconfig`）：
+
+             ```bash
+             cat /path/to/susfs.config >> arch/arm64/configs/gki_defconfig
+             ```
+
+          5. 按 KernelSU 文档启用 `CONFIG_KSU` 等选项后正常编译。
+
+          ## 注意
+
+          - 补丁在纯 GKI 源码上验证通过。基于 GKI 的 OEM 内核可能因 fs/、security/ 等目录被修改而出现 `.rej`，
+            需要手动合并。`git apply -3` 的三方合并可自动解决大部分上下文偏移。
+          - 固定 KernelSU 提交时，KernelSU 自身的版本号和版本串由其 Kbuild 在编译时计算，可能显示为分支最新计数或 `@HEAD`，属上游行为。
+          - 使用与 `manifest.json` 中 `ksu_commit` 不同的 KernelSU 提交通常仍可编译，但不保证功能完整。
+          EOF
+
+          cd "$BUNDLE"
+          zip -r -q -9 "../SUSFS-Patches-${KSU_VARIANT}.zip" .
+          cd ..
+          echo "SUSFS_PATCHES_ZIP=SUSFS-Patches-${KSU_VARIANT}.zip" >> $GITHUB_ENV
+
+      - name: 上传汇总 SUSFS 集成补丁
+        id: upload_aggregated_susfs_patches
+        if: env.SUSFS_PATCHES_ZIP != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: SUSFS-Patches-${{ inputs.kernelsu_variant }}
+          path: ${{ env.SUSFS_PATCHES_ZIP }}
+          if-no-files-found: ignore
+
+      - name: 删除独立 SUSFS 补丁产物
+        if: steps.upload_aggregated_susfs_patches.outputs.artifact-id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 汇总产物上传成功后删除中间产物，避免重复占用空间
+          if ! ARTIFACT_IDS=$(gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("SUSFS-Patch-")) | .id'); then
+            echo "::warning::获取独立 SUSFS 补丁产物列表失败，跳过清理"
+            exit 0
+          fi
+
+          while IFS= read -r artifact_id; do
+            [ -n "$artifact_id" ] || continue
+            if gh api --method DELETE \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id" > /dev/null; then
+              echo "已删除中间补丁产物: $artifact_id"
+            else
+              echo "::warning::删除中间补丁产物 $artifact_id 失败"
+            fi
+          done <<< "$ARTIFACT_IDS"
+
   # ==================== 创建发布 ====================
   # 当 release_type 不是 Actions 时，创建 GitHub Release
   # 仅限原仓库运行，fork 仓库跳过此步骤
   release:
     if: ${{ always() && !cancelled() && inputs.release_type != 'Actions' && github.repository == 'zzh20188/GKI_KernelSU_SUSFS' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       actions: write
@@ -370,6 +553,7 @@ jobs:
       - build-a14-6-1
       - build-a15-6-6
       - build-a16-6-12
+      - collect-susfs-patches
 
     # ==================== 环境变量 ====================
     env:
@@ -422,8 +606,29 @@ jobs:
             echo "MOUNT_TYPE=Magic Mount" >> $GITHUB_ENV
           fi
 
-          # 发布标题
-          echo "RELEASE_NAME=GKI Kernel: ${KSU_NAME} ${KSU_VER} + SUSFS ${SUS_VER}" >> $GITHUB_ENV
+          # 发布标题与 KernelSU / SUSFS 模式（GITHUB_ENV 中后写入的同名变量会覆盖前面的值）
+          case "${{ inputs.ksu_mode }}" in
+            "禁用KSU")
+              echo "KSU_NAME=未集成" >> $GITHUB_ENV
+              echo "KSU_VER=" >> $GITHUB_ENV
+              echo "SUS_VER=未集成" >> $GITHUB_ENV
+              echo "BRANCH_INFO=-" >> $GITHUB_ENV
+              echo "HOOK_TYPE=无" >> $GITHUB_ENV
+              echo "MOUNT_TYPE=无" >> $GITHUB_ENV
+              echo "KPM_STATUS=未开启" >> $GITHUB_ENV
+              echo "RELEASE_HEADLINE=**纯净 GKI 内核**（未集成 KernelSU / SUSFS）" >> $GITHUB_ENV
+              echo "RELEASE_NAME=GKI Kernel: 纯净版（无 KernelSU / SUSFS）" >> $GITHUB_ENV
+              ;;
+            "禁用SUSFS")
+              echo "SUS_VER=未集成" >> $GITHUB_ENV
+              echo "RELEASE_HEADLINE=**${KSU_NAME} ${KSU_VER}**（未集成 SUSFS）" >> $GITHUB_ENV
+              echo "RELEASE_NAME=GKI Kernel: ${KSU_NAME} ${KSU_VER}（无 SUSFS）" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "RELEASE_HEADLINE=**${KSU_NAME} ${KSU_VER}** + **SUSFS ${SUS_VER}**" >> $GITHUB_ENV
+              echo "RELEASE_NAME=GKI Kernel: ${KSU_NAME} ${KSU_VER} + SUSFS ${SUS_VER}" >> $GITHUB_ENV
+              ;;
+          esac
 
       # ==================== 验证构建状态 ====================
       # 确保所有选中的构建任务都成功完成
@@ -453,11 +658,12 @@ jobs:
       # ==================== 确定 KSU 引用 ====================
       # 根据实际构建逻辑确定 KernelSU 上游引用
       - name: 确定 KSU 引用
+        if: inputs.ksu_mode != '禁用KSU'
         run: |
           case "${{ inputs.kernelsu_variant }}" in
             "Official") BRANCH="main" ;;
             "SukiSU")
-              if [ "${{ inputs.cancel_susfs }}" = "true" ]; then
+              if [ "${{ inputs.ksu_mode }}" != "关闭" ]; then
                 BRANCH="main"
               else
                 BRANCH="builtin"
@@ -473,6 +679,7 @@ jobs:
       # ==================== 获取 KernelSU 提交信息 ====================
       # 获取当前使用的 KernelSU 版本的 Git 提交信息
       - name: 获取 KernelSU 提交信息
+        if: inputs.ksu_mode != '禁用KSU'
         run: |
           case "${{ inputs.kernelsu_variant }}" in
             "Official") REPO_URL="https://github.com/tiann/KernelSU.git"; REPO_URL2="tiann/KernelSU" ;;
@@ -503,6 +710,7 @@ jobs:
       # ==================== 获取 SUSFS 提交信息 ====================
       # 获取各版本 SUSFS 的 Git 提交信息
       - name: 获取 SUSFS 提交信息
+        if: inputs.ksu_mode == '关闭'
         run: |
           GITLAB_OWNER="simonpunk"
           GITLAB_REPO="susfs4ksu"
@@ -532,6 +740,11 @@ jobs:
             KSU_DISPLAY_REF="${KSU_REF:0:7}"
           else
             KSU_DISPLAY_REF="$KSU_REF"
+          fi
+          if [[ "${{ inputs.ksu_mode }}" == "禁用KSU" ]]; then
+            KSU_COMMIT_LINE="- 本次构建未集成 KernelSU"
+          else
+            KSU_COMMIT_LINE="- $KSU_NAME: [\`$KSU_DISPLAY_REF\`]($KSU_URL)"
           fi
 
           build_targets=""
@@ -566,14 +779,16 @@ jobs:
           append_susfs_commit "${{ inputs.build_a14_6_1 || inputs.build_all }}" "Android 14 / 6.1" "${COMMIT_HASH_gki_android14_6_1}" "${COMMIT_URL_gki_android14_6_1}"
           append_susfs_commit "${{ inputs.build_a15_6_6 || inputs.build_all }}" "Android 15 / 6.6" "${COMMIT_HASH_gki_android15_6_6}" "${COMMIT_URL_gki_android15_6_6}"
           append_susfs_commit "${{ inputs.build_a16_6_12 || inputs.build_all }}" "Android 16 / 6.12" "${COMMIT_HASH_gki_android16_6_12}" "${COMMIT_URL_gki_android16_6_12}"
-          if [[ ! -s susfs_commits.md ]]; then
+          if [[ "${{ inputs.ksu_mode }}" != "关闭" ]]; then
+            echo "- 本次构建未集成 SUSFS" > susfs_commits.md
+          elif [[ ! -s susfs_commits.md ]]; then
             echo "- 未获取到本次构建对应的 SUSFS 提交信息" > susfs_commits.md
           fi
 
           cat > release_body.md << EOF
           ## GKI Kernel Release
 
-          **$KSU_NAME $KSU_VER** + **SUSFS $SUS_VER**
+          $RELEASE_HEADLINE
 
           | 项目 | 内容 |
           |:---|:---|
@@ -585,6 +800,7 @@ jobs:
 
           | 项目 | 内容 |
           |:---|:---|
+          | KernelSU / SUSFS 模式 | ${{ inputs.ksu_mode }} |
           | KernelSU 变体 | $KSU_NAME |
           | KernelSU 分支 | $BRANCH_INFO |
           | SUSFS | $SUS_VER |
@@ -605,6 +821,7 @@ jobs:
           | \`*.img\` | boot、vendor_boot 等镜像文件 |
           | \`*.apk\` | KernelSU 管理器 |
           | \`susfs-*.zip\` | SUSFS 配套模块 |
+          | \`SUSFS-Patches-*.zip\` | SUSFS 集成补丁（仅 SukiSU / ReSukiSU，供自行编译内核使用） |
 
           > [!IMPORTANT]
           > 刷入前请备份原厂 Boot 镜像。
@@ -630,7 +847,7 @@ jobs:
 
           **KernelSU**
 
-          - $KSU_NAME: [\`$KSU_DISPLAY_REF\`]($KSU_URL)
+          $KSU_COMMIT_LINE
 
           **SUSFS4KSU**
 
@@ -705,6 +922,20 @@ jobs:
           while IFS= read -r -d '' f; do
             gh release upload "$NEW_TAG" "$f" || true
           done
+
+      # ==================== 上传 SUSFS 集成补丁 ====================
+      # 汇总 job 被跳过或没有产物时静默跳过
+      - name: 上传 SUSFS 集成补丁
+        if: needs.collect-susfs-patches.result == 'success'
+        continue-on-error: true
+        run: |
+          uploaded=0
+          for file in ./downloaded-artifacts/SUSFS-Patches-*/SUSFS-Patches-*.zip; do
+            [ -f "$file" ] || continue
+            echo "上传 $file..."
+            gh release upload "$NEW_TAG" "$file" && uploaded=$((uploaded + 1))
+          done
+          echo "已上传 $uploaded 个 SUSFS 集成补丁压缩包"
 
       # ==================== 上传内核产物 ====================
       - name: 上传内核产物

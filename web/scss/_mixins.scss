@@ -2,59 +2,198 @@
 
 // 响应式断点
 @mixin mobile {
-  @media (max-width: 768px) { @content; }
+  @media (max-width: 767px) { @content; }
 }
 
-@mixin small {
-  @media (max-width: 480px) { @content; }
+@mixin tablet-up {
+  @media (min-width: 768px) { @content; }
 }
 
-// 徽章基础样式
-@mixin badge-base {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  font-family: 'Roboto Mono', monospace;
-  letter-spacing: 0.02em;
-  vertical-align: middle;
+@mixin desktop {
+  @media (min-width: 1200px) { @content; }
 }
 
-// 小型行内徽章（表格行内用）
-@mixin badge-inline {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.4rem;
-  padding: 0.1rem 0.45rem;
-  border-radius: 4px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  vertical-align: middle;
+@mixin below-desktop {
+  @media (max-width: 1199px) { @content; }
 }
 
-// 头部操作按钮共用样式
-@mixin header-btn {
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
-  padding: 0.35rem 0.7rem;
-  border-radius: 20px;
+// 元数据小标签：英文大写 + 字距，中文靠字号与颜色（不依赖 500 字重）
+@mixin meta-label {
+  font-family: var(--font-sans);
+  font-size: var(--meta-fs);
+  line-height: 1.2;
+  letter-spacing: var(--meta-ls);
+  text-transform: var(--meta-tt);
+  color: var(--text-2);
+}
+
+// 等宽数字
+@mixin mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.01em;
+}
+
+// 焦点环（只在键盘聚焦时出现）
+@mixin focus-ring($inset: false) {
+  outline: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    @if $inset {
+      outline-offset: -2px;
+    } @else {
+      outline-offset: 2px;
+    }
+  }
+}
+
+// 45° 斜纹（弃用区间）
+@mixin hatch($color: var(--hatch)) {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #{$color} 0,
+    #{$color} 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+// 文字按钮：无边框、悬停时 2px 朱砂下划线
+@mixin text-button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--text-2);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
   text-decoration: none;
-  font-family: inherit;
+  position: relative;
+  transition: color var(--dur-1) var(--ease);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-2) var(--ease);
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text);
+  }
+
+  &:hover::after,
+  &:focus-visible::after,
+  &[aria-current="true"]::after,
+  &.is-active::after {
+    transform: scaleX(1);
+  }
+
+  &[aria-current="true"],
+  &.is-active {
+    color: var(--text);
+  }
+
+  @include focus-ring;
+}
+
+// 描边按钮：1px 主文本色边框，悬停反白
+@mixin outline-button {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--text);
+  border-radius: var(--r-1);
+  padding: 8px 16px;
+  font: inherit;
+  font-size: var(--fs-13);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+  min-height: 36px;
 
   &:hover {
-    background: var(--accent-bg-hover);
-    border-color: var(--accent);
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  @include focus-ring;
+}
+
+// 小型「复制」文字按钮（朱砂下划线）
+@mixin copy-button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  font: inherit;
+  font-size: var(--fs-11);
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  min-height: 24px;
+
+  &:hover {
+    color: var(--accent-hover);
+    text-decoration-thickness: 2px;
+  }
+
+  &.copied {
+    color: var(--text-2);
+    text-decoration: none;
+  }
+
+  @include focus-ring;
+}
+
+// 仅供屏幕阅读器
+@mixin visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// 6px 实心方块（青 = SUSFS，朱砂 = 最新）
+@mixin square($color) {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #{$color};
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+// 双细线（报头 / 弹窗头部收边）
+@mixin double-rule {
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    height: 1px;
+    background: var(--rule);
   }
 }

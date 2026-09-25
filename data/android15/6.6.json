@@ -1,71 +1,88 @@
 {
   "android_version": "android15",
   "kernel_version": "6.6",
-  "lts": "6.6.142",
+  "deprecated_cutoff": "",
+  "lts": "6.6.143",
   "entries": [
     {
       "date": "2024-10",
-      "kernel": "6.6.50"
+      "kernel": "6.6.50",
+      "ref": "refs/heads/deprecated/android15-6.6-2024-10"
     },
     {
       "date": "2024-11",
-      "kernel": "6.6.56"
+      "kernel": "6.6.56",
+      "ref": "refs/heads/deprecated/android15-6.6-2024-11"
     },
     {
       "date": "2024-12",
-      "kernel": "6.6.57"
+      "kernel": "6.6.57",
+      "ref": "refs/heads/deprecated/android15-6.6-2024-12"
     },
     {
       "date": "2025-01",
-      "kernel": "6.6.58"
+      "kernel": "6.6.58",
+      "ref": "refs/heads/deprecated/android15-6.6-2025-01"
     },
     {
       "date": "2025-02",
-      "kernel": "6.6.66"
+      "kernel": "6.6.66",
+      "ref": "refs/heads/deprecated/android15-6.6-2025-02"
     },
     {
       "date": "2025-03",
-      "kernel": "6.6.77"
+      "kernel": "6.6.77",
+      "ref": "refs/heads/deprecated/android15-6.6-2025-03"
     },
     {
       "date": "2025-04",
-      "kernel": "6.6.82"
+      "kernel": "6.6.82",
+      "ref": "refs/heads/deprecated/android15-6.6-2025-04"
     },
     {
       "date": "2025-05",
-      "kernel": "6.6.87"
+      "kernel": "6.6.87",
+      "ref": "refs/heads/deprecated/android15-6.6-2025-05"
     },
     {
       "date": "2025-06",
-      "kernel": "6.6.89"
+      "kernel": "6.6.89",
+      "ref": "refs/heads/deprecated/android15-6.6-2025-06"
     },
     {
       "date": "2025-07",
-      "kernel": "6.6.92"
+      "kernel": "6.6.92",
+      "ref": "refs/tags/android15-6.6-2025-07_r21"
     },
     {
       "date": "2025-08",
-      "kernel": "6.6.98"
+      "kernel": "6.6.98",
+      "ref": "refs/tags/android15-6.6-2025-08_r35"
     },
     {
       "date": "2025-09",
-      "kernel": "6.6.98"
+      "kernel": "6.6.98",
+      "ref": "refs/heads/android15-6.6-2025-09"
     },
     {
       "date": "2025-10",
-      "kernel": "6.6.102"
+      "kernel": "6.6.102",
+      "ref": "refs/heads/android15-6.6-2025-10"
     },
     {
       "date": "2026-01",
-      "kernel": "6.6.118"
+      "kernel": "6.6.118",
+      "ref": "refs/heads/android15-6.6-2026-01"
     },
     {
       "date": "2026-04",
-      "kernel": "6.6.127"
+      "kernel": "6.6.127",
+      "ref": "refs/heads/android15-6.6-2026-04"
     },
     {
       "date": "2026-07",
-      "kernel": "6.6.139"
+      "kernel": "6.6.139",
+      "ref": "refs/heads/android15-6.6-2026-07"
     }
   ]
 }
