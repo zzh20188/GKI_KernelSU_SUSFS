@@ -89,6 +89,11 @@ on:
         required: false
         type: boolean
         default: false
+      use_networking:
+        description: "启用网络增强（BBRv3 / IPSet / Qdisc / CIFS）"
+        required: false
+        type: boolean
+        default: false
       cve_2026_43499_patch:
         description: "应用 CVE-2026-43499 rtmutex 修复链"
         required: false
@@ -125,6 +130,10 @@ on:
         type: boolean
         default: false
       use_nomount:
+        required: false
+        type: boolean
+        default: false
+      use_networking:
         required: false
         type: boolean
         default: false
@@ -227,6 +236,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel || false }}
       use_nomount: ${{ inputs.use_nomount || false }}
+      use_networking: ${{ inputs.use_networking || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
       supp_op: false

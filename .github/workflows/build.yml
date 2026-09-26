@@ -64,6 +64,10 @@ on:
         required: false
         type: boolean
         default: false
+      use_networking:
+        required: false
+        type: boolean
+        default: false
       cve_2026_43499_patch:
         required: false
         type: boolean
@@ -121,6 +125,7 @@ jobs:
           echo "BBG 补丁      : ${{ inputs.use_bbg }}"
           echo "KPM 功能      : ${{ inputs.use_kpm }}"
           echo "Re-Kernel     : ${{ inputs.use_rekernel }}"
+          echo "网络增强      : ${{ inputs.use_networking }}"
           echo "CVE-2026-43499: ${{ inputs.cve_2026_43499_patch }}"
           echo "SUSFS 集成补丁导出: ${{ inputs.export_susfs_patches }}"
           echo "Droidspaces   : ${{ inputs.droidspaces }}"
@@ -1157,6 +1162,115 @@ jobs:
           wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
+
+      - name: 应用网络增强（BBRv3 / IPSet / Qdisc / CIFS）
+        if: inputs.use_networking
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        run: |
+          set -euo pipefail
+
+          BBR3_DIR="$KERNEL_PATCHES/common/bbrv3"
+          KVER="${{ inputs.kernel_version }}"
+          AVER="${{ inputs.android_version }}"
+
+          # ---------- BBRv3 补丁：按版本分派（来自 WildKernels/kernel_patches） ----------
+          case "$AVER-$KVER" in
+            android12-5.10) BBR3_PATCH="$BBR3_DIR/0001-net-tcp-backport-BBRv3-to-android12-5.10.patch" ;;
+            android13-5.15) BBR3_PATCH="$BBR3_DIR/0001-net-tcp-backport-BBRv3-to-android13-5.15.patch" ;;
+            android14-6.1)  BBR3_PATCH="$BBR3_DIR/0001-net-tcp-backport-BBRv3-to-android14-6.1.patch" ;;
+            android15-6.6)  BBR3_PATCH="$BBR3_DIR/0001-net-tcp-backport-BBRv3-to-android15-6.6.patch" ;;
+            *) BBR3_PATCH="" ;;
+          esac
+
+          # android16-6.12 的 backport 补丁上游不可用（wild_kernel 已禁用），仅保留基线 BBR v1
+          if [ -n "$BBR3_PATCH" ]; then
+            if [ ! -f "$BBR3_PATCH" ]; then
+              echo "::error::BBRv3 补丁不存在: $BBR3_PATCH" >&2
+              exit 1
+            fi
+            if patch -p1 --dry-run < "$BBR3_PATCH" >/dev/null 2>&1; then
+              patch -p1 --no-backup-if-mismatch < "$BBR3_PATCH"
+              echo "[+] BBRv3 补丁已应用"
+            else
+              echo "::error::BBRv3 补丁应用失败，保留 .rej 供汇总产物分析" >&2
+              patch -p1 --no-backup-if-mismatch < "$BBR3_PATCH" || true
+              exit 1
+            fi
+          else
+            echo "[*] $AVER-$KVER 无 BBRv3 backport，跳过补丁"
+          fi
+
+          # 5.10 缺少 proc_dou8vec_minmax（BBRv3 依赖的 5.15+ sysctl API），补两个前置补丁
+          if [ "$KVER" = "5.10" ] && ! grep -qF 'int proc_dou8vec_minmax(' include/linux/sysctl.h 2>/dev/null; then
+            for prepatch in sysctl_add_proc_dou8vec_minmax sysctl_fix_data-races_in_proc_dou8vec_minmax; do
+              if patch -p1 --dry-run < "$BBR3_DIR/$prepatch.patch" >/dev/null 2>&1; then
+                patch -p1 --no-backup-if-mismatch < "$BBR3_DIR/$prepatch.patch"
+              else
+                echo "::error::5.10 sysctl 前置补丁应用失败: $prepatch" >&2
+                exit 1
+              fi
+            done
+            echo "[+] 5.10 sysctl 前置补丁已应用"
+          fi
+
+          # ---------- defconfig 写入：替换已有/未设置行，缺失则追加 ----------
+          set_config() {
+            local key="$1" value="$2"
+            if grep -q "^$key=" "$DEFCONFIG"; then
+              sed -i "s|^$key=.*|$key=$value|g" "$DEFCONFIG"
+            elif grep -q "^# $key is not set" "$DEFCONFIG"; then
+              sed -i "s|^# $key is not set|$key=$value|g" "$DEFCONFIG"
+            else
+              echo "$key=$value" >> "$DEFCONFIG"
+            fi
+          }
+
+          # IPSet 全家桶 + netfilter 联动（各版本 Kconfig 均已验证存在）
+          for cfg in IP_SET IP_SET_BITMAP_IP IP_SET_BITMAP_IPMAC IP_SET_BITMAP_PORT \
+            IP_SET_HASH_IP IP_SET_HASH_IPMARK IP_SET_HASH_IPPORT IP_SET_HASH_IPPORTIP \
+            IP_SET_HASH_IPPORTNET IP_SET_HASH_IPMAC IP_SET_HASH_MAC \
+            IP_SET_HASH_NETPORTNET IP_SET_HASH_NET IP_SET_HASH_NETNET \
+            IP_SET_HASH_NETPORT IP_SET_HASH_NETIFACE IP_SET_LIST_SET \
+            NETFILTER_XT_MATCH_ADDRTYPE NETFILTER_XT_SET NETFILTER_XT_TARGET_LOG \
+            NETFILTER_XT_MATCH_RECENT IP6_NF_NAT IP6_NF_TARGET_MASQUERADE; do
+            set_config "CONFIG_$cfg" y
+          done
+          set_config CONFIG_IP_SET_MAX 65534
+
+          # TCP 拥塞控制算法：已打 BBRv3 补丁的版本默认 bbr3，其余默认 bbr
+          for cfg in TCP_CONG_ADVANCED TCP_CONG_BBR TCP_CONG_CUBIC \
+            TCP_CONG_BIC TCP_CONG_WESTWOOD TCP_CONG_HTCP; do
+            set_config "CONFIG_$cfg" y
+          done
+          if [ -n "$BBR3_PATCH" ]; then
+            set_config CONFIG_TCP_CONG_BBR3 y
+            set_config CONFIG_DEFAULT_BBR3 y
+            set_config CONFIG_DEFAULT_TCP_CONG '"bbr3"'
+          else
+            set_config CONFIG_DEFAULT_BBR y
+            set_config CONFIG_DEFAULT_TCP_CONG '"bbr"'
+          fi
+
+          # 流量整形 Qdisc + 连接标记 + TTL/HopLimit + WireGuard
+          for cfg in NET_SCH_FQ NET_SCH_FQ_CODEL NET_SCH_CAKE NET_ACT_CONNMARK \
+            IP_NF_TARGET_TTL IP6_NF_TARGET_HL IP6_NF_MATCH_HL WIREGUARD; do
+            set_config "CONFIG_$cfg" y
+          done
+
+          # CIFS 网络文件系统（NETFS_SUPPORT 为 5.15+ 符号，5.10 无此依赖不写入）
+          for cfg in CIFS NETWORK_FILESYSTEMS KEYS CIFS_XATTR CIFS_POSIX; do
+            set_config "CONFIG_$cfg" y
+          done
+          if [ "$KVER" != "5.10" ]; then
+            set_config CONFIG_NETFS_SUPPORT y
+          fi
+
+          # 6.12 的 NETFS 内置化后需移除 modules.bzl 的模块条目，否则打包失败
+          if [ "$AVER" = "android16" ] && grep -q '"fs/netfs/netfs.ko",' modules.bzl 2>/dev/null; then
+            sed -i '/"fs\/netfs\/netfs\.ko",/d' modules.bzl
+          fi
+
+          echo "[+] 网络增强配置完成"
 
       - name: 应用 Re-Kernel
         if: inputs.use_rekernel
