@@ -2,7 +2,7 @@
   "android_version": "android13",
   "kernel_version": "5.15",
   "deprecated_cutoff": "2024-09",
-  "lts": "5.15.216",
+  "lts": "5.15.217",
   "entries": [
     {
       "date": "2022-06",
@@ -178,6 +178,25 @@
       "date": "2025-12",
       "kernel": "5.15.194",
       "ref": "refs/heads/android13-5.15-2025-12"
+    },
+    {
+      "date": "2026-01",
+      "kernel": "5.15.196"
+    },
+    {
+      "date": "2026-03",
+      "kernel": "5.15.197",
+      "ref": "refs/heads/android13-5.15-2026-03"
+    },
+    {
+      "date": "2026-06",
+      "kernel": "5.15.206",
+      "ref": "refs/heads/android13-5.15-2026-06"
+    },
+    {
+      "date": "2026-09",
+      "kernel": "5.15.211",
+      "ref": "refs/heads/android13-5.15-2026-09"
     }
   ]
 }
