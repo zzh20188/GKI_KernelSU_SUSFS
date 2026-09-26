@@ -32,6 +32,7 @@
 4. 翻新网页UI风格
 5. RELEASE 新上传 SUSFS补丁，对应 **上游的 `50_add_susfs_in_gki-内核版本.patch`和其他文件**（除了 `10_enable_susfs_for_ksu.patch`，它已被 sukisu 内置），可替代使用，不会产生SUSFS侧的报错，不会构建内核则不需要,通常在源码目录拉取sukisu然后执行本补丁，就可运行构建脚本或bash命令进行了，省略很多步骤
 6. 新增 **NoMount 挂载元模块**（构建时可选开关）：在内核 `fs/` 层集成 [maxsteeel/NoMount](https://github.com/maxsteeel/nomount)，提供无需传统挂载点的模块挂载方案，可与任意 KSU 变体及 SUSFS 共存。开启后需自行刷入配套的 NoMount 模块使用
+7. 新增 **网络增强**（构建时可选开关，默认关闭）：BBRv3 等网络功能增强
 
 ## ⚠️ 兼容性提醒
 
