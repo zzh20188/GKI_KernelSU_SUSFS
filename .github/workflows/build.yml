@@ -1257,13 +1257,10 @@ jobs:
             set_config "CONFIG_$cfg" y
           done
 
-          # CIFS 网络文件系统（NETFS_SUPPORT 为 5.15+ 符号，5.10 无此依赖不写入）
+          # CIFS 网络文件系统（NETFS_SUPPORT 为隐藏符号，由 Kconfig 按需选中）
           for cfg in CIFS NETWORK_FILESYSTEMS KEYS CIFS_XATTR CIFS_POSIX; do
             set_config "CONFIG_$cfg" y
           done
-          if [ "$KVER" != "5.10" ]; then
-            set_config CONFIG_NETFS_SUPPORT y
-          fi
 
           # 6.12 的 NETFS 内置化后需移除 modules.bzl 的模块条目，否则打包失败
           if [ "$AVER" = "android16" ] && grep -q '"fs/netfs/netfs.ko",' modules.bzl 2>/dev/null; then
