@@ -330,7 +330,6 @@ jobs:
           mkdir -p susfs-module
           unzip "$NAME" -d susfs-temp
 
-          # 统一输出模块 ZIP：保留已有 ZIP，否则重新打包解压内容
           cd susfs-temp
           if ls *.zip 1>/dev/null 2>&1; then
             mv *.zip ../susfs-module/

@@ -895,7 +895,6 @@ jobs:
           fi
 
           echo "添加 Droidspaces 内核配置..."
-          # 按文档规则逐个处理: 已启用则跳过, "# not set" 则替换, 不存在则追加
           enable_config() {
             local cfg="$1"
             if grep -q "^${cfg}=y" "$DEFCONFIG"; then
@@ -1011,7 +1010,6 @@ jobs:
 
           cd ..
 
-          # 配置路径
           CONFIG_PATH="./common/arch/arm64/configs/gki_defconfig"
           echo "正在检查并启用 CONFIG_NTSYNC..."
 
@@ -1213,7 +1211,6 @@ jobs:
             echo "[+] 5.10 sysctl 前置补丁已应用"
           fi
 
-          # ---------- defconfig 写入：替换已有/未设置行，缺失则追加 ----------
           set_config() {
             local key="$1" value="$2"
             if grep -q "^$key=" "$DEFCONFIG"; then

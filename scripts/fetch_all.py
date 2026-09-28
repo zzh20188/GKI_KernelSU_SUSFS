@@ -42,7 +42,6 @@ def fetch_all():
         if refs is not None:
             refresh_refs(entries, android_ver, kernel_ver, refs)
 
-        # 抓取 LTS
         lts_label = f"{android_ver}-{kernel_ver}-lts"
         print(f"  [{lts_label}] ", end="", flush=True)
         lts_text = fetch_lts(android_ver, kernel_ver)

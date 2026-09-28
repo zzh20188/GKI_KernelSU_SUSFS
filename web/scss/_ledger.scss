@@ -9,7 +9,6 @@
   @include mobile { margin-top: var(--sp-6); }
 }
 
-// 列表头：左侧「匹配 N 条」，右侧列名
 .ledger__head {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
@@ -347,13 +346,6 @@
 .year.is-dep-margin .year__margin {
   @include hatch;
 }
-.year.is-dep-margin-partial .year__margin .year__hatch {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  @include hatch;
-}
 
 // 弃用折叠态：弃用行与落在弃用区内的 SUSFS 兼容线一并隐藏
 .ledger.is-dep-collapsed .row.is-deprecated { display: none; }
@@ -398,7 +390,6 @@
   }
 
   .rule__text { flex: 1 1 auto; min-width: 0; }
-  .rule__kernel { @include mono; font-weight: 500; }
 }
 
 // 截止线本体：横贯页边 + 行，用 top border 表达
