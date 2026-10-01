@@ -5,7 +5,7 @@
 import { t, lang } from './i18n.js';
 import { esc, fmt, prefersReducedMotion, getStored, setStored } from './utils.js';
 
-// 探测来源说明（变体 / 日期 / susfs4ksu 提交），供图注与参数单复用
+// 探测来源说明（变体 / 日期 / susfs4ksu 提交），供图注复用
 function probeSource(m) {
   if (!m.probe) return '';
   return fmt(t.probeSource, {

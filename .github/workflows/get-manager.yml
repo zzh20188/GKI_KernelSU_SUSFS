@@ -294,6 +294,8 @@ jobs:
         id: add_SUSFS
         continue-on-error: true
         run: |
+          set -euo pipefail
+
           case "${{ inputs.kernelsu_variant }}" in
             "SukiSU(40726)") LEGACY_RELEASE_TAG="v2.1.0-r2"; LEGACY_SUSFS_VERSION="v2.1.0" ;;
             "SukiSU(40548)") LEGACY_RELEASE_TAG="v2.0.0-r34"; LEGACY_SUSFS_VERSION="v2.0.0" ;;
@@ -304,41 +306,93 @@ jobs:
             mkdir -p susfs-module
             curl -fL -o susfs-module/ksu_module_susfs.zip \
               "https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases/download/$LEGACY_RELEASE_TAG/ksu_module_susfs.zip"
-            echo "SUSFS_NAME=$LEGACY_SUSFS_VERSION" >> $GITHUB_ENV
+            echo "SUSFS_NAME=$LEGACY_SUSFS_VERSION" >> "$GITHUB_ENV"
             exit 0
           fi
 
-          BUILD_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/sidex15/susfs4ksu-module/actions/workflows/build.yml/runs?status=success" |
-          jq -r '.workflow_runs[0].id')
+          API_ROOT="https://api.github.com/repos/sidex15/susfs4ksu-module"
+          CURL_ARGS=(--fail-with-body --silent --show-error --location
+            --retry 3 --retry-all-errors --retry-delay 2
+            --connect-timeout 15 --max-time 120)
+          WORKDIR=$(mktemp -d)
+          trap 'rm -rf "$WORKDIR"' EXIT
 
-          ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/sidex15/susfs4ksu-module/actions/runs/$BUILD_ID/artifacts")
+          # 响应先写入文件，避免重试时将多份响应拼接成无效 JSON。
+          github_api() {
+            : > "$WORKDIR/api.json"
+            if ! curl "${CURL_ARGS[@]}" -H "Authorization: Bearer $GH_TOKEN" \
+              -o "$WORKDIR/api.json" "$1"; then
+              echo "::error::GitHub API 请求重试后仍失败: $1" >&2
+              if [ -s "$WORKDIR/api.json" ]; then
+                cat "$WORKDIR/api.json" >&2
+              fi
+              return 1
+            fi
+            cat "$WORKDIR/api.json"
+          }
 
-          DOWNLOAD_URL=$(echo "$ARTIFACTS" | jq -r '.artifacts[0].archive_download_url')
-
-          NAME=$(echo "$ARTIFACTS" | jq -r '.artifacts[0].name')
-          echo "SUSFS_NAME=$NAME" >> $GITHUB_ENV
-          NAME="susfs-$NAME.zip"
-
-          echo $DOWNLOAD_URL
-          echo $NAME
-          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o "$NAME" "$DOWNLOAD_URL"
-          echo "$NAME 文件已下载.zip"
-
-
-          mkdir -p susfs-module
-          unzip "$NAME" -d susfs-temp
-
-          # 统一输出模块 ZIP：保留已有 ZIP，否则重新打包解压内容
-          cd susfs-temp
-          if ls *.zip 1>/dev/null 2>&1; then
-            mv *.zip ../susfs-module/
-          else
-            zip -r "../susfs-module/ksu_module_susfs.zip" .
+          RUNS=$(github_api "$API_ROOT/actions/workflows/build.yml/runs?status=success&per_page=30")
+          if ! BUILD_IDS=$(jq -er '
+            .workflow_runs | if type != "array" then error("构建列表不是数组")
+            else .[] | .id | select(type == "number" and . > 0 and . == floor) end
+          ' <<< "$RUNS"); then
+            echo "::error::SUSFS 构建列表无效或没有成功构建" >&2
+            exit 1
           fi
-          cd ..
-          rm -rf susfs-temp "$NAME"
+
+          DOWNLOAD_URL=""
+          NAME=""
+          while IFS= read -r BUILD_ID; do
+            ARTIFACTS=$(github_api "$API_ROOT/actions/runs/$BUILD_ID/artifacts?per_page=100")
+            if ! CANDIDATE=$(jq -c --arg prefix "$API_ROOT/actions/artifacts/" '
+              if (.artifacts | type) != "array" then error("产物列表不是数组")
+              else [.artifacts[]
+                | select(.expired == false)
+                | select(.name | strings | test("^[^\\r\\n]+$"))
+                | select(.archive_download_url | strings | startswith($prefix))
+                | select(.archive_download_url | ltrimstr($prefix) | test("^[1-9][0-9]*/zip$"))
+              ][0] // empty end
+            ' <<< "$ARTIFACTS"); then
+              echo "::error::SUSFS 构建 $BUILD_ID 的产物列表无效" >&2
+              exit 1
+            fi
+            if [ -z "$CANDIDATE" ]; then
+              echo "::warning::SUSFS 构建 $BUILD_ID 没有可用产物，继续检查历史构建"
+              continue
+            fi
+            NAME=$(jq -r '.name' <<< "$CANDIDATE")
+            DOWNLOAD_URL=$(jq -r '.archive_download_url' <<< "$CANDIDATE")
+            echo "选择 SUSFS 模块: 构建 $BUILD_ID，产物 $NAME"
+            break
+          done <<< "$BUILD_IDS"
+
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "::error::最近 30 次成功构建中没有未过期且下载地址有效的 SUSFS 模块产物" >&2
+            exit 1
+          fi
+
+          curl "${CURL_ARGS[@]}" -H "Authorization: Bearer $GH_TOKEN" \
+            -o "$WORKDIR/artifact.zip" "$DOWNLOAD_URL"
+          unzip -q "$WORKDIR/artifact.zip" -d "$WORKDIR/extracted"
+
+          mkdir -p "$WORKDIR/module"
+          shopt -s nullglob
+          MODULE_ZIPS=("$WORKDIR/extracted/"*.zip)
+          if [ "${#MODULE_ZIPS[@]}" -gt 0 ]; then
+            cp -- "${MODULE_ZIPS[@]}" "$WORKDIR/module/"
+          else
+            (cd "$WORKDIR/extracted" && zip -qr "$WORKDIR/module/ksu_module_susfs.zip" .)
+          fi
+
+          # 成功后再替换输出目录，重复执行时不残留旧模块或不完整下载。
+          rm -rf susfs-module
+          mv "$WORKDIR/module" susfs-module
+          echo "SUSFS_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "SUSFS 模块已下载并整理完成"
+
+      - name: 提示 SUSFS 模块下载失败
+        if: steps.add_SUSFS.outcome == 'failure'
+        run: echo "::warning::SUSFS 模块下载失败，本次不附带模块 ZIP；不影响 Manager APK 和内核构建。"
 
       - name: Notify on failure
         if: steps.add_KSU.outcome == 'failure'

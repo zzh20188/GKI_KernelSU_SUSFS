@@ -1,12 +1,9 @@
-# ========================================
 # GKI 内核构建主入口
-# ========================================
 # 此工作流是项目的统一入口点，用于：
 # 1. 构建所有版本的 GKI 内核
 # 2. 获取最新的 KSU 管理器
 # 3. 收集补丁冲突文件和编译失败日志用于调试
 # 4. 创建 GitHub Release (可选)
-# ========================================
 
 name: 构建内核
 
@@ -127,6 +124,10 @@ on:
         description: "启用 NoMount 挂载元模块"
         type: boolean
         default: false
+      use_networking:
+        description: "启用网络增强（BBRv3 / IPSet / Qdisc / CIFS）"
+        type: boolean
+        default: false
       cve_2026_43499_patch:
         description: "应用 CVE-2026-43499 rtmutex 修复链"
         type: boolean
@@ -137,7 +138,6 @@ on:
         default: false
 
 jobs:
-  # ==================== 获取管理器 ====================
   # 下载最新的 KernelSU 管理器 APK 和 SUSFS 模块
   get-manager:
     uses: ./.github/workflows/get-manager.yml
@@ -145,7 +145,6 @@ jobs:
     with:
       kernelsu_variant: ${{ inputs.kernelsu_variant }}
 
-  # ==================== Android 12 - 5.10 构建 ====================
   build-a12-5-10:
     if: inputs.build_a12_5_10 || inputs.build_all
     uses: ./.github/workflows/kernel-a12-5-10.yml
@@ -159,6 +158,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
       use_nomount: ${{ inputs.use_nomount }}
+      use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -167,7 +167,6 @@ jobs:
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
       called_from_main: true
 
-  # ==================== Android 13 - 5.15 构建 ====================
   build-a13-5-15:
     if: inputs.build_a13_5_15 || inputs.build_all
     uses: ./.github/workflows/kernel-a13-5-15.yml
@@ -181,6 +180,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
       use_nomount: ${{ inputs.use_nomount }}
+      use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -189,7 +189,6 @@ jobs:
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
       called_from_main: true
 
-  # ==================== Android 14 - 6.1 构建 ====================
   build-a14-6-1:
     if: inputs.build_a14_6_1 || inputs.build_all
     uses: ./.github/workflows/kernel-a14-6-1.yml
@@ -203,6 +202,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
       use_nomount: ${{ inputs.use_nomount }}
+      use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -211,7 +211,6 @@ jobs:
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
       called_from_main: true
 
-  # ==================== Android 15 - 6.6 构建 ====================
   build-a15-6-6:
     if: inputs.build_a15_6_6 || inputs.build_all
     uses: ./.github/workflows/kernel-a15-6-6.yml
@@ -225,6 +224,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
       use_nomount: ${{ inputs.use_nomount }}
+      use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -233,7 +233,6 @@ jobs:
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
       called_from_main: true
 
-  # ==================== Android 16 - 6.12 构建 ====================
   build-a16-6-12:
     if: inputs.build_a16_6_12 || inputs.build_all
     uses: ./.github/workflows/kernel-a16-6-12.yml
@@ -247,6 +246,7 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
       use_nomount: ${{ inputs.use_nomount }}
+      use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
       ksu_mode: ${{ inputs.ksu_mode }}
@@ -255,7 +255,6 @@ jobs:
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync }}
       called_from_main: true
 
-  # ==================== 收集补丁冲突文件 ====================
   # 汇总所有构建任务中的 .rej 文件，方便调试补丁问题
   collect-rejects:
     if: ${{ !cancelled() }}
@@ -294,7 +293,6 @@ jobs:
           path: AIO-REJ.zip
           if-no-files-found: ignore
 
-  # ==================== 收集编译失败日志 ====================
   # 按构建名称汇总所有失败日志，方便统一下载和定位问题
   collect-build-logs:
     if: ${{ !cancelled() }}
@@ -373,7 +371,6 @@ jobs:
             fi
           done <<< "$ARTIFACT_IDS"
 
-  # ==================== 收集 SUSFS 集成补丁 ====================
   # 汇总各构建任务导出的 SUSFS 集成补丁，打成一个 zip 供 Release 分发
   # 仅 SukiSU / ReSukiSU 且启用 SUSFS 时有产物
   collect-susfs-patches:
@@ -537,7 +534,6 @@ jobs:
             fi
           done <<< "$ARTIFACT_IDS"
 
-  # ==================== 创建发布 ====================
   # 当 release_type 不是 Actions 时，创建 GitHub Release
   # 仅限原仓库运行，fork 仓库跳过此步骤
   release:
@@ -555,15 +551,12 @@ jobs:
       - build-a16-6-12
       - collect-susfs-patches
 
-    # ==================== 环境变量 ====================
     env:
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      # ==================== 设置显示名称 ====================
-      # 预计算各种显示名称，简化后续引用
       - name: 设置显示名称
         run: |
           # KSU 显示名称
@@ -584,6 +577,7 @@ jobs:
           # 功能开关显示
           echo "LZ4_STATUS=${{ inputs.use_zram && '开启' || '未开启' }}" >> $GITHUB_ENV
           echo "BBG_STATUS=${{ inputs.use_bbg && '支持' || '不支持' }}" >> $GITHUB_ENV
+          echo "NET_STATUS=${{ inputs.use_networking && '开启' || '未开启' }}" >> $GITHUB_ENV
           if [[ "${{ inputs.use_kpm }}" == enabled* ]]; then
             echo "KPM_STATUS=支持" >> $GITHUB_ENV
           elif [[ "${{ inputs.use_kpm }}" == patched* ]]; then
@@ -630,8 +624,6 @@ jobs:
               ;;
           esac
 
-      # ==================== 验证构建状态 ====================
-      # 确保所有选中的构建任务都成功完成
       - name: 验证构建状态
         run: |
           failed=0
@@ -649,14 +641,11 @@ jobs:
           check_build "${{ inputs.build_a16_6_12 || inputs.build_all }}" "build-a16-6-12" "${{ needs.build-a16-6-12.result }}"
           [[ "$failed" -ne 0 ]] && exit 1 || true
 
-      # ==================== 检出代码 ====================
       - name: 检出代码
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
-      # ==================== 确定 KSU 引用 ====================
-      # 根据实际构建逻辑确定 KernelSU 上游引用
       - name: 确定 KSU 引用
         if: inputs.ksu_mode != '禁用KSU'
         run: |
@@ -676,8 +665,6 @@ jobs:
           echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "BRANCH_INFO=$BRANCH" >> $GITHUB_ENV
 
-      # ==================== 获取 KernelSU 提交信息 ====================
-      # 获取当前使用的 KernelSU 版本的 Git 提交信息
       - name: 获取 KernelSU 提交信息
         if: inputs.ksu_mode != '禁用KSU'
         run: |
@@ -707,8 +694,6 @@ jobs:
           echo "KSU_REF=$KSU_REF" >> $GITHUB_ENV
           echo "KSU_URL=$KSU_URL" >> $GITHUB_ENV
 
-      # ==================== 获取 SUSFS 提交信息 ====================
-      # 获取各版本 SUSFS 的 Git 提交信息
       - name: 获取 SUSFS 提交信息
         if: inputs.ksu_mode == '关闭'
         run: |
@@ -731,8 +716,6 @@ jobs:
             fi
           done
 
-      # ==================== 生成发布说明 ====================
-      # 创建包含详细信息的发布说明文档
       - name: 生成发布说明
         run: |
           BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
@@ -809,6 +792,7 @@ jobs:
           | LTO | thin |
           | BBG 安全补丁 | $BBG_STATUS |
           | ZRAM / LZ4KD | $LZ4_STATUS |
+          | 网络增强 (BBRv3 / IPSet / CAKE / CIFS) | $NET_STATUS |
           | KPM | $KPM_STATUS |
 
           ### 下载说明
@@ -862,8 +846,6 @@ jobs:
           Unicode 零宽绕过修复请使用 Xposed 模块：https://t.me/real5ec1cff/268
           EOF
 
-      # ==================== 生成版本标签 ====================
-      # 根据 SUSFS 版本生成递增的发布标签
       - name: 生成版本标签
         run: |
           # 获取 SUSFS 版本，如果 get-manager 被跳过则使用默认值
@@ -885,13 +867,11 @@ jobs:
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
           echo "生成标签: $NEW_TAG"
 
-      # ==================== 下载构建产物 ====================
       - name: 下载构建产物
         uses: actions/download-artifact@v8
         with:
           path: ./downloaded-artifacts
 
-      # ==================== 创建 GitHub Release ====================
       - name: 创建 GitHub Release
         run: |
           PRERELEASE_FLAG=""
@@ -905,7 +885,6 @@ jobs:
             --target "$GITHUB_SHA" \
             $PRERELEASE_FLAG
 
-      # ==================== 上传管理器和模块 ====================
       - name: 上传管理器和 SUSFS 模块
         continue-on-error: true
         run: |
@@ -923,7 +902,6 @@ jobs:
             gh release upload "$NEW_TAG" "$f" || true
           done
 
-      # ==================== 上传 SUSFS 集成补丁 ====================
       # 汇总 job 被跳过或没有产物时静默跳过
       - name: 上传 SUSFS 集成补丁
         if: needs.collect-susfs-patches.result == 'success'
@@ -937,7 +915,6 @@ jobs:
           done
           echo "已上传 $uploaded 个 SUSFS 集成补丁压缩包"
 
-      # ==================== 上传内核产物 ====================
       - name: 上传内核产物
         run: |
           for file in ./downloaded-artifacts/*_kernel-*/*; do
@@ -948,7 +925,6 @@ jobs:
             gh release upload "$NEW_TAG" "$file"
           done
 
-      # ==================== 构建摘要 ====================
       - name: 构建摘要
         run: |
           echo "## 发布已创建" >> $GITHUB_STEP_SUMMARY

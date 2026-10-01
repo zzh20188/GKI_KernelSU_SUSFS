@@ -446,7 +446,7 @@
     bottom: 5px;
   }
 
-  // LTS 所在月：刻度顶端一个 4px 空心方块
+  // LTS 所在月：刻度顶端一个 5px 空心方块
   &.lts .tick__lts {
     position: absolute;
     left: 50%;
@@ -525,14 +525,4 @@
   white-space: nowrap;
   border-left: 1px solid var(--hairline);
   padding-left: 4px;
-}
-
-.ruler__caption {
-  @include mono;
-  font-size: var(--fs-11);
-  color: var(--text-3);
-  margin-top: 4px;
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-3);
 }
