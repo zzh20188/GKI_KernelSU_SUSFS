@@ -303,23 +303,48 @@ jobs:
 
       - name: 克隆依赖仓库
         run: |
+          # GitLab 高负载时会拒绝克隆；递增等待并随机错峰，避免矩阵任务同时重试。
+          # 每次克隆前清理目标目录，防止上次中断的残留使后续尝试必然失败。
+          clone_with_retry() {
+            local repository="$1" destination="$2"
+            shift 2
+            local attempt delay rc=1
+            for attempt in 1 2 3 4 5; do
+              echo "克隆 $repository（第 $attempt/5 次）..."
+              rm -rf -- "$destination" || return 1
+              if git clone "$repository" "$destination" "$@"; then
+                return 0
+              else
+                rc=$?
+              fi
+              if [ "$attempt" -lt 5 ]; then
+                delay=$((15 * (1 << (attempt - 1)) + RANDOM % 10))
+                echo "::warning::克隆 $repository 失败（退出码 $rc），${delay} 秒后重试"
+                sleep "$delay" || return 1
+              fi
+            done
+            rm -rf -- "$destination" || return 1
+            echo "克隆 $repository 失败，已用尽 5 次尝试（退出码 $rc）" >&2
+            return "$rc"
+          }
+
           ANYKERNEL_BRANCH="gki-2.0"
           SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
 
           echo "克隆 AnyKernel3..."
-          git clone https://github.com/WildKernels/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
+          clone_with_retry https://github.com/WildKernels/AnyKernel3.git AnyKernel3 -b "$ANYKERNEL_BRANCH"
           rm -rf AnyKernel3/.git
 
           echo "克隆 SUSFS (分支: $SUSFS_BRANCH)..."
           if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
+            clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
           elif [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
-            if ! git clone https://github.com/ShirkNeko/susfs4ksu.git -b "$SUSFS_BRANCH" 2>/dev/null; then
-              echo "ShirkNeko 仓库未找到分支 $SUSFS_BRANCH，回退到 simonpunk 原版..."
-              git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
+            if ! clone_with_retry https://github.com/ShirkNeko/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"; then
+              echo "::warning::ShirkNeko 仓库克隆失败（分支 $SUSFS_BRANCH），回退到 simonpunk 原版..."
+              clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
             fi
           else
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
+            clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
           fi
 
           if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
@@ -351,10 +376,10 @@ jobs:
           echo "SUSFS 仓库最新提交日期: $SUSFS_LATEST_COMMIT_DATE"
 
           echo "准备补丁资源..."
-          git clone https://github.com/WildKernels/kernel_patches.git
-          git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          clone_with_retry https://github.com/WildKernels/kernel_patches.git kernel_patches
+          clone_with_retry https://github.com/ShirkNeko/SukiSU_patch.git SukiSU_patch
           echo "使用当前仓库补丁目录: $ZZH_PATCHES"
-          git clone https://github.com/Numbersf/Action-Build.git --depth=1
+          clone_with_retry https://github.com/Numbersf/Action-Build.git Action-Build --depth=1
 
       - name: 初始化并同步内核源码
         working-directory: ${{ env.KERNEL_ROOT }}
@@ -555,7 +580,7 @@ jobs:
           variant_input="${{ inputs.ksu_variant }}"
 
           case "$variant_input" in
-            "Official"|"ReSukiSU")
+            "Official"|"BakaSU")
               BRANCH="-s main"
               ;;
             "SukiSU")
@@ -625,9 +650,9 @@ jobs:
               echo "添加 ${{ inputs.ksu_variant }}..."
               curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
               ;;
-            "ReSukiSU")
-              echo "添加 ReSukiSU..."
-              curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash $BRANCH
+            "BakaSU")
+              echo "添加 BakaSU..."
+              curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash $BRANCH
               ;;
             *)
               if [ -z "$LEGACY_SUKISU_CONFIG" ]; then
@@ -700,10 +725,10 @@ jobs:
           echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
 
       # ==================== SUSFS 集成补丁导出 ====================
-      # 仅 SukiSU / ReSukiSU 且启用 SUSFS 时导出，快照用临时索引生成树对象，
+      # 仅 SukiSU / BakaSU 且启用 SUSFS 时导出，快照用临时索引生成树对象，
       # 不创建提交，避免改变「配置内核名称」读取的 HEAD 哈希
       - name: 记录 SUSFS 基线快照
-        if: inputs.export_susfs_patches && inputs.enable_susfs && inputs.ksu_mode != '禁用KSU' && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'ReSukiSU')
+        if: inputs.export_susfs_patches && inputs.enable_susfs && inputs.ksu_mode != '禁用KSU' && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'BakaSU')
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
           # 排除 .rej/.orig 和补丁文件本身：apply.sh 会把 SUSFS 补丁拷进 common/ 并留下 .rej
@@ -1319,7 +1344,7 @@ jobs:
             echo "CONFIG_KSU=y" >> "$DEFCONFIG"
           fi
 
-          if [ "${{ inputs.ksu_mode }}" != "禁用KSU" ] && { [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40726)" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40548)" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ] || [ "${{ inputs.ksu_variant }}" == "Next" ]; }; then
+          if [ "${{ inputs.ksu_mode }}" != "禁用KSU" ] && { [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40726)" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40548)" ] || [ "${{ inputs.ksu_variant }}" == "BakaSU" ] || [ "${{ inputs.ksu_variant }}" == "Next" ]; }; then
             if [[ "${{ inputs.use_kpm }}" == enabled* ]] || [[ "${{ inputs.use_kpm }}" == patched* ]]; then
               if ! grep -RqsE '^[[:space:]]*config[[:space:]]+KPM([[:space:]]|$)' common KernelSU 2>/dev/null; then
                 echo "错误: 已请求启用 KPM，但当前 KernelSU 代码未声明 CONFIG_KPM" >&2
@@ -1333,12 +1358,12 @@ jobs:
           if [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]]; then
             CURRENT_SUB=99999
           fi
-          if [[ "${{ inputs.ksu_variant }}" == "ReSukiSU" && "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" && "$CURRENT_SUB" -ge 74 && "$CURRENT_SUB" -le 137 ]]; then
+          if [[ "${{ inputs.ksu_variant }}" == "BakaSU" && "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" && "$CURRENT_SUB" -ge 74 && "$CURRENT_SUB" -le 137 ]]; then
             {
               echo "CONFIG_KALLSYMS=y"
               echo "CONFIG_KALLSYMS_ALL=y"
             } >> "$DEFCONFIG"
-            # 修复 5.15.74~5.15.137: kallsyms_on_each_symbol 仅在 LIVEPATCH 下编译，导致 ReSukiSU 链接失败
+            # 修复 5.15.74~5.15.137: kallsyms_on_each_symbol 仅在 LIVEPATCH 下编译，导致 BakaSU 链接失败
             KALLSYMS_C="./common/kernel/kallsyms.c"
             if [ -f "$KALLSYMS_C" ] \
               && grep -qF 'int kallsyms_on_each_symbol' "$KALLSYMS_C" \
@@ -1568,8 +1593,8 @@ jobs:
           retention-days: 7
           compression-level: 9
 
-      # - name: 应用 KPM 补丁 (SukiSU/ReSukiSU/Next)
-      #   if: startsWith(inputs.use_kpm, 'patched') && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'ReSukiSU' || inputs.ksu_variant == 'Next')
+      # - name: 应用 KPM 补丁 (SukiSU/BakaSU/Next)
+      #   if: startsWith(inputs.use_kpm, 'patched') && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'BakaSU' || inputs.ksu_variant == 'Next')
       #   run: |
       #     case "${{ inputs.android_version }}" in
       #       "android12"|"android13")

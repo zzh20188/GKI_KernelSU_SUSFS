@@ -35,10 +35,10 @@ on:
           - SukiSU
           - SukiSU(40726)
           - SukiSU(40548)
-          - ReSukiSU
+          - BakaSU
           - Official
           #- Next
-        default: ReSukiSU
+        default: BakaSU
       ksu_mode:
         description: "KernelSU / SUSFS 模式"
         type: choice
@@ -83,7 +83,7 @@ on:
         type: boolean
         default: true
       export_susfs_patches:
-        description: "收集 SUSFS 集成补丁（仅 SukiSU / ReSukiSU）"
+        description: "收集 SUSFS 集成补丁（仅 SukiSU / BakaSU）"
         type: boolean
         default: true
 
@@ -372,9 +372,9 @@ jobs:
           done <<< "$ARTIFACT_IDS"
 
   # 汇总各构建任务导出的 SUSFS 集成补丁，打成一个 zip 供 Release 分发
-  # 仅 SukiSU / ReSukiSU 且启用 SUSFS 时有产物
+  # 仅 SukiSU / BakaSU 且启用 SUSFS 时有产物
   collect-susfs-patches:
-    if: ${{ !cancelled() && inputs.export_susfs_patches && inputs.ksu_mode == '关闭' && (inputs.kernelsu_variant == 'SukiSU' || inputs.kernelsu_variant == 'ReSukiSU') }}
+    if: ${{ !cancelled() && inputs.export_susfs_patches && inputs.ksu_mode == '关闭' && (inputs.kernelsu_variant == 'SukiSU' || inputs.kernelsu_variant == 'BakaSU') }}
     runs-on: ubuntu-24.04
     needs:
       - build-a12-5-10
@@ -564,7 +564,7 @@ jobs:
             "Next")      KSU_NAME="KernelSU-Next" ;;
             "Official")  KSU_NAME="KernelSU" ;;
             "SukiSU")    KSU_NAME="SukiSU" ;;
-            "ReSukiSU")  KSU_NAME="ReSukiSU" ;;
+            "BakaSU")  KSU_NAME="BakaSU" ;;
           esac
           echo "KSU_NAME=$KSU_NAME" >> $GITHUB_ENV
 
@@ -587,7 +587,7 @@ jobs:
           fi
 
           # Hook 类型
-          if [ "${{ inputs.kernelsu_variant }}" = "SukiSU" ] || [ "${{ inputs.kernelsu_variant }}" = "ReSukiSU" ]; then
+          if [ "${{ inputs.kernelsu_variant }}" = "SukiSU" ] || [ "${{ inputs.kernelsu_variant }}" = "BakaSU" ]; then
             echo "HOOK_TYPE=SUSFS Inline Hooks" >> $GITHUB_ENV
           else
             echo "HOOK_TYPE=KPROBE Hooks" >> $GITHUB_ENV
@@ -658,7 +658,7 @@ jobs:
                 BRANCH="builtin"
               fi
               ;;
-            "ReSukiSU") BRANCH="main" ;;
+            "BakaSU") BRANCH="main" ;;
             "Next") BRANCH="dev" ;;
             *) echo "错误: 未知变体" >&2; exit 1 ;;
           esac
@@ -672,7 +672,7 @@ jobs:
             "Official") REPO_URL="https://github.com/tiann/KernelSU.git"; REPO_URL2="tiann/KernelSU" ;;
             "Next") REPO_URL="https://github.com/KernelSU-Next/KernelSU-Next.git"; REPO_URL2="KernelSU-Next/KernelSU-Next" ;;
             "SukiSU") REPO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"; REPO_URL2="SukiSU-Ultra/SukiSU-Ultra" ;;
-            "ReSukiSU") REPO_URL="https://github.com/ReSukiSU/ReSukiSU.git"; REPO_URL2="ReSukiSU/ReSukiSU" ;;
+            "BakaSU") REPO_URL="https://github.com/Baka-SU/BakaSU.git"; REPO_URL2="Baka-SU/BakaSU" ;;
           esac
 
           if [ "${{ inputs.kernelsu_variant }}" = "SukiSU" ] && [ -f "config/config" ]; then
@@ -805,7 +805,7 @@ jobs:
           | \`*.img\` | boot、vendor_boot 等镜像文件 |
           | \`*.apk\` | KernelSU 管理器 |
           | \`susfs-*.zip\` | SUSFS 配套模块 |
-          | \`SUSFS-Patches-*.zip\` | SUSFS 集成补丁（仅 SukiSU / ReSukiSU，供自行编译内核使用） |
+          | \`SUSFS-Patches-*.zip\` | SUSFS 集成补丁（仅 SukiSU / BakaSU，供自行编译内核使用） |
 
           > [!IMPORTANT]
           > 刷入前请备份原厂 Boot 镜像。

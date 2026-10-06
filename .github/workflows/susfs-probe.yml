@@ -29,7 +29,7 @@ on:
         type: choice
         options:
           - SukiSU
-          - ReSukiSU
+          - BakaSU
           - Official
         default: SukiSU
       sub_level_min:
