@@ -37,8 +37,8 @@ case "$KSU_VARIANT" in
 
     cd ..
     ;;
-  "Next"|"SukiSU"|"SukiSU(40726)"|"SukiSU(40548)"|"ReSukiSU")
-    echo "Next/SukiSU/SukiSU(40726)/SukiSU(40548)/ReSukiSU 使用内置 SUSFS 支持"
+  "Next"|"SukiSU"|"SukiSU(40726)"|"SukiSU(40548)"|"BakaSU")
+    echo "Next/SukiSU/SukiSU(40726)/SukiSU(40548)/BakaSU 使用内置 SUSFS 支持"
     ;;
 esac
 
@@ -144,9 +144,9 @@ fi
 
 patch -p1 < "$SUSFS_PATCH" || true
 
-# 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
+# 为尚未提供 SU 会话 FD 接口的 SukiSU/BakaSU 恢复旧版 exec hook 行为
 EXEC_HELPER=""
-if [[ "$KSU_VARIANT" == SukiSU* || "$KSU_VARIANT" == "ReSukiSU" ]]; then
+if [[ "$KSU_VARIANT" == SukiSU* || "$KSU_VARIANT" == "BakaSU" ]]; then
   if grep -qF 'ksu_install_su_fd();' fs/exec.c; then
     EXEC_HELPER="ksu_install_su_fd"
   elif grep -qF 'ksu_handle_post_execveat_sucompat(' fs/exec.c; then

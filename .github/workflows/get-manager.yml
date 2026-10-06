@@ -77,9 +77,9 @@ jobs:
             echo "This is the SukiSU(40548) variant"
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
             git -C KernelSU checkout 3170a48c508f6330ea636c51835a84573fe56ef5
-          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
-            echo "This is the ReSukiSU variant"
-            git clone https://github.com/ReSukiSU/ReSukiSU.git KernelSU
+          elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
+            echo "This is the BakaSU variant"
+            git clone https://github.com/Baka-SU/BakaSU.git KernelSU
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "This is the Official"
             git clone https://github.com/tiann/KernelSU.git KernelSU
@@ -98,7 +98,7 @@ jobs:
             KSU_VERSION=40726
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40548)" ]; then
             KSU_VERSION=40548
-          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
+          elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
             KSU_VERSION=$((30700 + KSU_GIT_VERSION))
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             KSU_VERSION=$((20000 + KSU_GIT_VERSION))
@@ -153,9 +153,9 @@ jobs:
             echo "SukiSU..."
             REPO="SukiSU-Ultra/SukiSU-Ultra"
             KSUM="manager"
-          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
-            echo "ReSukiSU..."
-            REPO="ReSukiSU/ReSukiSU"
+          elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
+            echo "BakaSU..."
+            REPO="Baka-SU/BakaSU"
             KSUM="manager"
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "KSU..."
@@ -186,7 +186,7 @@ jobs:
             git_version=$(git -C KernelSU rev-list --count "$head_sha")
             case "${{ inputs.kernelsu_variant }}" in
               "SukiSU") echo $((40000 + git_version - 2815)) ;;
-              "ReSukiSU") echo $((30700 + git_version)) ;;
+              "BakaSU") echo $((30700 + git_version)) ;;
               "Official") echo $((20000 + git_version)) ;;
               "Next") echo $((30000 + git_version)) ;;
               *) return 1 ;;
@@ -198,7 +198,7 @@ jobs:
             if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
               printf '%s' "$artifacts" | jq -r --arg name "$KSUM" \
                 '.artifacts[] | select(.name == $name) | "\(.name)\t\(.archive_download_url)"'
-            elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
+            elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
               printf '%s' "$artifacts" | jq -r \
                 '.artifacts[] | select(.name == "Manager-release" or .name == "Spoofed-Manager-release") | "\(.name)\t\(.archive_download_url)"'
             else
@@ -279,12 +279,12 @@ jobs:
             rm -rf "$ZIP_NAME"
           done
 
-          if [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
-            echo "仅保留 ReSukiSU arm64-v8a release 管理器..."
+          if [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
+            echo "仅保留 BakaSU arm64-v8a release 管理器..."
             find manager-artifacts -type f -name "*.apk" ! -name "*-arm64-v8a-release.apk" -delete
             find manager-artifacts -type f -name "*debug*.apk" -delete
             if ! find manager-artifacts -type f -name "*-arm64-v8a-release.apk" | grep -q .; then
-              echo "未找到 ReSukiSU arm64-v8a release 管理器。"
+              echo "未找到 BakaSU arm64-v8a release 管理器。"
               exit 1
             fi
             find manager-artifacts -type f -name "*.apk" -print

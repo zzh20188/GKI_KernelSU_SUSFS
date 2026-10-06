@@ -62,7 +62,7 @@
   <text x="352" y="449" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#24292f">Kernelsu 变体</text>
   <text x="443" y="449" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#cf222e">*</text>
   <rect x="353" y="460" width="271" height="28" rx="6" fill="#f6f8fa" stroke="#d0d7de"/>
-  <text x="366" y="479" font-family="Arial, sans-serif" font-size="12" fill="#57606a">ReSukiSU</text>
+  <text x="366" y="479" font-family="Arial, sans-serif" font-size="12" fill="#57606a">BakaSU</text>
   <text x="607" y="479" font-family="Arial, sans-serif" font-size="12" fill="#57606a">◆</text>
 
   <text x="352" y="512" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#24292f">自定义版本名（可选）</text>
