@@ -303,7 +303,7 @@ jobs:
 
       - name: 克隆依赖仓库
         run: |
-          # GitLab 高负载时会拒绝克隆；递增等待并随机错峰，避免矩阵任务同时重试。
+          # 依赖克隆可能遇到瞬时网络错误；递增等待并随机错峰，避免矩阵任务同时重试。
           # 每次克隆前清理目标目录，防止上次中断的残留使后续尝试必然失败。
           clone_with_retry() {
             local repository="$1" destination="$2"
@@ -329,51 +329,10 @@ jobs:
           }
 
           ANYKERNEL_BRANCH="gki-2.0"
-          SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
 
           echo "克隆 AnyKernel3..."
           clone_with_retry https://github.com/WildKernels/AnyKernel3.git AnyKernel3 -b "$ANYKERNEL_BRANCH"
           rm -rf AnyKernel3/.git
-
-          echo "克隆 SUSFS (分支: $SUSFS_BRANCH)..."
-          if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
-            clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
-          elif [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
-            if ! clone_with_retry https://github.com/ShirkNeko/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"; then
-              echo "::warning::ShirkNeko 仓库克隆失败（分支 $SUSFS_BRANCH），回退到 simonpunk 原版..."
-              clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
-            fi
-          else
-            clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
-          fi
-
-          if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
-            SUSFS_FIXED_COMMIT=$(grep "^${SUSFS_BRANCH}=" "$LEGACY_SUKISU_CONFIG" | cut -d'=' -f2-)
-            if [ -z "$SUSFS_FIXED_COMMIT" ]; then
-              echo "未在 $LEGACY_SUKISU_CONFIG 配置 $SUSFS_BRANCH 的固定 SUSFS 提交" >&2
-              exit 1
-            fi
-            echo "${{ inputs.ksu_variant }} 固定 SUSFS 提交: $SUSFS_FIXED_COMMIT"
-            git -C susfs4ksu checkout "$SUSFS_FIXED_COMMIT"
-          fi
-
-          CONFIG_FILE="config/config"
-          if [ -z "$LEGACY_SUKISU_CONFIG" ] && [ -f "$CONFIG_FILE" ]; then
-            CUSTOM_ENABLED=$(grep "^custom=" "$CONFIG_FILE" | cut -d'=' -f2)
-            if [ "$CUSTOM_ENABLED" == "true" ]; then
-              CUSTOM_COMMIT=$(grep "^${SUSFS_BRANCH}=" "$CONFIG_FILE" | cut -d'=' -f2)
-              if [ -n "$CUSTOM_COMMIT" ]; then
-                echo "切换 SUSFS 到自定义提交: $CUSTOM_COMMIT"
-                cd susfs4ksu
-                git checkout "$CUSTOM_COMMIT"
-                cd ..
-              fi
-            fi
-          fi
-
-          SUSFS_LATEST_COMMIT_DATE=$(git -C susfs4ksu log -1 --date=format:'%Y-%m-%d %H:%M:%S %z' --format='%cd')
-          echo "SUSFS_LATEST_COMMIT_DATE=$SUSFS_LATEST_COMMIT_DATE" >> $GITHUB_ENV
-          echo "SUSFS 仓库最新提交日期: $SUSFS_LATEST_COMMIT_DATE"
 
           echo "准备补丁资源..."
           clone_with_retry https://github.com/WildKernels/kernel_patches.git kernel_patches
@@ -723,6 +682,87 @@ jobs:
           ' "$KBUILD_FILE" > "${KBUILD_FILE}.tmp" && mv "${KBUILD_FILE}.tmp" "$KBUILD_FILE"
 
           echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
+
+      # 在内核源码和 KSU 准备完成后再获取 SUSFS，避免在前期集中拉取。
+      - name: 克隆 SUSFS 源码
+        if: inputs.enable_susfs
+        run: |
+          set -euo pipefail
+
+          # 最多尝试五次，两次尝试之间固定等待五秒。
+          retry() {
+            local attempt rc=1
+            for attempt in 1 2 3 4 5; do
+              echo "第 $attempt/5 次尝试: $*"
+              if "$@"; then
+                return 0
+              else
+                rc=$?
+              fi
+              if [ "$attempt" -lt 5 ]; then
+                echo "::warning::命令失败（退出码 $rc），5 秒后重试: $*"
+                sleep 5 || return 1
+              fi
+            done
+            echo "命令失败，已用尽 5 次尝试（退出码 $rc）: $*" >&2
+            return "$rc"
+          }
+
+          # 保留失败残留清理，防止重试被已有的半成品目录阻断。
+          clone_susfs() {
+            local rc
+            rm -rf -- susfs4ksu || return 1
+            if git clone "$1" -b "$SUSFS_BRANCH" susfs4ksu; then
+              return 0
+            else
+              rc=$?
+            fi
+            rm -rf -- susfs4ksu || return 1
+            return "$rc"
+          }
+
+          SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
+
+          echo "克隆 SUSFS (分支: $SUSFS_BRANCH)..."
+          if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
+            retry clone_susfs https://gitlab.com/simonpunk/susfs4ksu.git
+          elif [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
+            if ! retry clone_susfs https://github.com/ShirkNeko/susfs4ksu.git; then
+              echo "::warning::ShirkNeko 仓库克隆失败（分支 $SUSFS_BRANCH），回退到 simonpunk 原版..."
+              retry clone_susfs https://gitlab.com/simonpunk/susfs4ksu.git
+            fi
+          else
+            retry clone_susfs https://gitlab.com/simonpunk/susfs4ksu.git
+          fi
+
+          if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
+            SUSFS_FIXED_COMMIT=$(grep "^${SUSFS_BRANCH}=" "$LEGACY_SUKISU_CONFIG" | cut -d'=' -f2- || true)
+            if [ -z "$SUSFS_FIXED_COMMIT" ]; then
+              echo "未在 $LEGACY_SUKISU_CONFIG 配置 $SUSFS_BRANCH 的固定 SUSFS 提交" >&2
+              exit 1
+            fi
+            echo "${{ inputs.ksu_variant }} 固定 SUSFS 提交: $SUSFS_FIXED_COMMIT"
+            retry git -C susfs4ksu checkout "$SUSFS_FIXED_COMMIT"
+          fi
+
+          CONFIG_FILE="config/config"
+          if [ -z "$LEGACY_SUKISU_CONFIG" ] && [ -f "$CONFIG_FILE" ]; then
+            CUSTOM_ENABLED=$(grep "^custom=" "$CONFIG_FILE" | cut -d'=' -f2 || true)
+            if [ "$CUSTOM_ENABLED" == "true" ]; then
+              CUSTOM_COMMIT=$(grep "^${SUSFS_BRANCH}=" "$CONFIG_FILE" | cut -d'=' -f2 || true)
+              if [ -n "$CUSTOM_COMMIT" ]; then
+                echo "切换 SUSFS 到自定义提交: $CUSTOM_COMMIT"
+                cd susfs4ksu
+                retry git checkout "$CUSTOM_COMMIT"
+                cd ..
+              fi
+            fi
+          fi
+
+          echo "SUSFS 实际提交: $(git -C susfs4ksu rev-parse HEAD)"
+          SUSFS_LATEST_COMMIT_DATE=$(git -C susfs4ksu log -1 --date=format:'%Y-%m-%d %H:%M:%S %z' --format='%cd')
+          echo "SUSFS_LATEST_COMMIT_DATE=$SUSFS_LATEST_COMMIT_DATE" >> "$GITHUB_ENV"
+          echo "SUSFS 仓库最新提交日期: $SUSFS_LATEST_COMMIT_DATE"
 
       # ==================== SUSFS 集成补丁导出 ====================
       # 仅 SukiSU / BakaSU 且启用 SUSFS 时导出，快照用临时索引生成树对象，
@@ -1512,7 +1552,7 @@ jobs:
               echo "编译尝试: $ATTEMPT"
               echo "开始时间: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
               echo "当前 KSU 最新提交日期: ${KSU_LATEST_COMMIT_DATE}"
-              echo "当前 SUSFS 最新提交日期: ${SUSFS_LATEST_COMMIT_DATE}"
+              echo "当前 SUSFS 最新提交日期: ${SUSFS_LATEST_COMMIT_DATE:-未启用}"
               set -ex
               cd "$KERNEL_ROOT"
 
@@ -1544,7 +1584,7 @@ jobs:
               fi
 
               echo "当前 KSU 最新提交日期: ${KSU_LATEST_COMMIT_DATE}"
-              echo "当前 SUSFS 最新提交日期: ${SUSFS_LATEST_COMMIT_DATE}"
+              echo "当前 SUSFS 最新提交日期: ${SUSFS_LATEST_COMMIT_DATE:-未启用}"
               echo "如果日期不同或相差过远则补丁失效、编译失败"
             } 2>&1 | tee "$LOG_FILE"
 
