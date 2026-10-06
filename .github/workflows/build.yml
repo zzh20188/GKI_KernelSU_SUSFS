@@ -303,23 +303,48 @@ jobs:
 
       - name: 克隆依赖仓库
         run: |
+          # GitLab 高负载时会拒绝克隆；递增等待并随机错峰，避免矩阵任务同时重试。
+          # 每次克隆前清理目标目录，防止上次中断的残留使后续尝试必然失败。
+          clone_with_retry() {
+            local repository="$1" destination="$2"
+            shift 2
+            local attempt delay rc=1
+            for attempt in 1 2 3 4 5; do
+              echo "克隆 $repository（第 $attempt/5 次）..."
+              rm -rf -- "$destination" || return 1
+              if git clone "$repository" "$destination" "$@"; then
+                return 0
+              else
+                rc=$?
+              fi
+              if [ "$attempt" -lt 5 ]; then
+                delay=$((15 * (1 << (attempt - 1)) + RANDOM % 10))
+                echo "::warning::克隆 $repository 失败（退出码 $rc），${delay} 秒后重试"
+                sleep "$delay" || return 1
+              fi
+            done
+            rm -rf -- "$destination" || return 1
+            echo "克隆 $repository 失败，已用尽 5 次尝试（退出码 $rc）" >&2
+            return "$rc"
+          }
+
           ANYKERNEL_BRANCH="gki-2.0"
           SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
 
           echo "克隆 AnyKernel3..."
-          git clone https://github.com/WildKernels/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
+          clone_with_retry https://github.com/WildKernels/AnyKernel3.git AnyKernel3 -b "$ANYKERNEL_BRANCH"
           rm -rf AnyKernel3/.git
 
           echo "克隆 SUSFS (分支: $SUSFS_BRANCH)..."
           if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
+            clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
           elif [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
-            if ! git clone https://github.com/ShirkNeko/susfs4ksu.git -b "$SUSFS_BRANCH" 2>/dev/null; then
-              echo "ShirkNeko 仓库未找到分支 $SUSFS_BRANCH，回退到 simonpunk 原版..."
-              git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
+            if ! clone_with_retry https://github.com/ShirkNeko/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"; then
+              echo "::warning::ShirkNeko 仓库克隆失败（分支 $SUSFS_BRANCH），回退到 simonpunk 原版..."
+              clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
             fi
           else
-            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
+            clone_with_retry https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu -b "$SUSFS_BRANCH"
           fi
 
           if [ -n "$LEGACY_SUKISU_CONFIG" ]; then
@@ -351,10 +376,10 @@ jobs:
           echo "SUSFS 仓库最新提交日期: $SUSFS_LATEST_COMMIT_DATE"
 
           echo "准备补丁资源..."
-          git clone https://github.com/WildKernels/kernel_patches.git
-          git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          clone_with_retry https://github.com/WildKernels/kernel_patches.git kernel_patches
+          clone_with_retry https://github.com/ShirkNeko/SukiSU_patch.git SukiSU_patch
           echo "使用当前仓库补丁目录: $ZZH_PATCHES"
-          git clone https://github.com/Numbersf/Action-Build.git --depth=1
+          clone_with_retry https://github.com/Numbersf/Action-Build.git Action-Build --depth=1
 
       - name: 初始化并同步内核源码
         working-directory: ${{ env.KERNEL_ROOT }}
