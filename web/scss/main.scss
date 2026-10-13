@@ -1,19 +1,14 @@
-// ===== 主入口：汇总所有 SCSS 模块 =====
+// ===== 仪表盘入口：汇总所有 SCSS 模块 =====
 
-@use 'variables';
+@use 'tokens';
 @use 'base';
-@use 'header';
-@use 'tabs';
-@use 'layout';
-@use 'card';
-@use 'badges';
-@use 'lts';
-@use 'stats';
-@use 'table';
-@use 'modal';
-@use 'announcement';
-@use 'search';
-@use 'time-converter';
+@use 'toolbar';
+@use 'masthead';
+@use 'branch-nav';
+@use 'states';
+@use 'chapter';
+@use 'ledger';
+@use 'dialog';
 @use 'toast';
 @use 'footer';
 @use 'back-to-top';

@@ -3,10 +3,7 @@ name: Emergency Release Cleanup
 on:
   workflow_dispatch:
     inputs:
-      target_tag:
-        description: '目标发布标签 (Target Release Tag)'
-        required: true
-        type: string
+      # ==================== 下拉选项 ====================
       issue_type:
         description: '问题类型 (Issue Type)'
         required: true
@@ -15,6 +12,12 @@ on:
           - Normal
           - Bug
           - Critical
+
+      # ==================== 文本输入 ====================
+      target_tag:
+        description: '目标发布标签 (Target Release Tag)'
+        required: true
+        type: string
       reference:
         description: '问题链接或说明 (Issue link or description, optional)'
         required: false
@@ -22,12 +25,11 @@ on:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 仅允许仓库所有者执行
     if: github.actor == github.repository_owner
 
     steps:
-      # ==================== 验证发布是否存在 ====================
       - name: 验证 Release 存在
         run: |
           if ! gh release view "${{ inputs.target_tag }}" --repo ${{ github.repository }} > /dev/null 2>&1; then
@@ -38,7 +40,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ==================== 获取原始发布信息 ====================
       - name: 获取原始发布信息
         id: info
         run: |
@@ -56,7 +57,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ==================== 处理 Normal 类型 ====================
       - name: 处理 Normal 类型 - 标记正常
         if: inputs.issue_type == 'Normal'
         run: |
@@ -86,7 +86,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ==================== 处理 Bug 类型 ====================
       - name: 处理 Bug 类型
         if: inputs.issue_type == 'Bug'
         run: |
@@ -116,13 +115,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ==================== 处理 Critical 类型 ====================
       - name: 处理 Critical 类型 - 删除并重建
         if: inputs.issue_type == 'Critical'
         run: |
           ORIGINAL_TITLE=$(cat original_title.txt)
 
-          # 构建警告信息
           cat > new_body.md << 'EOF'
           > [!CAUTION]
           > **本次发布的资源包含导致死机的严重 Bug，所有附件已被清除！**
@@ -150,7 +147,6 @@ jobs:
           echo "🗑️ 删除原 Release..."
           gh release delete "${{ inputs.target_tag }}" --repo ${{ github.repository }} --yes
 
-          # 确定 prerelease 标志
           PRERELEASE_FLAG=""
           if [ "${{ steps.info.outputs.is_prerelease }}" == "true" ]; then
             PRERELEASE_FLAG="--prerelease"
@@ -167,7 +163,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ==================== 完成通知 ====================
       - name: 完成
         run: |
           echo "=========================================="

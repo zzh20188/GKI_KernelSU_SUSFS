@@ -1,29 +1,29 @@
-// ===== 回到顶部按钮 =====
+// ===== 回到顶部 =====
 
 @use 'mixins' as *;
 
 .back-to-top {
+  @include mono;
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--accent-border);
-  background: var(--bg-card);
-  color: var(--accent);
-  font-size: 1.2rem;
-  line-height: 1;
+  right: var(--sp-6);
+  bottom: var(--sp-6);
+  height: 36px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-1);
+  font-size: var(--fs-12);
   cursor: pointer;
-  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s, transform 0.25s, background 0.15s;
   transform: translateY(8px);
-  z-index: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
+  z-index: var(--z-top);
+  @include focus-ring;
 
   &.visible {
     opacity: 1;
@@ -32,15 +32,18 @@
   }
 
   &:hover {
-    background: var(--accent-bg-hover);
-    border-color: var(--accent);
+    color: var(--text);
+    border-color: var(--rule);
   }
 
   @include mobile {
-    bottom: 1rem;
-    right: 1rem;
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
+    right: var(--sp-4);
+    bottom: var(--sp-4);
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+
+    .back-to-top__text { display: none; }
   }
 }

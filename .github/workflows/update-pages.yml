@@ -10,6 +10,8 @@ on:
       - 'data/**'
       - 'web/**'
       - 'scripts/**'
+      # scripts/susfs_fixes/ 是构建期由 build.yml 调用的补丁修复脚本，与版本数据抓取无关
+      - '!scripts/susfs_fixes/**'
 
 permissions:
   contents: write
@@ -22,7 +24,7 @@ concurrency:
 
 jobs:
   update-data:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       data-changed: ${{ steps.commit.outputs.changed }}
     steps:
@@ -60,7 +62,7 @@ jobs:
   deploy-pages:
     if: ${{ github.repository == 'zzh20188/GKI_KernelSU_SUSFS' }}
     needs: update-data
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -83,6 +85,10 @@ jobs:
       - name: Build web assets
         working-directory: web
         run: npm ci && npx webpack --mode production
+
+      # Pages 产物只需要页面、dist/、data/ 与 assets/，node_modules 有 40MB 以上，上传前清掉
+      - name: Trim Pages artifact
+        run: rm -rf web/node_modules
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

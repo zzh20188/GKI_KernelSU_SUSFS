@@ -1,0 +1,63 @@
+// ===== 加载 / 错误 / 面板显隐 =====
+
+@use 'mixins' as *;
+
+.loading {
+  padding: var(--sp-16) 0;
+  text-align: center;
+  color: var(--text-2);
+  font-size: var(--fs-13);
+  @include mono;
+}
+
+.loading__bar {
+  width: 96px;
+  height: 2px;
+  margin: 0 auto var(--sp-3);
+  background: var(--hairline);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: var(--accent-fill);
+    animation: loadingSlide 1s var(--ease) infinite;
+  }
+}
+
+@keyframes loadingSlide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(260%); }
+}
+
+.error {
+  padding: var(--sp-12) 0;
+  text-align: center;
+  color: var(--text);
+
+  p + p {
+    margin-top: var(--sp-2);
+    color: var(--text-2);
+    font-size: var(--fs-13);
+  }
+
+  code { font-size: var(--fs-13); }
+}
+
+// 分支面板：仅当前面板显示，切换时淡入并上移 8px
+.branch-panel {
+  display: none;
+
+  &.is-active {
+    display: block;
+    animation: panelIn var(--dur-2) var(--ease);
+  }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
