@@ -442,12 +442,47 @@ jobs:
 
       - name: 应用 Stock Config 伪装
         run: |
-          STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
+          KVER="${{ inputs.kernel_version }}"
           STOCK_DST="$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig"
+          STOCK_SRC=""
 
-          if [ ! -f "$STOCK_SRC" ]; then
-            echo "未检测到 $STOCK_SRC，跳过 Stock Config 伪装。"
+          if [ -f "$GITHUB_WORKSPACE/config/stock_defconfig" ]; then
+            STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
+            echo "使用通用 stock_defconfig: $STOCK_SRC"
+          elif [ -f "$GITHUB_WORKSPACE/config/stock_${KVER}.config" ]; then
+            STOCK_SRC="$GITHUB_WORKSPACE/config/stock_${KVER}.config"
+            echo "使用版本专用 stock config: $STOCK_SRC"
+          else
+            STOCK_URL="https://android.googlesource.com/kernel/prebuilts/${KVER}/arm64/+/refs/heads/main/kernel-${KVER}-gz?format=TEXT"
+            TMP_IMG="$(mktemp)"
+            echo "下载官方 GKI ${KVER} 预编译内核以提取库存配置: $STOCK_URL"
+            if curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 \
+                "$STOCK_URL" | base64 -d > "$TMP_IMG" && [ -s "$TMP_IMG" ]; then
+              EXTRACT_SCRIPT="$KERNEL_ROOT/common/scripts/extract-ikconfig"
+              [ -f "$EXTRACT_SCRIPT" ] || EXTRACT_SCRIPT="$KERNEL_ROOT/common/scripts/extract-ikconfig.sh"
+              if [ -f "$EXTRACT_SCRIPT" ]; then
+                if bash "$EXTRACT_SCRIPT" "$TMP_IMG" > "${TMP_IMG}.config" 2>/dev/null \
+                    && [ -s "${TMP_IMG}.config" ] \
+                    && grep -q '^CONFIG_' "${TMP_IMG}.config"; then
+                  STOCK_SRC="${TMP_IMG}.config"
+                  echo "已从官方预编译内核提取库存配置"
+                fi
+              else
+                echo "::warning::未找到 extract-ikconfig，跳过提取"
+              fi
+            else
+              echo "::warning::下载官方 GKI ${KVER} 预编译内核失败"
+            fi
+          fi
+
+          if [ -z "$STOCK_SRC" ] || [ ! -f "$STOCK_SRC" ]; then
+            echo "::warning title=Stock Config 伪装已跳过::无法获取库存配置，/proc/config.gz 将暴露真实构建配置"
             exit 0
+          fi
+
+          if grep -qE '^CONFIG_(KSU|KSU_SUSFS)' "$STOCK_SRC"; then
+            echo "::error::库存配置包含 KSU/SUSFS 选项，伪装目的无法达成: $STOCK_SRC"
+            exit 1
           fi
 
           mkdir -p "$(dirname "$STOCK_DST")"
@@ -455,7 +490,7 @@ jobs:
             echo "::error::复制 stock_defconfig 失败: $STOCK_SRC -> $STOCK_DST"
             exit 1
           fi
-          echo "已复制 stock_defconfig -> $STOCK_DST"
+          echo "已复制库存配置 -> $STOCK_DST ($(wc -l < "$STOCK_DST") 行)"
 
           NEW_RULE='$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE'
           OLD_RULE='$(obj)/config_data: $(KCONFIG_CONFIG) FORCE'
@@ -1561,7 +1596,7 @@ jobs:
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
               if [ -f "build/build.sh" ]; then
-                LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
+                BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
               else
                 # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
@@ -1575,12 +1610,20 @@ jobs:
                 if [ -s "$FRAG" ]; then
                   FRAG_FLAG="--defconfig_fragment=//common:arch/arm64/configs/ksu.fragment"
                 fi
-                LTO_FLAG="--lto=thin"
-                if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
-                  LTO_FLAG="--lto=none"
-                fi
-                tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
+                tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $FRAG_FLAG //common:kernel_aarch64/Image || exit 1
                 strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
+              fi
+
+              FINAL_CONFIG=$(find ./bazel-bin/common ./out -maxdepth 4 -name '.config' -type f 2>/dev/null | head -n1 || true)
+              if [ -n "$FINAL_CONFIG" ]; then
+                echo "最终配置: $FINAL_CONFIG"
+                grep -E '^CONFIG_LTO' "$FINAL_CONFIG" || echo '（未找到 CONFIG_LTO，可能未启用 LTO 支持）'
+                if grep -qx 'CONFIG_LTO_CLANG_THIN=y' "$FINAL_CONFIG"; then
+                  echo "::error::Image 使用了 Thin LTO，与官方 GKI 的 LTO_NONE 不一致，刷入后可能无法启动"
+                  exit 1
+                fi
+              else
+                echo "::warning::未找到生成的 .config，跳过 LTO 一致性校验"
               fi
 
               echo "当前 KSU 最新提交日期: ${KSU_LATEST_COMMIT_DATE}"
