@@ -2,7 +2,7 @@ name: Auto Trigger on SukiSU Update
 
 on:
   schedule:
-    - cron: '0 0 */3 * *'  # 每三天 UTC 00:00 运行
+    - cron: '0 0 1,16 * *'  # 每半月（每月 1 日和 16 日）UTC 00:00 运行
   workflow_dispatch:
 
 jobs:

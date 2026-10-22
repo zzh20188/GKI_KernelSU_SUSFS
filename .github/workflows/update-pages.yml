@@ -2,7 +2,7 @@ name: Update Data & Deploy Pages
 
 on:
   schedule:
-    - cron: '0 8 */3 * *'  # 每 3 天 UTC 8:00
+    - cron: '0 8 1,16 * *'  # 每半月（每月 1 日和 16 日）UTC 8:00
   workflow_dispatch:
   push:
     branches: [dev]
