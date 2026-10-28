@@ -142,9 +142,48 @@ if [[ "$ANDROID_VERSION" == "android15" && "$KERNEL_VERSION" == "6.6" ]]; then
 fi
 
 if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
-  if [[ "$CURRENT_SUB" -ge 58 ]]; then
-    echo "临时调整 Android 16 6.12 exec.c 上下文"
+  # 按所选补丁临时补齐或移除 include，同时兼容新版和固定旧版补丁。
+  EXEC_DMA_ADJUST=""
+  if awk '/^diff --git a\/fs\/exec.c /{f=1;next} /^diff --git /{f=0}
+    f && $0 == " #include <linux/dma-buf.h>" {found=1} END{exit !found}' "$SUSFS_PATCH"; then
+    if ! grep -qxF '#include <linux/dma-buf.h>' fs/exec.c; then
+      sed -i '/^#include <linux\/ksm.h>$/a #include <linux/dma-buf.h>' fs/exec.c
+      EXEC_DMA_ADJUST=added
+    fi
+  elif grep -qxF '#include <linux/dma-buf.h>' fs/exec.c; then
     sed -i '/^#include <linux\/dma-buf.h>$/d' fs/exec.c
+    EXEC_DMA_ADJUST=removed
+  fi
+
+  # 只替换补丁的纯上下文，保留内核原有的 VMA 接口。
+  if grep -qF 'if (!vma_pages(vma))' fs/proc/task_mmu.c; then
+    sed -i 's/^ \tif (!vma_data_pages(vma))$/ \tif (!vma_pages(vma))/' "$SUSFS_PATCH"
+  fi
+
+  SUSFS_612_GUARD_OLD_ROLLUP=0
+  if grep -qF $' \t\t\tsmap_gather_stats(priv, vma, &mss);' "$SUSFS_PATCH" \
+    && awk '/^static int show_smaps_rollup\(/{f=1}
+      /^static const struct seq_operations proc_pid_smaps_op/{f=0}
+      f && /smap_gather_stats\(vma, &mss,/{old=1} END{exit !old}' fs/proc/task_mmu.c; then
+    ROLLUP_CALLS=$(awk '/^static int show_smaps_rollup\(/{f=1}
+      /^static const struct seq_operations proc_pid_smaps_op/{f=0}
+      f && /^\t+smap_gather_stats\(vma, &mss, (0|last_vma_end)\);$/{n++}
+      END{print n+0}' fs/proc/task_mmu.c)
+    if [[ "$ROLLUP_CALLS" != 3 ]]; then
+      echo "::error::旧版 rollup 统计调用已变化，停止适配"
+      exit 1
+    fi
+    # 两个新版 rollup hunk 改由版本修复阶段补齐等价统计守卫。
+    if ! awk '/^diff --git /{f=($0 ~ /^diff --git a\/fs\/proc\/task_mmu.c /);skip=0}
+      /^@@ /{skip=f && /static int show_smaps_rollup/;if(skip)n++}
+      !skip{print} END{exit(n!=2)}' "$SUSFS_PATCH" > "${SUSFS_PATCH}.tmp"; then
+      rm -f "${SUSFS_PATCH}.tmp"
+      echo "::error::新版 rollup hunk 已变化，停止适配"
+      exit 1
+    fi
+    chmod --reference="$SUSFS_PATCH" "${SUSFS_PATCH}.tmp"
+    mv "${SUSFS_PATCH}.tmp" "$SUSFS_PATCH"
+    SUSFS_612_GUARD_OLD_ROLLUP=1
   fi
 fi
 
@@ -268,9 +307,10 @@ if [[ "$ANDROID_VERSION" == "android15" && "$KERNEL_VERSION" == "6.6" ]]; then
 fi
 
 if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
-  if [[ "$CURRENT_SUB" -ge 58 ]] && ! grep -qF '#include <linux/dma-buf.h>' fs/exec.c; then
-    echo "还原 Android 16 6.12 exec.c 临时调整"
-    sed -i '0,/^#include /s//#include <linux\/dma-buf.h>\n&/' fs/exec.c
+  if [[ "$EXEC_DMA_ADJUST" == "added" ]]; then
+    sed -i '/^#include <linux\/dma-buf.h>$/d' fs/exec.c
+  elif [[ "$EXEC_DMA_ADJUST" == "removed" ]] && ! grep -qxF '#include <linux/dma-buf.h>' fs/exec.c; then
+    sed -i '/^#include <linux\/ksm.h>$/a #include <linux/dma-buf.h>' fs/exec.c
   fi
 fi
 
@@ -338,6 +378,33 @@ fi
 
 # Android 16 - 6.12 修复
 if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
+  # 仅过滤隐藏映射的统计调用，不改原有迭代、锁操作和范围更新。
+  if [[ "$SUSFS_612_GUARD_OLD_ROLLUP" == "1" ]]; then
+    ROLLUP_MARKERS=$(grep -cF '/* SUSFS 6.12 旧版 rollup 统计兼容守卫。 */' fs/proc/task_mmu.c || true)
+    if [[ "$ROLLUP_MARKERS" == 0 ]]; then
+      if ! awk '/^static int show_smaps_rollup\(/{f=1}
+        /^static const struct seq_operations proc_pid_smaps_op/{f=0}
+        f && /^\t+smap_gather_stats\(vma, &mss, (0|last_vma_end)\);$/ {
+          match($0,/^\t+/);indent=substr($0,1,RLENGTH)
+          print indent "/* SUSFS 6.12 旧版 rollup 统计兼容守卫。 */"
+          print "#ifdef CONFIG_KSU_SUSFS_SUS_MAP"
+          print indent "if (!vma->vm_file || !(SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file))))"
+          print "#endif"
+          print "\t" $0;n++;next
+        }
+        {print} END{exit(n!=3)}' fs/proc/task_mmu.c > fs/proc/task_mmu.c.tmp; then
+        rm -f fs/proc/task_mmu.c.tmp
+        echo "::error::无法补齐旧版 rollup 统计守卫"
+        exit 1
+      fi
+      chmod --reference=fs/proc/task_mmu.c fs/proc/task_mmu.c.tmp
+      mv fs/proc/task_mmu.c.tmp fs/proc/task_mmu.c
+    elif [[ "$ROLLUP_MARKERS" != 3 ]]; then
+      echo "::error::旧版 rollup 统计守卫不完整"
+      exit 1
+    fi
+  fi
+
   # 固定旧版 SukiSU 在 6.12 上会重复定义 setresuid hook
   SETUID_HOOK="$KERNEL_ROOT/common/drivers/kernelsu/setuid_hook.c"
   if [[ -n "$LEGACY_SUKISU_CONFIG" && -f "$SETUID_HOOK" ]] \
