@@ -2,7 +2,7 @@
   "android_version": "android12",
   "kernel_version": "5.10",
   "deprecated_cutoff": "2024-08",
-  "lts": "5.10.269",
+  "lts": "5.10.272",
   "entries": [
     {
       "date": "2021-08",
@@ -172,7 +172,7 @@
     {
       "date": "2025-06",
       "kernel": "5.10.237",
-      "ref": "refs/heads/android12-5.10-2025-06"
+      "ref": "refs/heads/deprecated/android12-5.10-2025-06"
     },
     {
       "date": "2025-09",
