@@ -90,10 +90,29 @@ if [[ "$ANDROID_VERSION" == "android13" && "$KERNEL_VERSION" == "5.15" ]]; then
     fi
     adjust_legacy_fdinfo_context
   fi
-  if [[ "$OS_PATCH_LEVEL" == "lts" ]]; then
-    echo "临时调整 Android 13 5.15 LTS 头文件上下文"
+  # 新版补丁需要 trace hook include 作上下文；旧版固定补丁可能不需要。
+  NS_BLK_515_ADJUST=""
+  if awk '/^diff --git a\/fs\/namespace.c /{f=1;next} /^diff --git /{f=0}
+    f && $0 == " #include <trace/hooks/blk.h>" {found=1} END{exit !found}' "$SUSFS_PATCH"; then
+    if ! grep -qxF '#include <trace/hooks/blk.h>' fs/namespace.c; then
+      sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
+      NS_BLK_515_ADJUST=added
+    fi
+  elif grep -qxF '#include <trace/hooks/blk.h>' fs/namespace.c; then
     sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+    NS_BLK_515_ADJUST=removed
+  fi
+
+  TASK_MM_515_ADJUST=""
+  if awk '/^diff --git a\/fs\/proc\/task_mmu.c /{f=1;next} /^diff --git /{f=0}
+    f && $0 == " #include <trace/hooks/mm.h>" {found=1} END{exit !found}' "$SUSFS_PATCH"; then
+    if ! grep -qxF '#include <trace/hooks/mm.h>' fs/proc/task_mmu.c; then
+      sed -i '/^#include <linux\/pkeys.h>$/a #include <trace/hooks/mm.h>' fs/proc/task_mmu.c
+      TASK_MM_515_ADJUST=added
+    fi
+  elif grep -qxF '#include <trace/hooks/mm.h>' fs/proc/task_mmu.c; then
     sed -i '/^#include <trace\/hooks\/mm.h>$/d' fs/proc/task_mmu.c
+    TASK_MM_515_ADJUST=removed
   fi
 fi
 
@@ -267,14 +286,15 @@ if [[ "$ANDROID_VERSION" == "android13" && "$KERNEL_VERSION" == "5.15" ]]; then
     sed -i 's|i_uid_into_mnt(i_user_ns(&fi->inode), &fi->inode).val|i_uid_into_mnt(\&init_user_ns, \&fi->inode).val|g' fs/susfs.c
     sed -i 's|i_uid_into_mnt(i_user_ns(inode), inode).val|i_uid_into_mnt(\&init_user_ns, inode).val|g' fs/susfs.c
   fi
-  if [[ "$OS_PATCH_LEVEL" == "lts" ]]; then
-    echo "还原 Android 13 5.15 LTS 头文件上下文"
-    if ! grep -qF '#include <trace/hooks/blk.h>' fs/namespace.c; then
-      sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
-    fi
-    if ! grep -qF '#include <trace/hooks/mm.h>' fs/proc/task_mmu.c; then
-      sed -i '/^#include <linux\/pkeys.h>$/a #include <trace/hooks/mm.h>' fs/proc/task_mmu.c
-    fi
+  if [[ "$NS_BLK_515_ADJUST" == "added" ]]; then
+    sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+  elif [[ "$NS_BLK_515_ADJUST" == "removed" ]] && ! grep -qxF '#include <trace/hooks/blk.h>' fs/namespace.c; then
+    sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
+  fi
+  if [[ "$TASK_MM_515_ADJUST" == "added" ]]; then
+    sed -i '/^#include <trace\/hooks\/mm.h>$/d' fs/proc/task_mmu.c
+  elif [[ "$TASK_MM_515_ADJUST" == "removed" ]] && ! grep -qxF '#include <trace/hooks/mm.h>' fs/proc/task_mmu.c; then
+    sed -i '/^#include <linux\/pkeys.h>$/a #include <trace/hooks/mm.h>' fs/proc/task_mmu.c
   fi
 fi
 
