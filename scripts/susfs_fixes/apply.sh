@@ -106,9 +106,27 @@ if [[ "$ANDROID_VERSION" == "android14" && "$KERNEL_VERSION" == "6.1" ]]; then
     echo "临时调整 Android 14 6.1 dma-buf.h 上下文"
     sed -i '/^#include <linux\/cpufreq_times.h>$/a #include <linux/dma-buf.h>' fs/proc/base.c
   fi
-  if [[ "$CURRENT_SUB" -ge 157 ]]; then
-    echo "临时调整 Android 14 6.1 namespace.c 上下文"
+  # 6.1.157 起源码在 internal.h 后有 trace/hooks/blk.h；SUSFS 主补丁 2026-10-19 起
+  # （simonpunk 8a3d6fd 基于 6.1.176 重做）把它当作上下文，旧版补丁没有。
+  # 按补丁实际上下文与源码是否一致决定临时加或删，同时兼容新旧补丁和固定提交
+  NS_BLK_PATCH=""
+  if awk '
+    /^diff --git a\/fs\/namespace.c / { in_namespace = 1; next }
+    /^diff --git / { in_namespace = 0 }
+    in_namespace && $0 == " #include <trace/hooks/blk.h>" { found = 1 }
+    END { exit !found }
+  ' "$SUSFS_PATCH"; then
+    NS_BLK_PATCH=1
+  fi
+  NS_BLK_ADJUST=""
+  if [[ -n "$NS_BLK_PATCH" ]] && ! grep -qxF '#include <trace/hooks/blk.h>' fs/namespace.c; then
+    echo "临时调整 Android 14 6.1 namespace.c 上下文（补全 blk.h）"
+    sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
+    NS_BLK_ADJUST=added
+  elif [[ -z "$NS_BLK_PATCH" ]] && grep -qxF '#include <trace/hooks/blk.h>' fs/namespace.c; then
+    echo "临时调整 Android 14 6.1 namespace.c 上下文（移除 blk.h）"
     sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+    NS_BLK_ADJUST=removed
   fi
 fi
 
@@ -229,8 +247,11 @@ if [[ "$ANDROID_VERSION" == "android14" && "$KERNEL_VERSION" == "6.1" ]]; then
     echo "还原 Android 14 6.1 base.c 临时调整"
     sed -i '/^#include <linux\/dma-buf.h>$/d' fs/proc/base.c
   fi
-  if [[ "$CURRENT_SUB" -ge 157 ]] && ! grep -qF '#include <trace/hooks/blk.h>' fs/namespace.c; then
-    echo "还原 Android 14 6.1 namespace.c 临时调整"
+  if [[ "$NS_BLK_ADJUST" == "added" ]]; then
+    echo "还原 Android 14 6.1 namespace.c 临时调整（移除补全的 blk.h）"
+    sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+  elif [[ "$NS_BLK_ADJUST" == "removed" ]] && ! grep -qxF '#include <trace/hooks/blk.h>' fs/namespace.c; then
+    echo "还原 Android 14 6.1 namespace.c 临时调整（恢复 blk.h）"
     sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
   fi
 fi
