@@ -2,7 +2,7 @@
   "android_version": "android16",
   "kernel_version": "6.12",
   "deprecated_cutoff": "",
-  "lts": "6.12.96",
+  "lts": "6.12.97",
   "entries": [
     {
       "date": "2025-06",

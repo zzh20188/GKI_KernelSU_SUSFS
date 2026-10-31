@@ -2,7 +2,7 @@
   "android_version": "android14",
   "kernel_version": "6.1",
   "deprecated_cutoff": "2024-09",
-  "lts": "6.1.180",
+  "lts": "6.1.182",
   "entries": [
     {
       "date": "2023-06",
