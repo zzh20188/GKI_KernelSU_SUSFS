@@ -271,21 +271,17 @@ jobs:
         run: |
           mkdir -p ~/.cache/bazel
           ccache --version
-          # 5.15 全量编译约 2.5~3.5GB，给足空间
-          ccache --max-size=8G
+          ccache --max-size=2G
           ccache --set-config=compression=true
-          ccache --set-config=sloppiness=file_macro,locale,time_macros
-          ccache --set-config=hash_dir=false
-          ccache --show-stats || true
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       - name: 恢复 ccache 缓存
         uses: actions/cache@v5
         with:
           path: ~/.ccache
-          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-ccache-${{ github.sha }}
+          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-${{ github.sha }}
           restore-keys: |
-            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-ccache-
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-
 
       # 仅 6.1+ 走 bazel 构建，持久化 --disk_cache 目录以加速后续构建
       - name: 恢复 bazel 磁盘缓存
@@ -297,17 +293,6 @@ jobs:
           restore-keys: |
             ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-bazel-
             ${{ inputs.android_version }}-${{ inputs.kernel_version }}-bazel-
-
-      # 仅传统 build.sh 路径（5.10/5.15）缓存 out 目录
-      - name: 恢复内核 out 目录缓存
-        if: inputs.android_version == 'android12' || inputs.android_version == 'android13'
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.KERNEL_ROOT }}/out
-          key: kout-${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-${{ inputs.os_patch_level }}
-          restore-keys: |
-            kout-${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-
-            kout-${{ inputs.android_version }}-${{ inputs.kernel_version }}-
             
       - name: 缓存工具链
         id: cache-toolchain
