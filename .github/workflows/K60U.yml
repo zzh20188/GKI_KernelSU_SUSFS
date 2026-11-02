@@ -1,4 +1,4 @@
-name: 内核构建 - Android 13 (5.15)
+name: Android 内核构建-自定义
 
 permissions:
   contents: write
@@ -8,6 +8,17 @@ on:
   workflow_dispatch:
     inputs:
       # ==================== 下拉选项 ====================
+      kernel_version:
+        description: "内核版本"
+        required: true
+        type: choice
+        options:
+          # - "5.10"
+          - "5.15"
+          # - "6.1"
+          # - "6.6"
+          # - "6.12"
+        default: "5.15"
       kernelsu_variant:
         description: "KernelSU 变体"
         required: true
@@ -19,7 +30,7 @@ on:
           - SukiSU(40726)
           - SukiSU(40548)
           - BakaSU
-        default: BakaSU
+        default: Next
       ksu_mode:
         description: "KernelSU / SUSFS 模式"
         required: true
@@ -39,7 +50,7 @@ on:
           - "enabled (开启)"
           - "patched (开启并修补，尚不支持)"
       droidspaces:
-        description: "Droidspaces 容器支持"
+        description: "Droidspaces 容器支持 (5.10~6.6: 槽位补丁, 6.12: 开/关)"
         required: false
         type: choice
         options:
@@ -58,6 +69,11 @@ on:
         default: "仅上传 AnyKernel3.zip"
 
       # ==================== 文本输入 ====================
+      os_patch_level:
+        description: "安全补丁级别 (如 2022-01, lts)"
+        required: true
+        type: string
+        default: "2022-01"
       version:
         description: "自定义版本名 (可选)"
         required: false
@@ -99,129 +115,103 @@ on:
         required: false
         type: boolean
         default: false
+      # supp_op:
+        # description: "启用一加 8E 支持"
+        # required: false
+        # type: boolean
+        # default: false
       droidspaces_ntsync:
         description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
         required: false
         type: boolean
         default: false
-  workflow_call:
-    inputs:
-      kernelsu_variant:
-        required: true
-        type: string
-      version:
-        required: false
-        type: string
-      build_time:
-        required: false
-        type: string
-        default: "Sun Dec 01 08:10:00 UTC 2024"
-      use_zram:
-        required: true
-        type: boolean
-      use_bbg:
-        required: true
-        type: boolean
-      use_kpm:
-        required: true
-        type: string
-      use_rekernel:
-        required: false
-        type: boolean
-        default: false
-      use_nomount:
-        required: false
-        type: boolean
-        default: false
-      use_networking:
-        required: false
-        type: boolean
-        default: false
-      cve_2026_43499_patch:
-        required: false
-        type: boolean
-        default: false
-      ksu_mode:
-        required: false
-        type: string
-        default: 关闭
-      droidspaces:
-        required: false
-        type: string
-        default: "off"
-      artifact_upload_mode:
-        required: false
-        type: string
-        default: "上传全部"
-      droidspaces_ntsync:
-        required: false
-        type: boolean
-        default: false
-      called_from_main:
-        description: "是否从 main.yml 调用（内部使用）"
-        required: false
-        type: boolean
-        default: false
-      export_susfs_patches:
-        description: "导出 SUSFS 集成补丁（由 main.yml 传入）"
-        required: false
-        type: boolean
-        default: false
 
 jobs:
-  build-kernels-a13-5-15:
-    name: "5.15.${{ matrix.sub_level }}-${{ matrix.os_patch_level }}"
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - sub_level: "74"
-            os_patch_level: "2023-01"
-          - sub_level: "78"
-            os_patch_level: "2023-03"
-          - sub_level: "94"
-            os_patch_level: "2023-05"
-          - sub_level: "104"
-            os_patch_level: "2023-07"
-          - sub_level: "119"
-            os_patch_level: "2023-09"
-          - sub_level: "123"
-            os_patch_level: "2023-11"
-          - sub_level: "137"
-            os_patch_level: "2024-01"
-          - sub_level: "144"
-            os_patch_level: "2024-03"
-          - sub_level: "148"
-            os_patch_level: "2024-05"
-          - sub_level: "149"
-            os_patch_level: "2024-07"
-          - sub_level: "151"
-            os_patch_level: "2024-08"
-          - sub_level: "153"
-            os_patch_level: "2024-09"
-          - sub_level: "167"
-            os_patch_level: "2024-11"
-          - sub_level: "170"
-            os_patch_level: "2025-01"
-          - sub_level: "178"
-            os_patch_level: "2025-03"
-          - sub_level: "180"
-            os_patch_level: "2025-05"
-          - sub_level: "185"
-            os_patch_level: "2025-07"
-          - sub_level: "189"
-            os_patch_level: "2025-09"
-          - sub_level: "194"
-            os_patch_level: "2025-12"
-          - sub_level: "X"
-            os_patch_level: "lts"
+  resolve-version:
+    runs-on: ubuntu-24.04
+    outputs:
+      android_version: ${{ steps.resolve.outputs.android_version }}
+      sub_level: ${{ steps.resolve.outputs.sub_level }}
+      kernel_full: ${{ steps.resolve.outputs.kernel_full }}
+    steps:
+      - name: 检出版本数据
+        uses: actions/checkout@v7
+
+      - name: 解析安全补丁级别
+        id: resolve
+        env:
+          KERNEL_VERSION: ${{ inputs.kernel_version }}
+          OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          kernel_version = os.environ["KERNEL_VERSION"]
+          os_patch_level = os.environ["OS_PATCH_LEVEL"].strip()
+          android_map = {
+              "5.10": "android12",
+              "5.15": "android13",
+              "6.1": "android14",
+              "6.6": "android15",
+              "6.12": "android16",
+          }
+          android_version = android_map.get(kernel_version)
+          if android_version is None:
+              print(f"::error::未适配的内核版本: {kernel_version}")
+              sys.exit(1)
+
+          data_path = Path("data") / android_version / f"{kernel_version}.json"
+
+          if not data_path.exists():
+              print(f"::error::未找到版本数据: {data_path}")
+              sys.exit(1)
+
+          with data_path.open("r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          if os_patch_level == "lts":
+              kernel_full = data.get("lts")
+              if not kernel_full:
+                  print(f"::error::{android_version} / {kernel_version} 缺少 LTS 版本数据")
+                  sys.exit(1)
+              sub_level = "X"
+          else:
+              matched = next(
+                  (entry for entry in data.get("entries", []) if entry.get("date") == os_patch_level),
+                  None,
+              )
+              if matched is None:
+                  print(f"::error::未找到 {android_version} / {kernel_version} / {os_patch_level} 对应的版本数据")
+                  sys.exit(1)
+              kernel_full = matched.get("kernel", "")
+              prefix = f"{kernel_version}."
+              if not kernel_full.startswith(prefix):
+                  print(f"::error::版本数据异常: {kernel_full} 不属于 {kernel_version}")
+                  sys.exit(1)
+              sub_level = kernel_full.rsplit(".", 1)[-1]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"android_version={android_version}\n")
+              output.write(f"sub_level={sub_level}\n")
+              output.write(f"kernel_full={kernel_full}\n")
+
+          print(f"解析结果: {android_version} / {kernel_full}，子版本号: {sub_level}")
+          PY
+
+  build-custom-kernel:
+    name: "${{ needs.resolve-version.outputs.kernel_full }}-${{ needs.resolve-version.outputs.android_version }}-${{ inputs.os_patch_level }}"
+    needs: resolve-version
     uses: ./.github/workflows/build.yml
     secrets: inherit
     with:
-      android_version: "android13"
-      kernel_version: "5.15"
-      sub_level: ${{ matrix.sub_level }}
-      os_patch_level: ${{ matrix.os_patch_level }}
+      android_version: ${{ needs.resolve-version.outputs.android_version }}
+      kernel_version: ${{ inputs.kernel_version }}
+      sub_level: ${{ needs.resolve-version.outputs.sub_level }}
+      os_patch_level: ${{ inputs.os_patch_level }}
+      revision: "r1"
       ksu_variant: ${{ inputs.kernelsu_variant }}
       version: ${{ inputs.version || '' }}
       build_time: ${{ inputs.build_time || '' }}
@@ -232,17 +222,14 @@ jobs:
       use_nomount: ${{ inputs.use_nomount || false }}
       use_networking: ${{ inputs.use_networking || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
-      export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
-      supp_op: false
+      supp_op: ${{ inputs.supp_op || false }}
       enable_susfs: ${{ inputs.ksu_mode != '禁用SUSFS' && inputs.ksu_mode != '禁用KSU' }}
       ksu_mode: ${{ inputs.ksu_mode || '关闭' }}
       droidspaces: ${{ inputs.droidspaces || 'off' }}
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync || false }}
       artifact_upload_mode: ${{ inputs.artifact_upload_mode }}
 
-  # 仅在直接触发时运行，从 main.yml 调用时跳过
   get-ksu-manager:
-    if: ${{ !inputs.called_from_main }}
     uses: ./.github/workflows/get-manager.yml
     secrets: inherit
     with:
