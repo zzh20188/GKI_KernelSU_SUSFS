@@ -271,7 +271,7 @@ jobs:
         run: |
           mkdir -p ~/.cache/bazel
           ccache --version
-          ccache --max-size=2G
+          ccache --max-size=4G
           ccache --set-config=compression=true
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
