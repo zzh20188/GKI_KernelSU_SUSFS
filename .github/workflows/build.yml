@@ -271,21 +271,17 @@ jobs:
         run: |
           mkdir -p ~/.cache/bazel
           ccache --version
-          # 5.15 全量编译约 2.5~3.5GB，给足空间
-          ccache --max-size=8G
+          ccache --max-size=2G
           ccache --set-config=compression=true
-          ccache --set-config=sloppiness=file_macro,locale,time_macros
-          ccache --set-config=hash_dir=false
-          ccache --show-stats || true
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       - name: 恢复 ccache 缓存
         uses: actions/cache@v5
         with:
           path: ~/.ccache
-          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-ccache-${{ github.sha }}
+          key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-${{ github.sha }}
           restore-keys: |
-            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-ccache-
+            ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-ccache-
 
       # 仅 6.1+ 走 bazel 构建，持久化 --disk_cache 目录以加速后续构建
       - name: 恢复 bazel 磁盘缓存
@@ -298,17 +294,6 @@ jobs:
             ${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-bazel-
             ${{ inputs.android_version }}-${{ inputs.kernel_version }}-bazel-
 
-      # 仅传统 build.sh 路径（5.10/5.15）缓存 out 目录
-      - name: 恢复内核 out 目录缓存
-        if: inputs.android_version == 'android12' || inputs.android_version == 'android13'
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.KERNEL_ROOT }}/out
-          key: kout-${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-${{ inputs.os_patch_level }}
-          restore-keys: |
-            kout-${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}-
-            kout-${{ inputs.android_version }}-${{ inputs.kernel_version }}-
-            
       - name: 缓存工具链
         id: cache-toolchain
         uses: actions/cache@v5
@@ -917,92 +902,89 @@ jobs:
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
+      # ==================== NoMount 2选1 集成 ====================
+      # nomount_choice:
+      #   primary   -> 原版 maxsteeel/nomount（dev 分支，官方 setup.sh 集成）
+      #   secondary -> Bouteillepleine/NoMount-Suite（main 分支，手动注册到 fs/ 构建树）
+      # 两者互斥，均通过 fs/nomount 软链接 + CONFIG_NOMOUNT=y 启用，一次只编译一个。
+      # 必须在「生成 SUSFS 集成补丁」之后运行，避免 NoMount 改动被计入 susfs.patch；
+      # 且在「备份基准 defconfig」之后追加 CONFIG，确保 6.1+ 的 bazel fragment diff 能捕获 CONFIG_NOMOUNT。
       - name: 集成 NoMount 挂载元模块 (2选1)
         if: inputs.nomount_choice != 'none'
-        shell: bash
         working-directory: ${{ env.KERNEL_ROOT }}/common
-        env:
-          NOMOUNT_MODE: ${{ inputs.nomount_choice }}
-          WORKSPACE: ${{ github.workspace }}
         run: |
           set -euo pipefail
 
-          echo "=== NoMount 2选1 集成，选择: $NOMOUNT_MODE ==="
-
-          VARIANT=""
+          echo "=== NoMount 2选1 集成（选择: ${{ inputs.nomount_choice }}）==="
 
           # 清理残留，保证幂等
-          rm -f fs/nomount fs/nomount.c fs/nomount.h
-          rm -rf "$WORKSPACE/NoMount-Suite"
-          sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
-          sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
+          rm -rf fs/nomount NoMount NoMount-Suite
+          sed -i '/^obj-\$(CONFIG_NOMOUNT)[[:space:]]*+= nomount\//d' fs/Makefile 2>/dev/null || true
+          sed -i '/^source "fs\/nomount\/Kconfig"$/d' fs/Kconfig 2>/dev/null || true
 
-          if [ "$NOMOUNT_MODE" = "primary" ]; then
+          case "${{ inputs.nomount_choice }}" in
+            primary)
+              echo "--- 集成 primary: maxsteeel/nomount (dev) ---"
+              # 官方集成脚本：克隆仓库、建立 fs/nomount 软链接并注册 Kconfig/Makefile（内部含幂等守卫）
+              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
 
-            echo "--- primary: maxsteeel/nomount (dev) ---"
-            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-              https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
+              if [ ! -e "fs/nomount" ]; then
+                echo "::error::primary NoMount 集成失败：fs/nomount 缺失"
+                exit 1
+              fi
+              echo "primary NoMount 集成完成，commit: $(git -C NoMount rev-parse HEAD)"
+              echo "NOMOUNT_VARIANT=maxsteeel/nomount (dev)"
+              ;;
 
-            if [ ! -e fs/nomount ]; then
-              echo "::error::primary 集成失败：fs/nomount 缺失"
-              exit 1
-            fi
-            VARIANT="maxsteeel/nomount (dev)"
+            secondary)
+              echo "--- 集成 secondary: Bouteillepleine/NoMount-Suite (main) ---"
+              git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git NoMount-Suite
 
-          elif [ "$NOMOUNT_MODE" = "secondary" ]; then
+              # 自动定位内核侧源码目录（含 Kconfig 的目录，优先 hookless/）
+              NOMOUNT_SRC=""
+              for candidate in hookless kernel fs/nomount .; do
+                if [ -f "NoMount-Suite/$candidate/Kconfig" ]; then
+                  NOMOUNT_SRC="NoMount-Suite/$candidate"
+                  break
+                fi
+              done
+              if [ -z "$NOMOUNT_SRC" ]; then
+                # 兜底：全仓库搜索第一个含 NOMOUNT 的 Kconfig
+                NOMOUNT_SRC=$(dirname "$(grep -rl --include='Kconfig*' 'NOMOUNT' NoMount-Suite | head -n 1)")
+              fi
+              if [ -z "$NOMOUNT_SRC" ] || [ ! -d "$NOMOUNT_SRC" ]; then
+                echo "::error::未能在 NoMount-Suite 中定位内核源码目录（含 Kconfig）"
+                echo "仓库顶层结构:"
+                ls -la NoMount-Suite/
+                exit 1
+              fi
+              echo "定位到内核源码目录: $NOMOUNT_SRC"
 
-            echo "--- secondary: Bouteillepleine/NoMount-Suite (hookless) ---"
-            git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git \
-              "$WORKSPACE/NoMount-Suite"
+              # 建立软链接并注册到 fs/ 构建树
+              ln -s "$NOMOUNT_SRC" fs/nomount
 
-            HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
-            PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
+              if ! grep -q 'source "fs/nomount/Kconfig"' fs/Kconfig; then
+                echo 'source "fs/nomount/Kconfig"' >> fs/Kconfig
+              fi
+              if ! grep -q 'obj-$(CONFIG_NOMOUNT) += nomount/' fs/Makefile; then
+                echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
+              fi
 
-            if [ ! -f "$PATCH" ]; then
-              echo "::error::未找到官方集成补丁: $PATCH"
-              ls -la "$HOOKLESS/"
-              exit 1
-            fi
+              echo "secondary NoMount 集成完成，commit: $(git -C NoMount-Suite rev-parse HEAD)"
+              echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (main)"
+              ;;
+          esac
 
-            # 应用官方补丁（含 Kconfig/Makefile 注册）
-            if patch -p1 --forward < "$PATCH"; then
-              echo "[+] 集成补丁应用成功"
-            else
-              echo "::error::集成补丁应用失败，退出码 $?，保留 .rej"
-              exit 1
-            fi
-
-            # 拷贝引擎源码
-            cp "$HOOKLESS/src/nomount.c" fs/nomount.c
-            cp "$HOOKLESS/src/nomount.h" fs/nomount.h
-
-            # 将 nomount.o 排除出 LTO，避免 GOT/PLT 重定位校验失败
-            # （CC_FLAGS_LTO 由内核顶层 Makefile 定义，仅在开启 LTO 时非空）
-            cat >> fs/Makefile <<'EOF'
-            CFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)
-            EOF
-            # 自检
-            test -f fs/nomount.c
-            test -f fs/nomount.h
-            grep -q 'NOMOUNT' fs/Kconfig
-            grep -q 'nomount' fs/Makefile
-
-            VARIANT="Bouteillepleine/NoMount-Suite (hookless)"
-
-          else
-            echo "::error::未知 nomount_choice: $NOMOUNT_MODE"
-            exit 1
-          fi
-
-          # 启用 defconfig（幂等）
+          # 启用 NoMount defconfig（幂等）
           if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
             echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
             echo "已启用 CONFIG_NOMOUNT=y"
+          else
+            echo "CONFIG_NOMOUNT=y 已存在，跳过"
           fi
 
-          echo "NOMOUNT_VARIANT=$VARIANT" >> "$GITHUB_ENV"
-          echo "NoMount 集成完成: $VARIANT"
-
+          echo "NOMOUNT_VARIANT=${NOMOUNT_VARIANT:-未知}" >> "$GITHUB_ENV"
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
