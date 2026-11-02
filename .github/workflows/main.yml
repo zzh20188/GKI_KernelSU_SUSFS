@@ -120,10 +120,14 @@ on:
         description: "启用 Re-Kernel 驱动"
         type: boolean
         default: false
-      use_nomount:
-        description: "启用 NoMount 挂载元模块"
-        type: boolean
-        default: false
+      nomount_choice:
+        description: "NoMount 挂载元模块（2选1）"
+        type: choice
+        options:
+          - "none"
+          - "primary"      # 原版 maxsteeel/nomount
+          - "secondary"    # Bouteillepleine/NoMount-Suite
+        default: "none"
       use_networking:
         description: "启用网络增强（BBRv3 / IPSet / Qdisc / CIFS）"
         type: boolean
@@ -157,7 +161,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
-      use_nomount: ${{ inputs.use_nomount }}
+      nomount_choice: ${{ inputs.nomount_choice || 'none' }}
       use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
@@ -179,7 +183,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
-      use_nomount: ${{ inputs.use_nomount }}
+      nomount_choice: ${{ inputs.nomount_choice || 'none' }}
       use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
@@ -201,7 +205,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
-      use_nomount: ${{ inputs.use_nomount }}
+      nomount_choice: ${{ inputs.nomount_choice || 'none' }}
       use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
@@ -223,7 +227,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
-      use_nomount: ${{ inputs.use_nomount }}
+      nomount_choice: ${{ inputs.nomount_choice || 'none' }}
       use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
@@ -245,7 +249,7 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel }}
-      use_nomount: ${{ inputs.use_nomount }}
+      nomount_choice: ${{ inputs.nomount_choice || 'none' }}
       use_networking: ${{ inputs.use_networking }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches }}
