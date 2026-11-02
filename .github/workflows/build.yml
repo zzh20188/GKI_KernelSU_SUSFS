@@ -1637,7 +1637,13 @@ jobs:
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
               if [ -f "build/build.sh" ]; then
-                LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
+                BUILD_LTO="thin"
+                case "${NOMOUNT_VARIANT:-}" in
+                  *"NoMount-Suite"*) BUILD_LTO="none" ;;
+                esac
+                LTO=$BUILD_LTO BUILD_CONFIG=common/build.config.gki.aarch64 \
+                  build/build.sh CC="/usr/bin/ccache clang" || exit 1
+
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
               else
                 # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
