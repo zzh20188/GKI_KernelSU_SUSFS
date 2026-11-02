@@ -907,8 +907,6 @@ jobs:
       #   primary   -> 原版 maxsteeel/nomount（dev 分支，官方 setup.sh 集成）
       #   secondary -> Bouteillepleine/NoMount-Suite（main 分支，手动注册到 fs/ 构建树）
       # 两者互斥，均通过 fs/nomount 软链接 + CONFIG_NOMOUNT=y 启用，一次只编译一个。
-      # 必须在「生成 SUSFS 集成补丁」之后运行，避免 NoMount 改动被计入 susfs.patch；
-      # 且在「备份基准 defconfig」之后追加 CONFIG，确保 6.1+ 的 bazel fragment diff 能捕获 CONFIG_NOMOUNT。
       - name: 集成 NoMount 挂载元模块 (2选1)
         if: inputs.nomount_choice != 'none'
         working-directory: ${{ env.KERNEL_ROOT }}/common
@@ -917,15 +915,18 @@ jobs:
 
           echo "=== NoMount 2选1 集成（选择: ${{ inputs.nomount_choice }}）==="
 
-          # 清理残留，保证幂等
-          rm -rf fs/nomount NoMount NoMount-Suite
+          NOMOUNT_VARIANT=""
+
+          # 清理残留：软链接、克隆目录、Makefile/Kconfig 注册条目，保证幂等
+          rm -f fs/nomount
+          rm -rf NoMount NoMount-Suite
           sed -i '/^obj-\$(CONFIG_NOMOUNT)[[:space:]]*+= nomount\//d' fs/Makefile 2>/dev/null || true
           sed -i '/^source "fs\/nomount\/Kconfig"$/d' fs/Kconfig 2>/dev/null || true
 
           case "${{ inputs.nomount_choice }}" in
             primary)
               echo "--- 集成 primary: maxsteeel/nomount (dev) ---"
-              # 官方集成脚本：克隆仓库、建立 fs/nomount 软链接并注册 Kconfig/Makefile（内部含幂等守卫）
+              # 官方集成脚本：克隆仓库、建立 fs/nomount 软链接并注册 Kconfig/Makefile
               curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
                 https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
 
@@ -933,36 +934,46 @@ jobs:
                 echo "::error::primary NoMount 集成失败：fs/nomount 缺失"
                 exit 1
               fi
-              echo "primary NoMount 集成完成，commit: $(git -C NoMount rev-parse HEAD)"
-              echo "NOMOUNT_VARIANT=maxsteeel/nomount (dev)"
+
+              # 自检：软链接必须是有效目标，且不能自引用（否则 make 遍历会无限递归）
+              RESOLVED=$(readlink -f fs/nomount || true)
+              if [ ! -f "$RESOLVED/Kconfig" ] && [ ! -f "$RESOLVED/Makefile" ]; then
+                echo "::error::fs/nomount -> $RESOLVED 中没有 Kconfig/Makefile，软链接指向错误"
+                exit 1
+              fi
+
+              echo "primary NoMount 集成完成，commit: $(git -C "$RESOLVED" rev-parse HEAD 2>/dev/null || echo '未知')"
+              NOMOUNT_VARIANT="maxsteeel/nomount (dev)"
               ;;
 
             secondary)
               echo "--- 集成 secondary: Bouteillepleine/NoMount-Suite (main) ---"
-              git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git NoMount-Suite
+              # 克隆到 common/ 之外，避免内核树内出现自引用结构
+              git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git \
+                "$GITHUB_WORKSPACE/NoMount-Suite"
 
-              # 自动定位内核侧源码目录（含 Kconfig 的目录，优先 hookless/）
-              NOMOUNT_SRC=""
-              for candidate in hookless kernel fs/nomount .; do
-                if [ -f "NoMount-Suite/$candidate/Kconfig" ]; then
-                  NOMOUNT_SRC="NoMount-Suite/$candidate"
+              # 用绝对路径定位内核侧源码目录（含 Kconfig 的目录）
+              NOMOUNT_SRC_ABS=""
+              for candidate in hookless kernel fs/nomount nomount .; do
+                if [ -f "$GITHUB_WORKSPACE/NoMount-Suite/$candidate/Kconfig" ]; then
+                  NOMOUNT_SRC_ABS="$GITHUB_WORKSPACE/NoMount-Suite/$candidate"
                   break
                 fi
               done
-              if [ -z "$NOMOUNT_SRC" ]; then
-                # 兜底：全仓库搜索第一个含 NOMOUNT 的 Kconfig
-                NOMOUNT_SRC=$(dirname "$(grep -rl --include='Kconfig*' 'NOMOUNT' NoMount-Suite | head -n 1)")
+              if [ -z "$NOMOUNT_SRC_ABS" ]; then
+                NOMOUNT_SRC_ABS=$(dirname "$(grep -rl --include='Kconfig*' 'NOMOUNT' \
+                  "$GITHUB_WORKSPACE/NoMount-Suite" | head -n 1)" 2>/dev/null || true)
               fi
-              if [ -z "$NOMOUNT_SRC" ] || [ ! -d "$NOMOUNT_SRC" ]; then
+              if [ -z "$NOMOUNT_SRC_ABS" ] || [ ! -f "$NOMOUNT_SRC_ABS/Kconfig" ]; then
                 echo "::error::未能在 NoMount-Suite 中定位内核源码目录（含 Kconfig）"
                 echo "仓库顶层结构:"
-                ls -la NoMount-Suite/
+                ls -la "$GITHUB_WORKSPACE/NoMount-Suite/"
                 exit 1
               fi
-              echo "定位到内核源码目录: $NOMOUNT_SRC"
+              echo "定位到内核源码目录: $NOMOUNT_SRC_ABS"
 
-              # 建立软链接并注册到 fs/ 构建树
-              ln -s "$NOMOUNT_SRC" fs/nomount
+              # 关键：使用绝对路径创建软链接，绝不用相对路径
+              ln -s "$NOMOUNT_SRC_ABS" fs/nomount
 
               if ! grep -q 'source "fs/nomount/Kconfig"' fs/Kconfig; then
                 echo 'source "fs/nomount/Kconfig"' >> fs/Kconfig
@@ -971,8 +982,20 @@ jobs:
                 echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
               fi
 
-              echo "secondary NoMount 集成完成，commit: $(git -C NoMount-Suite rev-parse HEAD)"
-              echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (main)"
+              # 自检：解析一次，绝不允许指回 fs/nomount 自己
+              RESOLVED=$(readlink -f fs/nomount)
+              if [ "$RESOLVED" = "$(readlink -f fs/nomount)/nomount" ] || \
+                 [ ! -f "$RESOLVED/Kconfig" ]; then
+                echo "::error::fs/nomount 软链接自引用或目标无效: $RESOLVED"
+                exit 1
+              fi
+              if [ -e "$RESOLVED/nomount" ]; then
+                echo "::error::目标目录 $RESOLVED 内含有 nomount 条目，会造成递归遍历，请改用正确的源码子目录"
+                exit 1
+              fi
+
+              echo "secondary NoMount 集成完成，commit: $(git -C "$NOMOUNT_SRC_ABS" rev-parse HEAD)"
+              NOMOUNT_VARIANT="Bouteillepleine/NoMount-Suite (main)"
               ;;
           esac
 
@@ -984,7 +1007,8 @@ jobs:
             echo "CONFIG_NOMOUNT=y 已存在，跳过"
           fi
 
-          echo "NOMOUNT_VARIANT=${NOMOUNT_VARIANT:-未知}" >> "$GITHUB_ENV"
+          echo "NOMOUNT_VARIANT=$NOMOUNT_VARIANT" >> "$GITHUB_ENV"
+          echo "NoMount 集成完成: $NOMOUNT_VARIANT"
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
