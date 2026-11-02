@@ -981,38 +981,93 @@ jobs:
               fi
               if [ -z "$NOMOUNT_SRC_ABS" ] || [ ! -f "$NOMOUNT_SRC_ABS/Kconfig" ]; then
                 echo "::error::未能在 NoMount-Suite 中定位内核源码目录（含 Kconfig）"
-                echo "仓库顶层结构:"
-                ls -la "$GITHUB_WORKSPACE/NoMount-Suite/"
+      - name: 集成 NoMount 挂载元模块 (2选1)
+        if: inputs.nomount_choice != 'none'
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        run: |
+          set -euo pipefail
+
+          echo "=== NoMount 2选1 集成（选择: ${{ inputs.nomount_choice }}）==="
+
+          NOMOUNT_VARIANT=""
+
+          # 清理残留（含上次错误集成可能留下的软链接/文件），保证幂等
+          rm -f fs/nomount fs/nomount.c fs/nomount.h
+          rm -rf "$GITHUB_WORKSPACE/NoMount-Suite"
+          # 还原补丁可能写入的条目（sed 删除含 NOMOUNT 的注册行）
+          sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
+          sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
+
+          case "${{ inputs.nomount_choice }}" in
+            primary)
+              echo "--- 集成 primary: maxsteeel/nomount (dev) ---"
+              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
+
+              if [ ! -e "fs/nomount" ]; then
+                echo "::error::primary NoMount 集成失败：fs/nomount 缺失"
                 exit 1
               fi
-              echo "定位到内核源码目录: $NOMOUNT_SRC_ABS"
+              echo "primary 集成完成，commit: $(git -C fs/nomount rev-parse HEAD 2>/dev/null || echo '未知')"
+              NOMOUNT_VARIANT="maxsteeel/nomount (dev)"
+              ;;
 
-              # 关键：使用绝对路径创建软链接，绝不用相对路径
-              ln -s "$NOMOUNT_SRC_ABS" fs/nomount
+            secondary)
+              echo "--- 集成 secondary: Bouteillepleine/NoMount-Suite (hookless) ---"
 
-              if ! grep -q 'source "fs/nomount/Kconfig"' fs/Kconfig; then
-                echo 'source "fs/nomount/Kconfig"' >> fs/Kconfig
-              fi
-              if ! grep -q 'obj-$(CONFIG_NOMOUNT) += nomount/' fs/Makefile; then
-                echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
-              fi
+              # 克隆到工作区（内核树之外）
+              git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git \
+                "$GITHUB_WORKSPACE/NoMount-Suite"
 
-              # 自检：解析一次，绝不允许指回 fs/nomount 自己
-              RESOLVED=$(readlink -f fs/nomount)
-              if [ "$RESOLVED" = "$(readlink -f fs/nomount)/nomount" ] || \
-                 [ ! -f "$RESOLVED/Kconfig" ]; then
-                echo "::error::fs/nomount 软链接自引用或目标无效: $RESOLVED"
-                exit 1
-              fi
-              if [ -e "$RESOLVED/nomount" ]; then
-                echo "::error::目标目录 $RESOLVED 内含有 nomount 条目，会造成递归遍历，请改用正确的源码子目录"
+              HOOKLESS="$GITHUB_WORKSPACE/NoMount-Suite/hookless"
+              if [ ! -f "$HOOKLESS/patches/nomount_kernel_integration.patch" ]; then
+                echo "::error::未找到官方集成补丁: $HOOKLESS/patches/nomount_kernel_integration.patch"
+                echo "hookless/ 目录内容:"
+                ls -la "$HOOKLESS/"
                 exit 1
               fi
 
-              echo "secondary NoMount 集成完成，commit: $(git -C "$NOMOUNT_SRC_ABS" rev-parse HEAD)"
-              NOMOUNT_VARIANT="Bouteillepleine/NoMount-Suite (main)"
+              # ① 从内核源码根目录应用官方补丁（补丁内含 Kconfig/Makefile 注册）
+              if patch -p1 --forward < "$HOOKLESS/patches/nomount_kernel_integration.patch"; then
+                echo "[+] 集成补丁应用成功"
+              else
+                # --forward 下"已应用"会以非零退出但属于正常，做反向校验区分
+                if git -C . apply --check -R "$HOOKLESS/patches/nomount_kernel_integration.patch" 2>/dev/null; then
+                  echo "[i] 集成补丁已应用过，跳过"
+                else
+                  echo "::error::集成补丁应用失败（上下文不匹配），保留 .rej"
+                  exit 1
+                fi
+              fi
+
+              # ② 拷贝引擎源码到 fs/
+              cp "$HOOKLESS/src/nomount.c" "$HOOKLESS/src/nomount.h" fs/
+              echo "[+] 已拷贝 fs/nomount.c 和 fs/nomount.h"
+
+              # ③ 自检
+              if [ ! -f "fs/nomount.c" ] || [ ! -f "fs/nomount.h" ]; then
+                echo "::error::fs/nomount.c / fs/nomount.h 拷贝失败"
+                exit 1
+              fi
+              if ! grep -q 'CONFIG_NOMOUNT' fs/Kconfig || ! grep -q 'nomount' fs/Makefile; then
+                echo "::error::补丁未正确注册 Kconfig/Makefile 条目"
+                exit 1
+              fi
+
+              echo "secondary 集成完成，commit: $(git -C "$GITHUB_WORKSPACE/NoMount-Suite" rev-parse HEAD)"
+              NOMOUNT_VARIANT="Bouteillepleine/NoMount-Suite (hookless)"
               ;;
           esac
+
+          # 启用 defconfig（幂等）
+          if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+            echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+            echo "已启用 CONFIG_NOMOUNT=y"
+          fi
+
+          echo "NOMOUNT_VARIANT=$NOMOUNT_VARIANT" >> "$GITHUB_ENV"
+          echo "NoMount 集成完成: $NOMOUNT_VARIANT"
+
 
           # 启用 NoMount defconfig（幂等）
           if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
