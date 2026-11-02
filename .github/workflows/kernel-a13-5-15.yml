@@ -19,7 +19,7 @@ on:
           - SukiSU(40726)
           - SukiSU(40548)
           - BakaSU
-        default: BakaSU
+        default: Next
       ksu_mode:
         description: "KernelSU / SUSFS 模式"
         required: true
@@ -73,7 +73,7 @@ on:
         description: "启用 ZRAM 增强算法"
         required: true
         type: boolean
-        default: false
+        default: true
       use_bbg:
         description: "启用 BBG 防格机"
         required: true
@@ -83,7 +83,7 @@ on:
         description: "启用 Re-Kernel 驱动"
         required: false
         type: boolean
-        default: false
+        default: true
 
       # ⚠️ 改动 1：use_nomount (boolean) → nomount_choice (choice)
       nomount_choice:
@@ -94,13 +94,13 @@ on:
           - "none"
           - "primary"      # 原版 maxsteeel/nomount
           - "secondary"    # Bouteillepleine/NoMount-Suite
-        default: "none"
+        default: "secondary"
 
       use_networking:
         description: "启用网络增强（BBRv3 / IPSet / Qdisc / CIFS）"
         required: false
         type: boolean
-        default: false
+        default: true
       cve_2026_43499_patch:
         description: "应用 CVE-2026-43499 rtmutex 修复链"
         required: false
