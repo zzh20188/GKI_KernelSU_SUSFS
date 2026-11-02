@@ -1066,13 +1066,29 @@ jobs:
               ;;
           esac
 
-          echo "自动选择 NTSync 补丁: ${NTSYNC_PATCH}.patch"
-          wget -q "https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync/ntsync_base.patch"
-          wget -q "https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync/${NTSYNC_PATCH}.patch"
+          # Skip NTSync patches when Android 16 / Linux 6.12
+          # already contains native NTSync support.
 
-          patch -p1 < "ntsync_base.patch"
-          patch -p1 < "${NTSYNC_PATCH}.patch"
+          if [[ "${{ inputs.android_version }}-${{ inputs.kernel_version }}" == "android16-6.12" ]] \
+            && [[ -f drivers/misc/ntsync.c ]] \
+            && [[ -f include/uapi/linux/ntsync.h ]]; then
 
+            echo "NTSync already exists in the kernel source."
+            echo "Skipping NTSync base and compatibility patches."
+
+          else
+
+            echo "Applying NTSync patches: ${NTSYNC_PATCH}.patch"
+
+            wget -q "https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync/ntsync_base.patch"
+
+            wget -q "https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync/${NTSYNC_PATCH}.patch"
+
+           patch --batch -p1 < "ntsync_base.patch"
+           patch --batch -p1 < "${NTSYNC_PATCH}.patch"
+
+          fi
+          
           cd ..
 
           CONFIG_PATH="./common/arch/arm64/configs/gki_defconfig"
