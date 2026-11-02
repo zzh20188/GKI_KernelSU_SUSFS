@@ -84,11 +84,18 @@ on:
         required: false
         type: boolean
         default: false
-      use_nomount:
-        description: "启用 NoMount 挂载元模块"
+
+      # ⚠️ 改动 1：use_nomount (boolean) → nomount_choice (choice)
+      nomount_choice:
+        description: "NoMount 挂载元模块（2选1）"
         required: false
-        type: boolean
-        default: false
+        type: choice
+        options:
+          - "none"
+          - "primary"      # 原版 maxsteeel/nomount
+          - "secondary"    # Bouteillepleine/NoMount-Suite
+        default: "none"
+
       use_networking:
         description: "启用网络增强（BBRv3 / IPSet / Qdisc / CIFS）"
         required: false
@@ -104,6 +111,7 @@ on:
         required: false
         type: boolean
         default: false
+
   workflow_call:
     inputs:
       kernelsu_variant:
@@ -129,10 +137,13 @@ on:
         required: false
         type: boolean
         default: false
-      use_nomount:
+
+      # ⚠️ 改动 2：workflow_call 输入同步改为 nomount_choice
+      nomount_choice:
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: "none"
+
       use_networking:
         required: false
         type: boolean
@@ -229,7 +240,10 @@ jobs:
       use_bbg: ${{ inputs.use_bbg }}
       use_kpm: ${{ inputs.use_kpm }}
       use_rekernel: ${{ inputs.use_rekernel || false }}
-      use_nomount: ${{ inputs.use_nomount || false }}
+
+      # ⚠️ 改动 3：传递 nomount_choice（不再是 use_nomount）
+      nomount_choice: ${{ inputs.nomount_choice || 'none' }}
+
       use_networking: ${{ inputs.use_networking || false }}
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
