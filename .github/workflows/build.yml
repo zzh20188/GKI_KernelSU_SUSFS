@@ -979,8 +979,8 @@ jobs:
             # 将 nomount.o 排除出 LTO，避免 GOT/PLT 重定位校验失败
             # （CC_FLAGS_LTO 由内核顶层 Makefile 定义，仅在开启 LTO 时非空）
             cat >> fs/Makefile <<'EOF'
-CFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)
-EOF
+            CFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)
+            EOF
             # 自检
             test -f fs/nomount.c
             test -f fs/nomount.h
