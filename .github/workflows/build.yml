@@ -61,7 +61,7 @@ on:
         type: boolean
         default: false
 
-     # ==================== NoMount 2选1 ====================
+      # ==================== NoMount 2选1 ====================
       # none      : 不启用 NoMount
       # primary   : maxsteeel/nomount (dev 分支, 完整实现)
       # secondary : NoMount-Suite hookless 引擎 (main 分支)
@@ -904,71 +904,71 @@ jobs:
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
--     - name: 集成 NoMount 挂载元模块
--       if: inputs.use_nomount
-+     - name: 集成 NoMount 挂载元模块 (primary)
-+       if: inputs.nomount_choice == 'primary'
+      - name: 集成 NoMount 挂载元模块
+        if: inputs.nomount_choice != 'none'
         working-directory: ${{ env.KERNEL_ROOT }}/common
         run: |
--         # NoMount 是挂载元模块，在 fs/ 目录注册子系统，与 SUSFS sus_mount 不冲突，可与任意 KSU 变体共存。
--         # 必须在「生成 SUSFS 集成补丁」之后运行，避免 NoMount 改动被计入 susfs.patch；
--         # 且在「备份基准 defconfig」之后追加 CONFIG，确保 6.1+ 的 bazel fragment diff 能捕获 CONFIG_NOMOUNT。
--         set -euo pipefail
--         curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
--           https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
--
--         if [ ! -L "fs/nomount" ]; then
--           echo "::error::NoMount 集成失败：fs/nomount 软链接缺失"
--           exit 1
--         fi
--         echo "NoMount 集成完成，commit: $(git -C NoMount rev-parse HEAD)"
--
--         if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
--           echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
--           echo "已启用 CONFIG_NOMOUNT=y"
--         else
--           echo "CONFIG_NOMOUNT=y 已存在，跳过"
--         fi
-+         set -euo pipefail
-+         echo "集成 NoMount (primary): maxsteeel/nomount dev"
-+         curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-+           https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
-+         [ -L "fs/nomount" ] || { echo "::error::fs/nomount 软链接缺失"; exit 1; }
-+         grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG" || echo 'CONFIG_NOMOUNT=y' >> "$DEFCONFIG"
-+         echo "primary NoMount 集成完成"
+          set -euo pipefail
 
-+     - name: 集成 NoMount-Suite hookless 引擎 (secondary)
-+       if: inputs.nomount_choice == 'secondary'
-+       working-directory: ${{ env.KERNEL_ROOT }}/common
-+       run: |
-+         set -euo pipefail
-+         echo "集成 NoMount-Suite hookless 引擎 (secondary)"
-+         echo "仅包含 Prism 引擎，不包含 ghost / pathhide cloaks"
-+
-+         # 拉取 hookless 引擎源码
-+         HOOKLESS_DIR=/tmp/NoMount-Suite-hookless
-+         rm -rf "$HOOKLESS_DIR"
-+         git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git "$HOOKLESS_DIR"
-+
-+         # 建立 fs/nomount -> hookless/src 软链接（与 primary 路径一致）
-+         ln -sfn "$HOOKLESS_DIR/hookless/src" fs/nomount
-+         [ -L "fs/nomount" ] || { echo "::error::fs/nomount 软链接创建失败"; exit 1; }
-+
-+         # 注册 Kconfig / Makefile（幂等）
-+         if ! grep -q '^source "fs/nomount/Kconfig"' fs/Kconfig; then
-+           sed -i '/^endmenu$/i source "fs/nomount/Kconfig"' fs/Kconfig
-+         fi
-+         if ! grep -q '^obj-$(CONFIG_NOMOUNT) += nomount/$' fs/Makefile; then
-+           echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
-+         fi
-+
-+         # 启用 CONFIG_NOMOUNT
-+         grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG" \
-+           || echo 'CONFIG_NOMOUNT=y' >> "$DEFCONFIG"
-+
-+         echo "NoMount-Suite hookless 引擎集成完成"
-+         echo "Prism engine: $(cat fs/nomount/nomount.h | head -5 | grep -o 'NOMOUNT.*' || echo 'ok')"
+          case "${{ inputs.nomount_choice }}" in
+            primary)
+              echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
+              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
+                | bash -s dev
 
+              if [ ! -L "fs/nomount" ]; then
+                echo "::error::NoMount 集成失败：fs/nomount 软链接缺失"
+                exit 1
+              fi
+
+              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+              fi
+              ;;
+
+            secondary)
+              echo "=== 集成 NoMount-Suite hookless 引擎 (Bouteillepleine) ==="
+              echo "注意：仅包含 Prism 引擎，不包含 ghost / pathhide cloaks"
+
+              # hookless 引擎源码
+              HOOKLESS_DIR=/tmp/NoMount-Suite-hookless
+              rm -rf "$HOOKLESS_DIR"
+              git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git "$HOOKLESS_DIR"
+
+              # 建立 fs/nomount -> hookless/src
+              mkdir -p fs
+              ln -sfn "$HOOKLESS_DIR/hookless/src" fs/nomount
+
+              if [ ! -L "fs/nomount" ] || [ ! -f "fs/nomount/nomount.c" ]; then
+                echo "::error::NoMount-Suite hookless 集成失败：fs/nomount 软链接无效"
+                exit 1
+              fi
+
+              # Kconfig
+              if ! grep -q 'source "fs/nomount/Kconfig"' fs/Kconfig; then
+                sed -i '/^endmenu$/i source "fs/nomount/Kconfig"' fs/Kconfig
+              fi
+
+              # Makefile
+              if ! grep -q 'obj-$(CONFIG_NOMOUNT) += nomount/' fs/Makefile; then
+                echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
+              fi
+
+              # defconfig（幂等）
+              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+              fi
+
+              echo "NoMount-Suite hookless 引擎集成完成"
+              echo "引擎版本: $(cat fs/nomount/nomount.h | head -n 5 || true)"
+              ;;
+
+            *)
+              echo "::error::未知的 nomount_choice: ${{ inputs.nomount_choice }}"
+              exit 1
+              ;;
+          esac
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
