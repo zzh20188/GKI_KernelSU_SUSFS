@@ -949,7 +949,14 @@ jobs:
               fi
 
               if ! grep -q 'CONFIG_NOMOUNT' fs/Kconfig; then
-                printf '\nconfig NOMOUNT\n\tbool "NoMount Prism Engine"\n\tdefault n\n\thelp\n\t  NoMount hookless VFS redirect engine.\n' >> fs/Kconfig
+                cat >> fs/Kconfig <<KCONFIGEOF
+
+config NOMOUNT
+        bool "NoMount Prism Engine"
+        default n
+        help
+          NoMount hookless VFS redirect engine.
+KCONFIGEOF
               fi
 
               if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
@@ -959,7 +966,6 @@ jobs:
               echo "NoMount-Suite hookless 引擎集成完成"
               echo "引擎文件: fs/nomount.c ($(wc -l < fs/nomount.c) lines)"
               ;;
-
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
