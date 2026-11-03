@@ -949,14 +949,12 @@ jobs:
               fi
 
               if ! grep -q 'CONFIG_NOMOUNT' fs/Kconfig; then
-                cat >> fs/Kconfig <<KCONFIGEOF
-
-config NOMOUNT
-        bool "NoMount Prism Engine"
-        default n
-        help
-          NoMount hookless VFS redirect engine.
-KCONFIGEOF
+                echo '' >> fs/Kconfig
+                echo 'config NOMOUNT' >> fs/Kconfig
+                echo '        bool "NoMount Prism Engine"' >> fs/Kconfig
+                echo '        default n' >> fs/Kconfig
+                echo '        help' >> fs/Kconfig
+                echo '          NoMount hookless VFS redirect engine.' >> fs/Kconfig
               fi
 
               if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
