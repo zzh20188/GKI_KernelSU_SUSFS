@@ -1635,11 +1635,19 @@ jobs:
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
               if [ -f "build/build.sh" ]; then
-                # NoMount-Suite (hookless) 源码与 thin LTO 不兼容，链接时产生
-                # 被禁止的 GOT/PLT 运行时重定位，secondary 模式下整体关闭 LTO
                 BUILD_LTO="thin"
                 case "${NOMOUNT_VARIANT:-}" in
-                  *"NoMount-Suite"*) BUILD_LTO="none" ; echo "NoMount-Suite 模式：已关闭 LTO" ;;
+                  *"NoMount-Suite"*)
+                    BUILD_LTO="none"
+                    echo "NoMount-Suite 模式：已关闭 LTO（含 defconfig 层面）"
+                    # gki_defconfig 硬编码了 CONFIG_LTO_CLANG_THIN=y，仅改环境变量
+                    # 会被 Kconfig 覆盖，必须在这里摘除
+                    sed -i '/^CONFIG_LTO_CLANG_THIN=y$/d'  common/arch/arm64/configs/gki_defconfig
+                    sed -i '/^CONFIG_LTO_CLANG=y$/d'       common/arch/arm64/configs/gki_defconfig
+                    sed -i '/^CONFIG_LTO_CLANG_THIN$/d'    common/arch/arm64/configs/gki_defconfig
+                    sed -i '/^CONFIG_HAVE_LTO_CLANG=y$/d'  common/arch/arm64/configs/gki_defconfig
+                    echo "# CONFIG_LTO_CLANG is not set" >> common/arch/arm64/configs/gki_defconfig
+                    ;;
                 esac
                 LTO=$BUILD_LTO BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
