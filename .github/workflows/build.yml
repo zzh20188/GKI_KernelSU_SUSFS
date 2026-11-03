@@ -917,8 +917,8 @@ jobs:
                 https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
                 | bash -s dev
 
-              if [ ! -L "fs/nomount" ]; then
-                echo "::error::NoMount 集成失败：fs/nomount 软链接缺失"
+              if [ ! -L "fs/nomount" ] || [ ! -f "fs/nomount/nomount.c" ]; then
+                echo "::error::NoMount 集成失败：fs/nomount 无效"
                 exit 1
               fi
 
@@ -928,40 +928,34 @@ jobs:
               ;;
 
             secondary)
-              echo "=== 集成 NoMount-Suite hookless 引擎 (Bouteillepleine) ==="
-              echo "注意：仅包含 Prism 引擎，不包含 ghost / pathhide cloaks"
+              echo "=== 集成 NoMount-Suite hookless 引擎 ==="
+              echo "方式：应用 hookless 锚点补丁（非目录挂载）"
 
-              # hookless 引擎源码
-              HOOKLESS_DIR=/tmp/NoMount-Suite-hookless
+              HOOKLESS_DIR=/tmp/NoMount-Suite
               rm -rf "$HOOKLESS_DIR"
               git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git "$HOOKLESS_DIR"
 
-              # 建立 fs/nomount -> hookless/src
-              mkdir -p fs
-              ln -sfn "$HOOKLESS_DIR/hookless/src" fs/nomount
-
-              if [ ! -L "fs/nomount" ] || [ ! -f "fs/nomount/nomount.c" ]; then
-                echo "::error::NoMount-Suite hookless 集成失败：fs/nomount 软链接无效"
+              # hookless 的 patch 覆盖 4.9–6.18，直接打
+              HOOKLESS_PATCH="$HOOKLESS_DIR/hookless/hookless.patch"
+              if [ ! -f "$HOOKLESS_PATCH" ]; then
+                echo "::error::未找到 hookless.patch"
                 exit 1
               fi
 
-              # Kconfig
-              if ! grep -q 'source "fs/nomount/Kconfig"' fs/Kconfig; then
-                sed -i '/^endmenu$/i source "fs/nomount/Kconfig"' fs/Kconfig
+              if ! patch -p1 --dry-run < "$HOOKLESS_PATCH" >/dev/null 2>&1; then
+                echo "::error::hookless.patch 无法应用，上下文不匹配"
+                exit 1
               fi
 
-              # Makefile
-              if ! grep -q 'obj-$(CONFIG_NOMOUNT) += nomount/' fs/Makefile; then
-                echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
-              fi
+              patch -p1 --no-backup-if-mismatch < "$HOOKLESS_PATCH"
 
-              # defconfig（幂等）
+              # 启用引擎
               if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
                 echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
               fi
 
               echo "NoMount-Suite hookless 引擎集成完成"
-              echo "引擎版本: $(cat fs/nomount/nomount.h | head -n 5 || true)"
+              echo "注意：仅包含 Prism 引擎，不含 ghost/pathhide cloaks"
               ;;
 
             *)
