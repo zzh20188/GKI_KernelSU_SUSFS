@@ -1616,48 +1616,6 @@ jobs:
             } >> "$LOG_FILE"
             exit "$BUILD_STATUS"
 
-      - name: 编译 nomount.ko
-        if: inputs.nomount_choice == 'secondary' && steps.compile_kernel.outcome == 'success'
-        working-directory: ${{ env.KERNEL_ROOT }}/common
-        run: |
-          set -euo pipefail
-          echo "=== 编译 nomount.ko ==="
-
-          KERNEL_OUT="${{ env.KERNEL_ROOT }}/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}"
-
-          if [ ! -f "${KERNEL_OUT}/include/config/auto.conf" ]; then
-            echo "::error::auto.conf 不在预期位置: ${KERNEL_OUT}/include/config/auto.conf"
-            echo "KERNEL_OUT 内容:"
-            ls "${KERNEL_OUT}/include/config/" 2>/dev/null || echo "目录不存在"
-            exit 1
-          fi
-
-          make M=fs/nomount \
-            O="${KERNEL_OUT}" \
-            ARCH=arm64 \
-            CC="/usr/bin/ccache clang" \
-            LLVM=1 LLVM_IAS=1 \
-            modules -j"$(nproc)"
-
-          KO_PATH="${KERNEL_OUT}/fs/nomount/nomount.ko"
-
-          if [ ! -s "${KO_PATH}" ]; then
-            echo "::error::nomount.ko 未生成"
-            echo "在 KERNEL_OUT 中搜索 nomount.ko:"
-            find "${KERNEL_OUT}" -name "nomount.ko" 2>/dev/null || true
-            exit 1
-          fi
-
-          # 可选：strip 减小体积（Android 内核模块推荐）
-          if command -v llvm-strip >/dev/null 2>&1; then
-            llvm-strip --strip-debug "${KO_PATH}" || true
-          fi
-
-          mkdir -p "${{ env.KERNEL_ROOT }}/out/modules"
-          cp "${KO_PATH}" "${{ env.KERNEL_ROOT }}/out/modules/"
-          echo "nomount.ko 编译成功: $(ls -lh "${KO_PATH}" | awk '{print $5}')"
-
-
       - name: 整理编译失败日志
         if: ${{ always() && steps.compile_kernel.outcome == 'failure' }}
         env:
