@@ -923,10 +923,19 @@ jobs:
           fi
 
           if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
-            echo "=== 调用独立脚本构建 NoMount-Suite hookless LKM ==="
-            bash "$GITHUB_WORKSPACE/scripts/build_nomount.sh" \
-               "${{ env.KERNEL_ROOT }}/common" \
-               "$DEFCONFIG"
+            echo "=== 构建 NoMount-Suite hookless LKM ==="
+            chmod +x "$GITHUB_WORKSPACE/scripts/build-nomount-lkm.sh"
+            "$GITHUB_WORKSPACE/scripts/build-nomount-lkm.sh" \
+              "${{ env.KERNEL_ROOT }}/common" \
+              "${{ env.KERNEL_ROOT }}/out/modules"
+
+            # defconfig 确保模块支持
+            for opt in CONFIG_MODULES=y CONFIG_MODULE_UNLOAD=y CONFIG_KALLSYMS=y CONFIG_KALLSYMS_ALL=y; do
+              if ! grep -q "^${opt%*=*}" "$DEFCONFIG"; then
+                echo "$opt" >> "$DEFCONFIG"
+              fi
+            done
+            echo "NoMount-Suite hookless LKM 集成完成"
           fi
 
       - name: 集成 Droidspaces 支持
