@@ -910,61 +910,60 @@ jobs:
         run: |
           set -euo pipefail
 
-          case "${{ inputs.nomount_choice }}" in
-            primary)
-              echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
-              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
-                | bash -s dev
+          if [ "${{ inputs.nomount_choice }}" = "primary" ]; then
+            echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
+            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+              https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
+              | sh -s dev
+            if [ ! -L "fs/nomount" ] && [ ! -d "fs/nomount" ]; then
+              echo "::error::NoMount 集成失败：fs/nomount 缺失"
+              exit 1
+            fi
+            if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+              echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+            fi
+          fi
 
-              if [ ! -L "fs/nomount" ] && [ ! -f "fs/nomount/nomount.c" ]; then
-                echo "::error::NoMount 集成失败：fs/nomount 无效"
-                exit 1
-              fi
+          if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
+            echo "=== 集成 NoMount-Suite hookless 引擎 ==="
+            echo "注意：仅 Prism 引擎，不含 ghost/pathhide cloaks"
 
-              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-              fi
-              ;;
+            rm -rf /tmp/NoMount-Suite
+            git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git /tmp/NoMount-Suite
 
-            secondary)
-              echo "=== 集成 NoMount-Suite hookless 引擎 (Bouteillepleine) ==="
-              echo "方式：直接放置引擎源码到 fs/（非子目录）"
-              echo "注意：仅包含 Prism 引擎，不含 ghost/pathhide cloaks"
+            if [ ! -f /tmp/NoMount-Suite/hookless/src/nomount.c ]; then
+              echo "::error::hookless 引擎源码不完整"
+              exit 1
+            fi
 
-              HOOKLESS_DIR=/tmp/NoMount-Suite
-              rm -rf "$HOOKLESS_DIR"
-              git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git "$HOOKLESS_DIR"
+            mkdir -p fs/nomount
+            cp /tmp/NoMount-Suite/hookless/src/nomount.c fs/nomount/nomount.c
+            cp /tmp/NoMount-Suite/hookless/src/nomount.h fs/nomount/nomount.h
 
-              if [ ! -f "$HOOKLESS_DIR/hookless/src/nomount.c" ] || [ ! -f "$HOOKLESS_DIR/hookless/src/nomount.h" ]; then
-                echo "::error::NoMount-Suite hookless 引擎源码不完整"
-                exit 1
-              fi
+            echo '# NoMount-Suite hookless' > fs/nomount/Makefile
+            echo 'obj-$(CONFIG_NOMOUNT) += nomount.o' >> fs/nomount/Makefile
 
-              cp "$HOOKLESS_DIR/hookless/src/nomount.c" fs/nomount.c
-              cp "$HOOKLESS_DIR/hookless/src/nomount.h" fs/nomount.h
+            echo 'config NOMOUNT' > fs/nomount/Kconfig
+            echo '        bool "NoMount Prism Engine"' >> fs/nomount/Kconfig
+            echo '        default n' >> fs/nomount/Kconfig
+            echo '        help' >> fs/nomount/Kconfig
+            echo '          NoMount hookless VFS redirect engine.' >> fs/nomount/Kconfig
 
-              if ! grep -q 'nomount\.o' fs/Makefile; then
-                echo 'obj-$(CONFIG_NOMOUNT) += nomount.o' >> fs/Makefile
-              fi
+            if ! grep -q 'nomount' fs/Makefile; then
+              echo '' >> fs/Makefile
+              echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
+            fi
 
-              if ! grep -q 'CONFIG_NOMOUNT' fs/Kconfig; then
-                echo '' >> fs/Kconfig
-                echo 'config NOMOUNT' >> fs/Kconfig
-                echo '        bool "NoMount Prism Engine"' >> fs/Kconfig
-                echo '        default n' >> fs/Kconfig
-                echo '        help' >> fs/Kconfig
-                echo '          NoMount hookless VFS redirect engine.' >> fs/Kconfig
-              fi
+            if ! grep -q 'fs/nomount/Kconfig' fs/Kconfig; then
+              sed -i '/^endmenu/i source "fs/nomount/Kconfig"' fs/Kconfig
+            fi
 
-              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-              fi
+            if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+              echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+            fi
 
-              NOMOUNT_LINES="$(wc -l < fs/nomount.c)"
-              echo "NoMount-Suite hookless 引擎集成完成"
-              echo "引擎文件: fs/nomount.c (${NOMOUNT_LINES} lines)"
-              ;;
+            echo "NoMount-Suite hookless 集成完成"
+          fi
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
