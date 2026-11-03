@@ -948,11 +948,20 @@ jobs:
               -o /tmp/nomount-hookless.patch
 
             echo "补丁内容预览（前20行）:"
-            head -20 /tmp/nomount-hookless.patch
+            head -20 /tmp/nomount-hookless.patch || true
 
             patch -p1 --fuzz=3 --no-backup-if-mismatch < /tmp/nomount-hookless.patch
 
-            # 3. defconfig 幂等追加
+            # 3. 单文件豁免 LTO —— 解法三核心
+            # 防止 ThinLTO 对 builtin 的 Prism 引擎产生非法 GOT/PLT 引用导致 ld.lld rejected
+            if ! grep -q 'CFLAGS_nomount.o' fs/Makefile; then
+              echo 'CFLAGS_nomount.o += -fno-lto' >> fs/Makefile
+              echo "已为 nomount.o 添加 -fno-lto 豁免"
+            else
+              echo "nomount.o 已有自定义 CFLAGS，跳过追加"
+            fi
+
+            # 4. defconfig 幂等追加
             if ! grep -q '^CONFIG_NOMOUNT=y$' "$DEFCONFIG"; then
               echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
               echo "已追加 CONFIG_NOMOUNT=y 到 defconfig"
@@ -963,6 +972,7 @@ jobs:
             echo "NoMount-Suite hookless 集成完成"
             echo "  → fs/nomount.c + fs/nomount.h (Prism 引擎)"
             echo "  → fs/Kconfig fs/Makefile fs/proc/task_mmu.c fs/xattr.c (4 hunk patch)"
+            echo "  → fs/Makefile: CFLAGS_nomount.o += -fno-lto"
             echo "  → cloaks (ghost/pathhide) 未包含，nomount check 将报告 unavailable"
           fi
 
