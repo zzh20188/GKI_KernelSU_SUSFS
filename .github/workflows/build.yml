@@ -63,8 +63,12 @@ on:
 
       # ==================== NoMount 2选1 ====================
       # none      : 不启用 NoMount
-      # primary   : 原版 maxsteeel/nomount (dev 分支)
-      # secondary : Bouteillepleine/NoMount-Suite (main 分支)
+-     # primary   : 原版 maxsteeel/nomount (dev 分支)
+-     # secondary : Bouteillepleine/NoMount-Suite (main 分支)
++     # primary   : maxsteeel/nomount (dev 分支, 完整实现)
++     # secondary : NoMount-Suite hookless 引擎 (main 分支)
++     #             仅包含 Prism 引擎 (路径重定向 / maps dev-ino 重写 / xattr guard)
++     #             不包含 ghost / pathhide cloaks
       nomount_choice:
         required: false
         type: string
@@ -902,86 +906,71 @@ jobs:
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
-      - name: 集成 NoMount 挂载元模块 (2选1)
-        if: inputs.nomount_choice != 'none'
-        shell: bash
+-     - name: 集成 NoMount 挂载元模块
+-       if: inputs.use_nomount
++     - name: 集成 NoMount 挂载元模块 (primary)
++       if: inputs.nomount_choice == 'primary'
         working-directory: ${{ env.KERNEL_ROOT }}/common
-        env:
-          NOMOUNT_MODE: ${{ inputs.nomount_choice }}
-          WORKSPACE: ${{ github.workspace }}
         run: |
-          set -euo pipefail
+-         # NoMount 是挂载元模块，在 fs/ 目录注册子系统，与 SUSFS sus_mount 不冲突，可与任意 KSU 变体共存。
+-         # 必须在「生成 SUSFS 集成补丁」之后运行，避免 NoMount 改动被计入 susfs.patch；
+-         # 且在「备份基准 defconfig」之后追加 CONFIG，确保 6.1+ 的 bazel fragment diff 能捕获 CONFIG_NOMOUNT。
+-         set -euo pipefail
+-         curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+-           https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
+-
+-         if [ ! -L "fs/nomount" ]; then
+-           echo "::error::NoMount 集成失败：fs/nomount 软链接缺失"
+-           exit 1
+-         fi
+-         echo "NoMount 集成完成，commit: $(git -C NoMount rev-parse HEAD)"
+-
+-         if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+-           echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+-           echo "已启用 CONFIG_NOMOUNT=y"
+-         else
+-           echo "CONFIG_NOMOUNT=y 已存在，跳过"
+-         fi
++         set -euo pipefail
++         echo "集成 NoMount (primary): maxsteeel/nomount dev"
++         curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
++           https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
++         [ -L "fs/nomount" ] || { echo "::error::fs/nomount 软链接缺失"; exit 1; }
++         grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG" || echo 'CONFIG_NOMOUNT=y' >> "$DEFCONFIG"
++         echo "primary NoMount 集成完成"
 
-          echo "=== NoMount 2选1 集成，选择: $NOMOUNT_MODE ==="
++     - name: 集成 NoMount-Suite hookless 引擎 (secondary)
++       if: inputs.nomount_choice == 'secondary'
++       working-directory: ${{ env.KERNEL_ROOT }}/common
++       run: |
++         set -euo pipefail
++         echo "集成 NoMount-Suite hookless 引擎 (secondary)"
++         echo "仅包含 Prism 引擎，不包含 ghost / pathhide cloaks"
++
++         # 拉取 hookless 引擎源码
++         HOOKLESS_DIR=/tmp/NoMount-Suite-hookless
++         rm -rf "$HOOKLESS_DIR"
++         git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git "$HOOKLESS_DIR"
++
++         # 建立 fs/nomount -> hookless/src 软链接（与 primary 路径一致）
++         ln -sfn "$HOOKLESS_DIR/hookless/src" fs/nomount
++         [ -L "fs/nomount" ] || { echo "::error::fs/nomount 软链接创建失败"; exit 1; }
++
++         # 注册 Kconfig / Makefile（幂等）
++         if ! grep -q '^source "fs/nomount/Kconfig"' fs/Kconfig; then
++           sed -i '/^endmenu$/i source "fs/nomount/Kconfig"' fs/Kconfig
++         fi
++         if ! grep -q '^obj-$(CONFIG_NOMOUNT) += nomount/$' fs/Makefile; then
++           echo 'obj-$(CONFIG_NOMOUNT) += nomount/' >> fs/Makefile
++         fi
++
++         # 启用 CONFIG_NOMOUNT
++         grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG" \
++           || echo 'CONFIG_NOMOUNT=y' >> "$DEFCONFIG"
++
++         echo "NoMount-Suite hookless 引擎集成完成"
++         echo "Prism engine: $(cat fs/nomount/nomount.h | head -5 | grep -o 'NOMOUNT.*' || echo 'ok')"
 
-          VARIANT=""
-
-          # 清理残留，保证幂等
-          rm -f fs/nomount fs/nomount.c fs/nomount.h
-          rm -rf "$WORKSPACE/NoMount-Suite"
-          sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
-          sed -i '/nomount/d' fs/Makefile 2>/dev/null 2>&1 || true
-
-          if [ "$NOMOUNT_MODE" = "primary" ]; then
-
-            echo "--- primary: maxsteeel/nomount (dev) ---"
-            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-              https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -s dev
-
-            if [ ! -e fs/nomount ]; then
-              echo "::error::primary 集成失败：fs/nomount 缺失"
-              exit 1
-            fi
-            VARIANT="maxsteeel/nomount (dev)"
-
-          elif [ "$NOMOUNT_MODE" = "secondary" ]; then
-
-            echo "--- secondary: Bouteillepleine/NoMount-Suite (hookless) ---"
-            git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git \
-              "$WORKSPACE/NoMount-Suite"
-
-            HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
-            PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
-            if [ ! -f "$PATCH" ]; then
-              echo "::error::未找到官方集成补丁: $PATCH"
-              ls -la "$HOOKLESS/"
-              exit 1
-            fi
-
-            if patch -p1 --forward < "$PATCH"; then
-              echo "[+] 集成补丁应用成功"
-            else
-              echo "::error::集成补丁应用失败，退出码 $?"
-              exit 1
-            fi
-
-            cp "$HOOKLESS/src/nomount.c" fs/nomount.c
-            cp "$HOOKLESS/src/nomount.h" fs/nomount.h
-
-            # 将 nomount.o 排除出 LTO，避免 GOT/PLT 重定位校验失败
-            printf '\nCFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
-
-            # 自检
-            test -f fs/nomount.c
-            test -f fs/nomount.h
-            grep -q 'NOMOUNT' fs/Kconfig
-            grep -q 'nomount' fs/Makefile
-
-            VARIANT="Bouteillepleine/NoMount-Suite (hookless)"
-
-          else
-            echo "::error::未知 nomount_choice: $NOMOUNT_MODE"
-            exit 1
-          fi
-
-          if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-            echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-            echo "已启用 CONFIG_NOMOUNT=y"
-          fi
-
-          echo "NOMOUNT_VARIANT=$VARIANT" >> "$GITHUB_ENV"
-          echo "NoMount 集成位置检查: $(ls -la fs/nomount* 2>/dev/null | head -n 5)"
-          echo "NoMount 集成完成: $VARIANT"
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
@@ -1635,21 +1624,7 @@ jobs:
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
               if [ -f "build/build.sh" ]; then
-                BUILD_LTO="thin"
-                case "${NOMOUNT_VARIANT:-}" in
-                  *"NoMount-Suite"*)
-                    BUILD_LTO="none"
-                    echo "NoMount-Suite 模式：已关闭 LTO（含 defconfig 层面）"
-                    # gki_defconfig 硬编码了 CONFIG_LTO_CLANG_THIN=y，仅改环境变量
-                    # 会被 Kconfig 覆盖，必须在这里摘除
-                    sed -i '/^CONFIG_LTO_CLANG_THIN=y$/d'  common/arch/arm64/configs/gki_defconfig
-                    sed -i '/^CONFIG_LTO_CLANG=y$/d'       common/arch/arm64/configs/gki_defconfig
-                    sed -i '/^CONFIG_LTO_CLANG_THIN$/d'    common/arch/arm64/configs/gki_defconfig
-                    sed -i '/^CONFIG_HAVE_LTO_CLANG=y$/d'  common/arch/arm64/configs/gki_defconfig
-                    echo "# CONFIG_LTO_CLANG is not set" >> common/arch/arm64/configs/gki_defconfig
-                    ;;
-                esac
-                LTO=$BUILD_LTO BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
+                LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
               else
                 # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
