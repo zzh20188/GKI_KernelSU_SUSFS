@@ -903,6 +903,7 @@ jobs:
 
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
+
       - name: 集成 NoMount 挂载元模块
         if: inputs.nomount_choice != 'none'
         working-directory: ${{ env.KERNEL_ROOT }}/common
@@ -924,87 +925,45 @@ jobs:
           fi
 
           if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
-            echo "=== 集成 NoMount-Suite hookless 引擎 ==="
+            echo "=== 集成 NoMount-Suite hookless 引擎 (Prism) ==="
             echo "注意：仅 Prism 引擎，不含 ghost/pathhide cloaks"
 
-            rm -rf /tmp/NoMount-Suite
-            git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git /tmp/NoMount-Suite
+            # 1. 拉取上游引擎源码
+            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+              https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/src/nomount.c \
+              -o fs/nomount.c
+            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+              https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/src/nomount.h \
+              -o fs/nomount.h
 
-            if [ ! -f /tmp/NoMount-Suite/hookless/src/nomount.c ] || [ ! -f /tmp/NoMount-Suite/hookless/src/nomount.h ]; then
-              echo "::error::hookless 引擎源码不完整"
+            if [ ! -s fs/nomount.c ] || [ ! -s fs/nomount.h ]; then
+              echo "::error::nomount.c / nomount.h 下载为空或失败"
               exit 1
             fi
+            echo "引擎源码: $(wc -l < fs/nomount.c) lines (nomount.c), $(wc -l < fs/nomount.h) lines (nomount.h)"
 
-            cp /tmp/NoMount-Suite/hookless/src/nomount.c fs/nomount.c
-            cp /tmp/NoMount-Suite/hookless/src/nomount.h fs/nomount.h
+            # 2. 拉取并应用上游官方集成补丁
+            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+              https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/patches/nomount_kernel_integration.patch \
+              -o /tmp/nomount-hookless.patch
 
-            printf '%s\n' \
-            'diff --git a/fs/Kconfig b/fs/Kconfig' \
-            '--- a/fs/Kconfig' \
-            '+++ b/fs/Kconfig' \
-            '@@ -5,5 +5,12 @@' \
-            ' menu "File systems"' \
-            ' ' \
-            '+config NOMOUNT' \
-            '+	bool "NoMount Path Redirection Subsystem"' \
-            '+	default n' \
-            '+	help' \
-            '+	  NoMount allows path redirection and virtual file injection' \
-            '+	  without mounting filesystems. Useful for systemless modifications.' \
-            '+' \
-            ' # Use unaligned word dcache accesses' \
-            ' config DCACHE_WORD_ACCESS' \
-            '        bool' \
-            'diff --git a/fs/Makefile b/fs/Makefile' \
-            '--- a/fs/Makefile' \
-            '+++ b/fs/Makefile' \
-            '@@ -56,6 +56,8 @@' \
-            ' obj-y				+= quota/' \
-            ' ' \
-            '+obj-$(CONFIG_NOMOUNT) += nomount.o' \
-            '+' \
-            ' obj-$(CONFIG_PROC_FS)		+= proc/' \
-            ' obj-$(CONFIG_KERNFS)		+= kernfs/' \
-            ' obj-$(CONFIG_SYSFS)		+= sysfs/' \
-            ' obj-$(CONFIG_CONFIGFS_FS)	+= configfs/' \
-            'diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c' \
-            '--- a/fs/proc/task_mmu.c' \
-            '+++ b/fs/proc/task_mmu.c' \
-            '@@ -400,4 +400,9 @@' \
-            ' 		dev = inode->i_sb->s_dev;' \
-            ' 		ino = inode->i_ino;' \
-            '+#ifdef CONFIG_NOMOUNT' \
-            '+		{ extern void vfs_map_meta_override(const struct inode *, dev_t *, unsigned long *);' \
-            '+		  vfs_map_meta_override(inode, &dev, &ino); }' \
-            '+#endif' \
-            ' 		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;' \
-            ' 	}' \
-            'diff --git a/fs/xattr.c b/fs/xattr.c' \
-            '--- a/fs/xattr.c' \
-            '+++ b/fs/xattr.c' \
-            '@@ -439,6 +439,12 @@' \
-            ' 	if (error)' \
-            ' 		return error;' \
-            ' ' \
-            '+#ifdef CONFIG_NOMOUNT' \
-            '+	{ extern bool nm_inode_hidden_from_caller(const struct inode *);' \
-            '+	  if (nm_inode_hidden_from_caller(inode))' \
-            '+		  return -ENOENT; }' \
-            '+#endif' \
-            '+' \
-            ' 	if (!strncmp(name, XATTR_SECURITY_PREFIX,' \
-            ' 				XATTR_SECURITY_PREFIX_LEN)) {' \
-            > /tmp/nomount-hookless.patch
+            echo "补丁内容预览（前20行）:"
+            head -20 /tmp/nomount-hookless.patch
 
-            patch -p1 --fuzz=3 < /tmp/nomount-hookless.patch
+            patch -p1 --fuzz=3 --no-backup-if-mismatch < /tmp/nomount-hookless.patch
 
-            if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+            # 3. defconfig 幂等追加
+            if ! grep -q '^CONFIG_NOMOUNT=y$' "$DEFCONFIG"; then
               echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+              echo "已追加 CONFIG_NOMOUNT=y 到 defconfig"
+            else
+              echo "CONFIG_NOMOUNT=y 已存在，跳过"
             fi
 
             echo "NoMount-Suite hookless 集成完成"
-            echo "引擎: fs/nomount.c + fs/nomount.h"
-            echo "补丁: fs/Kconfig fs/Makefile fs/proc/task_mmu.c fs/xattr.c"
+            echo "  → fs/nomount.c + fs/nomount.h (Prism 引擎)"
+            echo "  → fs/Kconfig fs/Makefile fs/proc/task_mmu.c fs/xattr.c (4 hunk patch)"
+            echo "  → cloaks (ghost/pathhide) 未包含，nomount check 将报告 unavailable"
           fi
 
       - name: 集成 Droidspaces 支持
