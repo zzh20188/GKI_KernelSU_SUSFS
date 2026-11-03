@@ -924,10 +924,11 @@ jobs:
 
           if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
             echo "=== patch 方式集成 NoMount-Suite (obj-m) ==="
-            "$GITHUB_WORKSPACE/scripts/build_nomount.sh" \
+            bash "$GITHUB_WORKSPACE/scripts/build_nomount.sh" \
               "${{ env.KERNEL_ROOT }}/common" \
               "$DEFCONFIG"
           fi
+
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
