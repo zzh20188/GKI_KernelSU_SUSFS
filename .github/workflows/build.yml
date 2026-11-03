@@ -936,34 +936,22 @@ jobs:
               rm -rf "$HOOKLESS_DIR"
               git clone --depth 1 https://github.com/Bouteillepleine/NoMount-Suite.git "$HOOKLESS_DIR"
 
-              # 确认引擎源码存在
               if [ ! -f "$HOOKLESS_DIR/hookless/src/nomount.c" ] || [ ! -f "$HOOKLESS_DIR/hookless/src/nomount.h" ]; then
                 echo "::error::NoMount-Suite hookless 引擎源码不完整"
                 exit 1
               fi
 
-              # 直接把引擎文件放到 fs/ 下（不建子目录）
               cp "$HOOKLESS_DIR/hookless/src/nomount.c" fs/nomount.c
               cp "$HOOKLESS_DIR/hookless/src/nomount.h" fs/nomount.h
 
-              # fs/Makefile: 加 nomount.o
               if ! grep -q 'nomount\.o' fs/Makefile; then
                 echo 'obj-$(CONFIG_NOMOUNT) += nomount.o' >> fs/Makefile
               fi
 
-              # fs/Kconfig: 加 NOMOUNT 条目（幂等）
               if ! grep -q 'CONFIG_NOMOUNT' fs/Kconfig; then
-                cat >> fs/Kconfig <<'EOF'
-config NOMOUNT
-	bool "NoMount Prism Engine"
-	default n
-	help
-	  NoMount hookless VFS redirect engine.
-EOF
+                printf '\nconfig NOMOUNT\n\tbool "NoMount Prism Engine"\n\tdefault n\n\thelp\n\t  NoMount hookless VFS redirect engine.\n' >> fs/Kconfig
               fi
 
-
-              # defconfig
               if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
                 echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
               fi
@@ -971,12 +959,6 @@ EOF
               echo "NoMount-Suite hookless 引擎集成完成"
               echo "引擎文件: fs/nomount.c ($(wc -l < fs/nomount.c) lines)"
               ;;
-
-            *)
-              echo "::error::未知的 nomount_choice: ${{ inputs.nomount_choice}}"
-              exit 1
-              ;;
-          esac
 
 
       - name: 集成 Droidspaces 支持
