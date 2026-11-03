@@ -961,8 +961,9 @@ jobs:
                 echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
               fi
 
+              NOMOUNT_LINES="$(wc -l < fs/nomount.c)"
               echo "NoMount-Suite hookless 引擎集成完成"
-              echo "引擎文件: fs/nomount.c ($(wc -l < fs/nomount.c) lines)"
+              echo "引擎文件: fs/nomount.c (${NOMOUNT_LINES} lines)"
               ;;
 
       - name: 集成 Droidspaces 支持
