@@ -63,10 +63,8 @@ on:
 
       # ==================== NoMount 2选1 ====================
       # none      : 不启用 NoMount
-      # primary   : maxsteeel/nomount (dev 分支, 完整实现)
-      # secondary : NoMount-Suite hookless 引擎 (main 分支)
-      #             仅包含 Prism 引擎 (路径重定向 / maps dev-ino 重写 / xattr guard)
-      #             不包含 ghost / pathhide cloaks
+      # primary   : 原版 maxsteeel/nomount (dev 分支)
+      # secondary : Bouteillepleine/NoMount-Suite (main 分支)
       nomount_choice:
         required: false
         type: string
@@ -925,45 +923,87 @@ jobs:
           fi
 
           if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
-            echo "=== 集成 NoMount-Suite hookless 引擎 (Prism) ==="
-            echo "注意：仅 Prism 引擎，不含 ghost/pathhide cloaks"
+            echo "=== 构建 NoMount-Suite hookless 引擎 (LKM: nomount.ko) ==="
+            echo "注意：编为可加载模块，不 patch 进 vmlinux，不触发 GOT/PLT 链接错误"
 
-            # 1. 拉取上游引擎源码
+            # 1. 拉取引擎源码到独立目录（不进 fs/）
+            mkdir -p /tmp/nomount-lkm
             curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
               https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/src/nomount.c \
-              -o fs/nomount.c
+              -o /tmp/nomount-lkm/nomount.c
             curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
               https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/src/nomount.h \
-              -o fs/nomount.h
+              -o /tmp/nomount-lkm/nomount.h
 
-            if [ ! -s fs/nomount.c ] || [ ! -s fs/nomount.h ]; then
+            if [ ! -s /tmp/nomount-lkm/nomount.c ] || [ ! -s /tmp/nomount-lkm/nomount.h ]; then
               echo "::error::nomount.c / nomount.h 下载为空或失败"
               exit 1
             fi
-            echo "引擎源码: $(wc -l < fs/nomount.c) lines (nomount.c), $(wc -l < fs/nomount.h) lines (nomount.h)"
+            echo "引擎源码: $(wc -l < /tmp/nomount-lkm/nomount.c) lines (nomount.c)"
 
-            # 2. 拉取并应用上游官方集成补丁
-            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-              https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/patches/nomount_kernel_integration.patch \
-              -o /tmp/nomount-hookless.patch
+            # 2. 写 Kbuild / Makefile 用于编 ko
+            cat > /tmp/nomount-lkm/Makefile << 'KBUILD_EOF'
+# NoMount-Suite hookless LKM Kbuild
+obj-m += nomount.o
+nomount-objs :=
+ccflags-y := -I$(src) -DCONFIG_NOMOUNT -Wno-unused-parameter
+KBUILD_EOF
 
-            echo "补丁内容预览（前20行）:"
-            head -20 /tmp/nomount-hookless.patch || true
+            # 3. 写 modpost 兼容头（让 nomount.c 能当 ko 编）
+            #    NoMount hookless 用 kallsyms 解析符号，不需要 VFS 外部声明
+            cat > /tmp/nomount-lkm/compat.h << 'COMPAT_EOF'
+#ifndef NOMOUNT_KO_COMPAT_H
+#define NOMOUNT_KO_COMPAT_H
 
-            patch -p1 --fuzz=3 --no-backup-if-mismatch < /tmp/nomount-hookless.patch
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/kallsyms.h>
+#include <linux/fs.h>
+#include <linux/dcache.h>
+#include <linux/namei.h>
+#include <linux/uaccess.h>
 
-            # 4. defconfig 幂等追加
-            if ! grep -q '^CONFIG_NOMOUNT=y$' "$DEFCONFIG"; then
-              echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-              echo "已追加 CONFIG_NOMOUNT=y 到 defconfig"
-            else
-              echo "CONFIG_NOMOUNT=y 已存在，跳过"
+/* 通过 kallsyms 解析内核符号，避免编译期外部引用 → 不产生 GOT/PLT */
+#define NOMOUNT_LOOKUP(fn, type) \
+  static type (*fn##_sym)(void); \
+  do { fn##_sym = (type (*)(void))kallsyms_lookup_name(#fn); } while(0)
+
+#endif
+COMPAT_EOF
+
+            # 4. 编 ko（用内核的 Kbuild 系统，跟内核树联动）
+            echo "开始编译 nomount.ko ..."
+            make -C ${{ env.KERNEL_ROOT }}/common \
+              M=/tmp/nomount-lkm \
+              ARCH=arm64 \
+              CROSS_COMPILE=aarch64-linux-gnu- \
+              CC=clang \
+              LLVM=1 \
+              LLVM_IAS=1 \
+              modules
+
+            if [ ! -s /tmp/nomount-lkm/nomount.ko ]; then
+              echo "::error::nomount.ko 编译失败，产物不存在"
+              exit 1
             fi
+            echo "nomount.ko 编译成功: $(ls -lh /tmp/nomount-lkm/nomount.ko | awk '{print $5}')"
 
-            echo "NoMount-Suite hookless 集成完成"
-            echo "  → fs/nomount.c + fs/nomount.h (Prism 引擎)"
-            echo "  → fs/Kconfig fs/Makefile fs/proc/task_mmu.c fs/xattr.c (4 hunk patch)"
-            echo "  → fs/Makefile: CFLAGS_nomount.o += -fno-lto"
+            # 5. 把 ko 拷贝到产物目录，供后续打包步骤使用
+            mkdir -p "${{ env.KERNEL_ROOT }}/out/modules"
+            cp /tmp/nomount-lkm/nomount.ko "${{ env.KERNEL_ROOT }}/out/modules/nomount.ko"
+            echo "nomount.ko 已拷贝到 out/modules/"
+
+            # 6. defconfig 里确保模块支持打开
+            for opt in CONFIG_MODULES=y CONFIG_MODULE_UNLOAD=y CONFIG_KALLSYMS=y CONFIG_KALLSYMS_ALL=y; do
+              if ! grep -q "^${opt%*=*}" "$DEFCONFIG"; then
+                echo "$opt" >> "$DEFCONFIG"
+              fi
+            done
+
+            echo "NoMount-Suite hookless LKM 构建完成"
+            echo "  → nomount.ko (独立模块，不进 vmlinux)"
+            echo "  → 加载方式: insmod nomount.ko (init/magisk/kernelsu 阶段)"
             echo "  → cloaks (ghost/pathhide) 未包含，nomount check 将报告 unavailable"
           fi
 
@@ -1619,7 +1659,7 @@ jobs:
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
               if [ -f "build/build.sh" ]; then
-                LTO=none BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
+                LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
               else
                 # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
