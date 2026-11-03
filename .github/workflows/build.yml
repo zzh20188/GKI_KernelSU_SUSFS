@@ -1616,6 +1616,29 @@ jobs:
             } >> "$LOG_FILE"
             exit "$BUILD_STATUS"
 
+      - name: 编译 nomount.ko
+        if: inputs.nomount_choice == 'secondary'
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        run: |
+          set -euo pipefail
+          echo "=== 编译 nomount.ko ==="
+
+          # build.sh 已经跑完，auto.conf 已存在，直接编
+          make M=fs/nomount \
+            ARCH=arm64 \
+            CC="/usr/bin/ccache clang" \
+            LLVM=1 LLVM_IAS=1 \
+            modules -j"$(nproc)"
+
+          if [ ! -s fs/nomount/nomount.ko ]; then
+            echo "::error::nomount.ko 未生成"
+            exit 1
+          fi
+
+          mkdir -p "${{ env.KERNEL_ROOT }}/out/modules"
+          cp fs/nomount/nomount.ko "${{ env.KERNEL_ROOT }}/out/modules/"
+          echo "nomount.ko 编译成功: $(ls -lh fs/nomount/nomount.ko | awk '{print $5}')"
+
       - name: 整理编译失败日志
         if: ${{ always() && steps.compile_kernel.outcome == 'failure' }}
         env:
