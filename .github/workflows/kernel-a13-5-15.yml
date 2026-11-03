@@ -38,16 +38,16 @@ on:
           - "disabled (关闭)"
           - "enabled (开启)"
           - "patched (开启并修补，尚不支持)"
-      droidspaces:
-        description: "Droidspaces 容器支持"
-        required: false
-        type: choice
-        options:
-          - "off"
-          - "678"
-          - "123"
-          - "345"
-        default: "off"
+      # droidspaces:
+        # description: "Droidspaces 容器支持"
+        # required: false
+        # type: choice
+        # options:
+          # - "off"
+          # - "678"
+          # - "123"
+          # - "345"
+        # default: "off"
       artifact_upload_mode:
         description: "构建产物上传模式"
         required: true
@@ -101,16 +101,16 @@ on:
         required: false
         type: boolean
         default: true
-      cve_2026_43499_patch:
-        description: "应用 CVE-2026-43499 rtmutex 修复链"
-        required: false
-        type: boolean
-        default: false
-      droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
-        required: false
-        type: boolean
-        default: false
+      # cve_2026_43499_patch:
+        # description: "应用 CVE-2026-43499 rtmutex 修复链"
+        # required: false
+        # type: boolean
+        # default: false
+      # droidspaces_ntsync:
+        # description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+        # required: false
+        # type: boolean
+        # default: false
 
   workflow_call:
     inputs:
