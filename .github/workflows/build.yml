@@ -952,11 +952,12 @@ jobs:
 
             patch -p1 --fuzz=3 --no-backup-if-mismatch < /tmp/nomount-hookless.patch
 
-            # 3. 单文件豁免 LTO —— 解法三核心
-            # 防止 ThinLTO 对 builtin 的 Prism 引擎产生非法 GOT/PLT 引用导致 ld.lld rejected
+            # 3. 单文件豁免 LTO + CFI
+            # -fsanitize=cfi 强制依赖 -flto，关掉 LTO 就必须同时关 CFI
+            # 否则 Clang 14 在编译阶段直接拒绝: "only allowed with '-flto'"
             if ! grep -q 'CFLAGS_nomount.o' fs/Makefile; then
-              echo 'CFLAGS_nomount.o += -fno-lto' >> fs/Makefile
-              echo "已为 nomount.o 添加 -fno-lto 豁免"
+              echo 'CFLAGS_nomount.o += -fno-lto -fno-sanitize=cfi' >> fs/Makefile
+              echo "已为 nomount.o 添加 -fno-lto -fno-sanitize=cfi 豁免"
             else
               echo "nomount.o 已有自定义 CFLAGS，跳过追加"
             fi
