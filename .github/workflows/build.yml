@@ -924,9 +924,9 @@ jobs:
 
           if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
             echo "=== 调用独立脚本构建 NoMount-Suite hookless LKM ==="
-            "$GITHUB_WORKSPACE/scripts/build_nomount.sh" \
-              "${{ env.KERNEL_ROOT }}/common" \
-              "$DEFCONFIG"
+            bash "$GITHUB_WORKSPACE/scripts/build_nomount.sh" \
+               "${{ env.KERNEL_ROOT }}/common" \
+               "$DEFCONFIG"
           fi
 
       - name: 集成 Droidspaces 支持
