@@ -1623,10 +1623,9 @@ jobs:
             set -euo pipefail
             echo "=== 编译 nomount.ko ==="
         
-            # build.sh 的输出目录（跟编译内核 step 里的一致）
             KERNEL_OUT="${{ env.KERNEL_ROOT }}/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}"
         
-            if [ ! -f "${KERNEL_OUT}/include/config/auto.conf ]; then
+            if [ ! -f "${KERNEL_OUT}/include/config/auto.conf" ]; then
               echo "::error::auto.conf 不在预期位置: ${KERNEL_OUT}/include/config/auto.conf"
               echo "KERNEL_OUT 内容:"
               ls "${KERNEL_OUT}/include/config/" 2>/dev/null || echo "目录不存在"
