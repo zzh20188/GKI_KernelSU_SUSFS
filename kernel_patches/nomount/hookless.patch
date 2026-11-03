@@ -1,0 +1,68 @@
+diff --git a/fs/Kconfig b/fs/Kconfig
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -120,4 +120,14 @@ source "fs/exfat/Kconfig"
+ source "fs/autofs/Kconfig"
+ source "fs/binderfs/Kconfig"
+ 
++config NOMOUNT
++	tristate "NoMount Prism engine"
++	help
++	  NoMount-Suite hookless Prism engine for mount namespace
++	  concealment. Provides vfs_map_meta_override() and
++	  nm_inode_hidden_from_caller() hooks without runtime patching.
++
++	  If unsure, say M (module) or N.
++
+ endmenu
+diff --git a/fs/Makefile b/fs/Makefile
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -140,3 +140,7 @@ obj-$(CONFIG_EROFS_FS)		+= erofs/
+ obj-$(CONFIG_VBOXSF_FS)	+= vboxsf/
+ obj-$(CONFIG_ZONEFS_FS)	+= zonefs/
+ obj-$(CONFIG_BINDERFS)		+= binderfs/
++
++# NoMount-Suite hookless Prism engine
++obj-$(CONFIG_NOMOUNT)		+= nomount.o
++CFLAGS_nomount.o		+= -fno-lto
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -400,4 +400,9 @@ static int show_smaps(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
++#if IS_ENABLED(CONFIG_NOMOUNT)
++extern void vfs_map_meta_override(struct vm_area_struct *vma,
++				  struct seq_file *m);
++#endif
++
+ static int show_pid_smaps(struct seq_file *m, void *v)
+ {
+@@ -410,4 +415,9 @@ static int show_pid_smaps(struct seq_file *m, void *v)
+ 	if (!vma)
+ 		return 0;
+ 
++#if IS_ENABLED(CONFIG_NOMOUNT)
++	if (vma->vm_file)
++		vfs_map_meta_override(vma, m);
++#endif
++
+ 	return 0;
+ }
+diff --git a/fs/xattr.c b/fs/xattr.c
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -500,4 +500,10 @@ int vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t siz
+ 	if (error)
+ 		return error;
+ 
++#if IS_ENABLED(CONFIG_NOMOUNT)
++	if (nm_inode_hidden_from_caller(dentry->d_inode)) {
++		return -ENODATA;
++	}
++#endif
++
+ 	return __vfs_getxattr(dentry, dentry->d_inode, name, value, size);
+ }
