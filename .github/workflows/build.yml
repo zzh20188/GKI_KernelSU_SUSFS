@@ -923,88 +923,10 @@ jobs:
           fi
 
           if [ "${{ inputs.nomount_choice }}" = "secondary" ]; then
-            echo "=== 构建 NoMount-Suite hookless 引擎 (LKM: nomount.ko) ==="
-            echo "注意：编为可加载模块，不 patch 进 vmlinux，不触发 GOT/PLT 链接错误"
-
-            # 1. 拉取引擎源码到独立目录（不进 fs/）
-            mkdir -p /tmp/nomount-lkm
-            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-              https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/src/nomount.c \
-              -o /tmp/nomount-lkm/nomount.c
-            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-              https://raw.githubusercontent.com/Bouteillepleine/NoMount-Suite/main/hookless/src/nomount.h \
-              -o /tmp/nomount-lkm/nomount.h
-
-            if [ ! -s /tmp/nomount-lkm/nomount.c ] || [ ! -s /tmp/nomount-lkm/nomount.h ]; then
-              echo "::error::nomount.c / nomount.h 下载为空或失败"
-              exit 1
-            fi
-            echo "引擎源码: $(wc -l < /tmp/nomount-lkm/nomount.c) lines (nomount.c)"
-
-            # 2. 写 Kbuild / Makefile 用于编 ko
-            cat > /tmp/nomount-lkm/Makefile << 'KBUILD_EOF'
-# NoMount-Suite hookless LKM Kbuild
-obj-m += nomount.o
-nomount-objs :=
-ccflags-y := -I$(src) -DCONFIG_NOMOUNT -Wno-unused-parameter
-KBUILD_EOF
-
-            # 3. 写 modpost 兼容头（让 nomount.c 能当 ko 编）
-            #    NoMount hookless 用 kallsyms 解析符号，不需要 VFS 外部声明
-            cat > /tmp/nomount-lkm/compat.h << 'COMPAT_EOF'
-#ifndef NOMOUNT_KO_COMPAT_H
-#define NOMOUNT_KO_COMPAT_H
-
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/kallsyms.h>
-#include <linux/fs.h>
-#include <linux/dcache.h>
-#include <linux/namei.h>
-#include <linux/uaccess.h>
-
-/* 通过 kallsyms 解析内核符号，避免编译期外部引用 → 不产生 GOT/PLT */
-#define NOMOUNT_LOOKUP(fn, type) \
-  static type (*fn##_sym)(void); \
-  do { fn##_sym = (type (*)(void))kallsyms_lookup_name(#fn); } while(0)
-
-#endif
-COMPAT_EOF
-
-            # 4. 编 ko（用内核的 Kbuild 系统，跟内核树联动）
-            echo "开始编译 nomount.ko ..."
-            make -C ${{ env.KERNEL_ROOT }}/common \
-              M=/tmp/nomount-lkm \
-              ARCH=arm64 \
-              CROSS_COMPILE=aarch64-linux-gnu- \
-              CC=clang \
-              LLVM=1 \
-              LLVM_IAS=1 \
-              modules
-
-            if [ ! -s /tmp/nomount-lkm/nomount.ko ]; then
-              echo "::error::nomount.ko 编译失败，产物不存在"
-              exit 1
-            fi
-            echo "nomount.ko 编译成功: $(ls -lh /tmp/nomount-lkm/nomount.ko | awk '{print $5}')"
-
-            # 5. 把 ko 拷贝到产物目录，供后续打包步骤使用
-            mkdir -p "${{ env.KERNEL_ROOT }}/out/modules"
-            cp /tmp/nomount-lkm/nomount.ko "${{ env.KERNEL_ROOT }}/out/modules/nomount.ko"
-            echo "nomount.ko 已拷贝到 out/modules/"
-
-            # 6. defconfig 里确保模块支持打开
-            for opt in CONFIG_MODULES=y CONFIG_MODULE_UNLOAD=y CONFIG_KALLSYMS=y CONFIG_KALLSYMS_ALL=y; do
-              if ! grep -q "^${opt%*=*}" "$DEFCONFIG"; then
-                echo "$opt" >> "$DEFCONFIG"
-              fi
-            done
-
-            echo "NoMount-Suite hookless LKM 构建完成"
-            echo "  → nomount.ko (独立模块，不进 vmlinux)"
-            echo "  → 加载方式: insmod nomount.ko (init/magisk/kernelsu 阶段)"
-            echo "  → cloaks (ghost/pathhide) 未包含，nomount check 将报告 unavailable"
+            echo "=== 调用独立脚本构建 NoMount-Suite hookless LKM ==="
+            "$GITHUB_WORKSPACE/scripts/build_nomount.sh" \
+              "${{ env.KERNEL_ROOT }}/common" \
+              "$DEFCONFIG"
           fi
 
       - name: 集成 Droidspaces 支持
