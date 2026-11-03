@@ -953,8 +953,7 @@ jobs:
 
               # fs/Kconfig: 加 NOMOUNT 条目（幂等）
               if ! grep -q 'CONFIG_NOMOUNT' fs/Kconfig; then
-                cat >> fs/Kconfig << 'EOF'
-
+                cat >> fs/Kconfig <<'EOF'
 config NOMOUNT
 	bool "NoMount Prism Engine"
 	default n
@@ -962,6 +961,7 @@ config NOMOUNT
 	  NoMount hookless VFS redirect engine.
 EOF
               fi
+
 
               # defconfig
               if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
