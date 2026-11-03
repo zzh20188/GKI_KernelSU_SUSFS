@@ -61,14 +61,12 @@ on:
         type: boolean
         default: false
 
-      # =========== NoMount 2选1 ===
+     # ==================== NoMount 2选1 ====================
       # none      : 不启用 NoMount
--     # primary   : 原版 maxsteeel/nomount (dev 分支)
--     # secondary : Bouteillepleine/NoMount-Suite (main 分支)
-+     # primary   : maxsteeel/nomount (dev 分支, 完整实现)
-+     # secondary : NoMount-Suite hookless 引擎 (main 分支)
-+     #             仅包含 Prism 引擎 (路径重定向 / maps dev-ino 重写 / xattr guard)
-+     #             不包含 ghost / pathhide cloaks
+      # primary   : maxsteeel/nomount (dev 分支, 完整实现)
+      # secondary : NoMount-Suite hookless 引擎 (main 分支)
+      #             仅包含 Prism 引擎 (路径重定向 / maps dev-ino 重写 / xattr guard)
+      #             不包含 ghost / pathhide cloaks
       nomount_choice:
         required: false
         type: string
