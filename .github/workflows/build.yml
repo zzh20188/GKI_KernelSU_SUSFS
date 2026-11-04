@@ -902,72 +902,75 @@ jobs:
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
-- name: 集成 NoMount 挂载元模块
-  if: inputs.nomount_choice != 'none'
-  shell: bash
-  working-directory: ${{ env.KERNEL_ROOT }}/common
-  env:
-    NOMOUNT_CHOICE: ${{ inputs.nomount_choice }}
-    WORKSPACE: ${{ github.workspace }}
-    DEFCONFIG: ${{ env.DEFCONFIG }}
-  run: |
-    set -euo pipefail
+      - name: 备份基准 defconfig
+        run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
-    case "$NOMOUNT_CHOICE" in
-      primary)
-        echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
-        curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-          https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
-          | sh -s dev
-        if [ ! -L "fs/nomount" ] && [ ! -d "fs/nomount" ]; then
-          echo "::error::NoMount 集成失败：fs/nomount 缺失"
-          exit 1
-        fi
-        if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-          echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-        fi
-        echo "NOMOUNT_VARIANT=maxsteeel/nomount (primary)" >> "$GITHUB_ENV"
-        echo "NOMOUNT_VERSION=dev" >> "$GITHUB_ENV"
-        ;;
+      - name: 集成 NoMount 挂载元模块
+        if: inputs.nomount_choice != 'none'
+        shell: bash
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        env:
+          NOMOUNT_CHOICE: ${{ inputs.nomount_choice }}
+          WORKSPACE: ${{ github.workspace }}
+          DEFCONFIG: ${{ env.DEFCONFIG }}
+        run: |
+          set -euo pipefail
 
-      secondary)
-        echo "=== NoMount secondary: Bouteillepleine/NoMount-Suite (hookless) ==="
-        rm -f fs/nomount fs/nomount.c fs/nomount.h
-        rm -rf "$WORKSPACE/NoMount-Suite"
-        sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
-        sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
+          case "$NOMOUNT_CHOICE" in
+            primary)
+              echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
+              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
+                | sh -s dev
+              if [ ! -L "fs/nomount" ] && [ ! -d "fs/nomount" ]; then
+                echo "::error::NoMount 集成失败：fs/nomount 缺失"
+                exit 1
+              fi
+              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+              fi
+              echo "NOMOUNT_VARIANT=maxsteeel/nomount (primary)" >> "$GITHUB_ENV"
+              echo "NOMOUNT_VERSION=dev" >> "$GITHUB_ENV"
+              ;;
 
-        git clone --depth 1 --branch main \
-          https://github.com/Bouteillepleine/NoMount-Suite.git \
-          "$WORKSPACE/NoMount-Suite"
+            secondary)
+              echo "=== NoMount secondary: Bouteillepleine/NoMount-Suite (hookless) ==="
+              rm -f fs/nomount fs/nomount.c fs/nomount.h
+              rm -rf "$WORKSPACE/NoMount-Suite"
+              sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
+              sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
 
-        HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
-        PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
-        [ -f "$PATCH" ] || { echo "::error::未找到 $PATCH"; exit 1; }
+              git clone --depth 1 --branch main \
+                https://github.com/Bouteillepleine/NoMount-Suite.git \
+                "$WORKSPACE/NoMount-Suite"
 
-        patch -p1 --forward < "$PATCH"
-        cp "$HOOKLESS/src/nomount.c" fs/nomount.c
-        cp "$HOOKLESS/src/nomount.h" fs/nomount.h
-        printf '\nCFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
+              HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
+              PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
+              [ -f "$PATCH" ] || { echo "::error::未找到 $PATCH"; exit 1; }
 
-        test -f fs/nomount.c && test -f fs/nomount.h
-        grep -q NOMOUNT fs/Kconfig
-        grep -q nomount fs/Makefile
+              patch -p1 --forward < "$PATCH"
+              cp "$HOOKLESS/src/nomount.c" fs/nomount.c
+              cp "$HOOKLESS/src/nomount.h" fs/nomount.h
+              printf '\nCFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
 
-        if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-          echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-        fi
+              test -f fs/nomount.c && test -f fs/nomount.h
+              grep -q NOMOUNT fs/Kconfig
+              grep -q nomount fs/Makefile
 
-        NM_VER="$(sed -n 's/^#define[[:space:]]\+NM_MODULE_VERSION[[:space:]]\+"\([^"]*\)".*/\1/p' fs/nomount.h | head -n1)"
-        echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (hookless)" >> "$GITHUB_ENV"
-        echo "NOMOUNT_VERSION=${NM_VER:-unknown}" >> "$GITHUB_ENV"
-        ;;
+              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+              fi
 
-      *)
-        echo "::error::Unexpected NOMOUNT_CHOICE=$NOMOUNT_CHOICE"
-        exit 1
-        ;;
-    esac
+              NM_VER="$(sed -n 's/^#define[[:space:]]\+NM_MODULE_VERSION[[:space:]]\+"\([^"]*\)".*/\1/p' fs/nomount.h | head -n1)"
+              echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (hookless)" >> "$GITHUB_ENV"
+              echo "NOMOUNT_VERSION=${NM_VER:-unknown}" >> "$GITHUB_ENV"
+              ;;
+
+            *)
+              echo "::error::Unexpected NOMOUNT_CHOICE=$NOMOUNT_CHOICE"
+              exit 1
+              ;;
+          esac
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
