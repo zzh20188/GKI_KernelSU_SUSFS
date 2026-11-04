@@ -902,113 +902,170 @@ jobs:
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
-      - name: 集成 NoMount 挂载元模块
-          if: inputs.nomount_choice != 'none'
-          shell: bash
-          working-directory: ${{ env.KERNEL_ROOT }}/common
-          env:
-            NOMOUNT_CHOICE: ${{ inputs.nomount_choice }}
-            NOMOUNT_REF: ${{ inputs.nomount_ref }}
-            WORKSPACE: ${{ github.workspace }}
-            DEFCONFIG: ${{ env.DEFCONFIG }}
-          run: |
-            set -euo pipefail
-        
-            # =======================
-            # primary: maxsteeel/nomount
-            # =======================
-            if [ "$NOMOUNT_CHOICE" = "primary" ]; then
-              echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
-        
-              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
-                | sh -s dev
-        
-              if [ ! -L "fs/nomount" ] && [ ! -d "fs/nomount" ]; then
-                echo "::error::NoMount 集成失败：fs/nomount 缺失"
-                exit 1
-              fi
-        
-              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-              fi
-        
-              echo "NOMOUNT_VARIANT=maxsteeel/nomount (primary)" >> "$GITHUB_ENV"
-              echo "NOMOUNT_VERSION=dev" >> "$GITHUB_ENV"
-        
-              echo "NoMount primary 集成完成"
-              ls -ld fs/nomount || true
-            fi
-        
-            # =======================
-            # secondary: NoMount-Suite hookless
-            # =======================
-            if [ "$NOMOUNT_CHOICE" = "secondary" ]; then
-              echo "=== NoMount secondary 集成: Bouteillepleine/NoMount-Suite (hookless) ==="
-              echo "Ref: ${NOMOUNT_REF:-main}"
-        
-              # ---------- 清理残留（幂等） ----------
-              rm -f fs/nomount fs/nomount.c fs/nomount.h
-              rm -rf "$WORKSPACE/NoMount-Suite"
-              sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
-              sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
-        
-              # ---------- 拉取 NoMount-Suite ----------
-              git clone --depth 1 \
-                --branch "${NOMOUNT_REF:-main}" \
-                https://github.com/Bouteillepleine/NoMount-Suite.git \
-                "$WORKSPACE/NoMount-Suite"
-        
-              HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
-              PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
-        
-              if [ ! -f "$PATCH" ]; then
-                echo "::error::未找到官方集成补丁: $PATCH"
-                ls -la "$HOOKLESS/"
-                exit 1
-              fi
-        
-              # ---------- 应用官方集成补丁 ----------
-              if patch -p1 --forward < "$PATCH"; then
-                echo "[+] NoMount 集成补丁应用成功"
-              else
-                echo "::error::NoMount 集成补丁应用失败"
-                exit 1
-              fi
-        
-              # ---------- 复制 hookless 源码 ----------
-              cp "$HOOKLESS/src/nomount.c" fs/nomount.c
-              cp "$HOOKLESS/src/nomount.h" fs/nomount.h
-        
-              # ---------- 规避 LTO GOT/PLT 问题 ----------
-              printf '\nCFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
-        
-              # ---------- 自检 ----------
-              test -f fs/nomount.c
-              test -f fs/nomount.h
-              grep -q 'NOMOUNT' fs/Kconfig
-              grep -q 'nomount' fs/Makefile
-        
-              # ---------- 启用 CONFIG_NOMOUNT ----------
-              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-                echo "[+] 已启用 CONFIG_NOMOUNT=y"
-              fi
-        
-              # ---------- 输出信息 ----------
-              NOMOUNT_VERSION="$(sed -n 's/^#define[[:space:]]\+NM_MODULE_VERSION[[:space:]]\+"\([^"]*\)".*/\1/p' fs/nomount.h | head -n1)"
-        
-              echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (hookless)" >> "$GITHUB_ENV"
-              echo "NOMOUNT_VERSION=${NOMOUNT_VERSION:-unknown}" >> "$GITHUB_ENV"
-        
-              echo
-              echo "NoMount 集成完成"
-              echo "  variant : Bouteillepleine/NoMount-Suite (hookless)"
-              echo "  version : ${NOMOUNT_VERSION:-unknown}"
-              echo "  ref     : ${NOMOUNT_REF:-main}"
-              ls -la fs/nomount*
-            fi
+- name: 集成 NoMount 挂载元模块
+  if: inputs.nomount_choice != 'none'
+  shell: bash
+  working-directory: ${{ env.KERNEL_ROOT }}/common
+  env:
+    NOMOUNT_CHOICE: ${{ inputs.nomount_choice }}
+    NOMOUNT_REF: ${{ inputs.nomount_ref }}
+    WORKSPACE: ${{ github.workspace }}
+    DEFCONFIG: ${{ env.DEFCONFIG }}
+  run: |
 
+    set -euo pipefail
+
+    # =======================
+
+    # primary: maxsteeel/nomount
+
+    # =======================
+
+    if [ "$NOMOUNT_CHOICE" = "primary" ]; then
+
+      echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
+
+      curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+
+        https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
+
+        | sh -s dev
+
+      if [ ! -L "fs/nomount" ] && [ ! -d "fs/nomount" ]; then
+
+        echo "::error::NoMount 集成失败：fs/nomount 缺失"
+
+        exit 1
+
+      fi
+
+      if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+
+        echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+
+      fi
+
+      echo "NOMOUNT_VARIANT=maxsteeel/nomount (primary)" >> "$GITHUB_ENV"
+
+      echo "NOMOUNT_VERSION=dev" >> "$GITHUB_ENV"
+
+      echo "NoMount primary 集成完成"
+
+      ls -ld fs/nomount || true
+
+    fi
+
+    # =======================
+
+    # secondary: NoMount-Suite hookless
+
+    # =======================
+
+    if [ "$NOMOUNT_CHOICE" = "secondary" ]; then
+
+      echo "=== NoMount secondary 集成: Bouteillepleine/NoMount-Suite (hookless) ==="
+
+      echo "Ref: ${NOMOUNT_REF:-main}"
+
+      # ---------- 清理残留（幂等） ----------
+
+      rm -f fs/nomount fs/nomount.c fs/nomount.h
+
+      rm -rf "$WORKSPACE/NoMount-Suite"
+
+      sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
+
+      sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
+
+      # ---------- 拉取 NoMount-Suite ----------
+
+      git clone --depth 1 \
+
+        --branch "${NOMOUNT_REF:-main}" \
+
+        https://github.com/Bouteillepleine/NoMount-Suite.git \
+
+        "$WORKSPACE/NoMount-Suite"
+
+      HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
+
+      PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
+
+      if [ ! -f "$PATCH" ]; then
+
+        echo "::error::未找到官方集成补丁: $PATCH"
+
+        ls -la "$HOOKLESS/"
+
+        exit 1
+
+      fi
+
+      # ---------- 应用官方集成补丁 ----------
+
+      if patch -p1 --forward < "$PATCH"; then
+
+        echo "[+] NoMount 集成补丁应用成功"
+
+      else
+
+        echo "::error::NoMount 集成补丁应用失败"
+
+        exit 1
+
+      fi
+
+      # ---------- 复制 hookless 源码 ----------
+
+      cp "$HOOKLESS/src/nomount.c" fs/nomount.c
+
+      cp "$HOOKLESS/src/nomount.h" fs/nomount.h
+
+      # ---------- 规避 LTO GOT/PLT 问题 ----------
+
+      printf '\nCFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
+
+      # ---------- 自检 ----------
+
+      test -f fs/nomount.c
+
+      test -f fs/nomount.h
+
+      grep -q 'NOMOUNT' fs/Kconfig
+
+      grep -q 'nomount' fs/Makefile
+
+      # ---------- 启用 CONFIG_NOMOUNT ----------
+
+      if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+
+        echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+
+        echo "[+] 已启用 CONFIG_NOMOUNT=y"
+
+      fi
+
+      # ---------- 输出信息 ----------
+
+      NOMOUNT_VERSION="$(sed -n 's/^#define[[:space:]]\+NM_MODULE_VERSION[[:space:]]\+"\([^"]*\)".*/\1/p' fs/nomount.h | head -n1)"
+
+      echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (hookless)" >> "$GITHUB_ENV"
+
+      echo "NOMOUNT_VERSION=${NOMOUNT_VERSION:-unknown}" >> "$GITHUB_ENV"
+
+      echo
+
+      echo "NoMount 集成完成"
+
+      echo "  variant : Bouteillepleine/NoMount-Suite (hookless)"
+
+      echo "  version : ${NOMOUNT_VERSION:-unknown}"
+
+      echo "  ref     : ${NOMOUNT_REF:-main}"
+
+      ls -la fs/nomount*
+
+    fi
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
