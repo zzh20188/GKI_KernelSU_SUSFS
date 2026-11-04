@@ -952,8 +952,8 @@ jobs:
               cp "$HOOKLESS/src/nomount.c" fs/nomount.c
               cp "$HOOKLESS/src/nomount.h" fs/nomount.h
         
-              # 关键修复：同时规避 LTO + 强制 no-pic/no-pie
-              printf '\nCFLAGS_nomount.o += -fno-pic -fno-pie\n' >> fs/Makefile
+              # 关键：关掉 PIE + 关掉 stack protector + 开 O3（跟 primary 对齐）
+              printf 'CFLAGS_nomount.o += -fno-pic -fno-pie -fno-stack-protector -O3\n' >> fs/Makefile
               printf 'CFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
         
               test -f fs/nomount.c && test -f fs/nomount.h
