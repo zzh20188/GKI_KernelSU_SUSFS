@@ -932,27 +932,30 @@ jobs:
               echo "NOMOUNT_VARIANT=maxsteeel/nomount (primary)" >> "$GITHUB_ENV"
               echo "NOMOUNT_VERSION=dev" >> "$GITHUB_ENV"
               ;;
-
+        
             secondary)
               echo "=== NoMount secondary: Bouteillepleine/NoMount-Suite (hookless) ==="
               rm -f fs/nomount fs/nomount.c fs/nomount.h
               rm -rf "$WORKSPACE/NoMount-Suite"
               sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
               sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
-
+        
               git clone --depth 1 --branch main \
                 https://github.com/Bouteillepleine/NoMount-Suite.git \
                 "$WORKSPACE/NoMount-Suite"
-
+        
               HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
               PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
               [ -f "$PATCH" ] || { echo "::error::未找到 $PATCH"; exit 1; }
-
+        
               patch -p1 --forward < "$PATCH"
               cp "$HOOKLESS/src/nomount.c" fs/nomount.c
               cp "$HOOKLESS/src/nomount.h" fs/nomount.h
-              printf '\nCFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
-
+        
+              # 关键修复：同时规避 LTO + 强制 no-pic/no-pie
+              printf '\nCFLAGS_nomount.o += -fno-pic -fno-pie\n' >> fs/Makefile
+              printf 'CFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
+        
               test -f fs/nomount.c && test -f fs/nomount.h
               grep -q NOMOUNT fs/Kconfig
               grep -q nomount fs/Makefile
