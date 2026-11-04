@@ -60,16 +60,10 @@ on:
         required: false
         type: boolean
         default: false
-
-      # ==================== NoMount 2选1 ====================
-      # none      : 不启用 NoMount
-      # primary   : 原版 maxsteeel/nomount (dev 分支)
-      # secondary : Bouteillepleine/NoMount-Suite (main 分支)
-      nomount_choice:
+      use_nomount:
         required: false
-        type: string
-        default: "none"
-
+        type: boolean
+        default: false
       use_networking:
         required: false
         type: boolean
@@ -131,7 +125,6 @@ jobs:
           echo "BBG 补丁      : ${{ inputs.use_bbg }}"
           echo "KPM 功能      : ${{ inputs.use_kpm }}"
           echo "Re-Kernel     : ${{ inputs.use_rekernel }}"
-          echo "NoMount 选择  : ${{ inputs.nomount_choice }} (none/primary/secondary)"
           echo "网络增强      : ${{ inputs.use_networking }}"
           echo "CVE-2026-43499: ${{ inputs.cve_2026_43499_patch }}"
           echo "SUSFS 集成补丁导出: ${{ inputs.export_susfs_patches }}"
@@ -140,18 +133,6 @@ jobs:
           echo "产物上传模式  : ${{ inputs.artifact_upload_mode }}"
           echo "Stock Config  : 自动检测 config/stock_defconfig"
           echo "========================================"
-
-      - name: 验证 NoMount 选择
-        run: |
-          case "${{ inputs.nomount_choice }}" in
-            none|primary|secondary)
-              echo "NoMount 选择有效: ${{ inputs.nomount_choice }}"
-              ;;
-            *)
-              echo "::error::无效的 nomount_choice: '${{ inputs.nomount_choice }}'，必须是 none / primary / secondary"
-              exit 1
-              ;;
-          esac
 
       - name: 清理磁盘空间
         run: |
@@ -271,7 +252,7 @@ jobs:
         run: |
           mkdir -p ~/.cache/bazel
           ccache --version
-          ccache --max-size=5G
+          ccache --max-size=2G
           ccache --set-config=compression=true
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
@@ -902,78 +883,50 @@ jobs:
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
 
-      - name: 备份基准 defconfig
-        run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
-
       - name: 集成 NoMount 挂载元模块
-        if: inputs.nomount_choice != 'none'
-        shell: bash
+        if: inputs.use_nomount
         working-directory: ${{ env.KERNEL_ROOT }}/common
-        env:
-          NOMOUNT_CHOICE: ${{ inputs.nomount_choice }}
-          WORKSPACE: ${{ github.workspace }}
-          DEFCONFIG: ${{ env.DEFCONFIG }}
         run: |
           set -euo pipefail
-
-          case "$NOMOUNT_CHOICE" in
-            primary)
-              echo "=== 集成 NoMount (maxsteeel/nomount dev) ==="
-              curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-                https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh \
-                | sh -s dev
-              if [ ! -L "fs/nomount" ] && [ ! -d "fs/nomount" ]; then
-                echo "::error::NoMount 集成失败：fs/nomount 缺失"
-                exit 1
-              fi
-              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-              fi
-              echo "NOMOUNT_VARIANT=maxsteeel/nomount (primary)" >> "$GITHUB_ENV"
-              echo "NOMOUNT_VERSION=dev" >> "$GITHUB_ENV"
-              ;;
         
-            secondary)
-              echo "=== NoMount secondary: Bouteillepleine/NoMount-Suite (hookless) ==="
-              rm -f fs/nomount fs/nomount.c fs/nomount.h
-              rm -rf "$WORKSPACE/NoMount-Suite"
-              sed -i '/CONFIG_NOMOUNT/d' fs/Kconfig 2>/dev/null || true
-              sed -i '/nomount/d' fs/Makefile 2>/dev/null || true
+          NOMOUNT_SRC="$GITHUB_WORKSPACE/kernel_patches/nomount"
+          PATCH_FILE="$NOMOUNT_SRC/nomount_kernel_integration.patch"
         
-              git clone --depth 1 --branch main \
-                https://github.com/Bouteillepleine/NoMount-Suite.git \
-                "$WORKSPACE/NoMount-Suite"
-        
-              HOOKLESS="$WORKSPACE/NoMount-Suite/hookless"
-              PATCH="$HOOKLESS/patches/nomount_kernel_integration.patch"
-              [ -f "$PATCH" ] || { echo "::error::未找到 $PATCH"; exit 1; }
-        
-              patch -p1 --forward < "$PATCH"
-              cp "$HOOKLESS/src/nomount.c" fs/nomount.c
-              cp "$HOOKLESS/src/nomount.h" fs/nomount.h
-        
-              # 关键：关掉 PIE + 关掉 stack protector + 开 O3（跟 primary 对齐）
-              printf 'CFLAGS_nomount.o += -fno-pic -fno-pie -fno-stack-protector -O3\n' >> fs/Makefile
-              printf 'CFLAGS_REMOVE_nomount.o += $(CC_FLAGS_LTO)\n' >> fs/Makefile
-        
-              test -f fs/nomount.c && test -f fs/nomount.h
-              grep -q NOMOUNT fs/Kconfig
-              grep -q nomount fs/Makefile
-
-              if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
-                echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
-              fi
-
-              NM_VER="$(sed -n 's/^#define[[:space:]]\+NM_MODULE_VERSION[[:space:]]\+"\([^"]*\)".*/\1/p' fs/nomount.h | head -n1)"
-              echo "NOMOUNT_VARIANT=Bouteillepleine/NoMount-Suite (hookless)" >> "$GITHUB_ENV"
-              echo "NOMOUNT_VERSION=${NM_VER:-unknown}" >> "$GITHUB_ENV"
-              ;;
-
-            *)
-              echo "::error::Unexpected NOMOUNT_CHOICE=$NOMOUNT_CHOICE"
+          for f in "$PATCH_FILE" "$NOMOUNT_SRC/nomount.c" "$NOMOUNT_SRC/nomount.h"; do
+            if [ ! -f "$f" ]; then
+              echo "::error::NoMount 源文件缺失: $f"
               exit 1
-              ;;
-          esac
+          fi
+          done
+        
+          # 补丁从内核源码根（common/）应用，-p1 去掉 a/ b/ 前缀
+          # --forward 让重复运行不报错；--fuzz=3 容忍上下文偏移
+          if ! patch -p1 --fuzz=3 --forward < "$PATCH_FILE"; then
+            echo "::error::NoMount 集成补丁应用失败，请检查 .rej 并调整补丁锚点"
+            exit 1
+          fi
+        
+          # 放置引擎源码（补丁的 fs/Makefile 期望 fs/nomount.c + fs/nomount.h）
+          cp -f "$NOMOUNT_SRC/nomount.c" fs/
+          cp -f "$NOMOUNT_SRC/nomount.h" fs/
+        
+          # 验证四个 hunk 都落地
+          test -f fs/nomount.c
+          test -f fs/nomount.h
+          grep -q 'obj-$(CONFIG_NOMOUNT) += nomount.o' fs/Makefile
+          grep -q 'config NOMOUNT' fs/Kconfig
+          grep -q 'vfs_map_meta_override' fs/proc/task_mmu.c
+          grep -q 'nm_inode_hidden_from_caller' fs/xattr.c
+        
+          # 启用 CONFIG_NOMOUNT（幂等）
+          if ! grep -q '^CONFIG_NOMOUNT=y' "$DEFCONFIG"; then
+            echo "CONFIG_NOMOUNT=y" >> "$DEFCONFIG"
+            echo "已启用 CONFIG_NOMOUNT=y"
+          else
+            echo "CONFIG_NOMOUNT=y 已存在，跳过"
+          fi
+        
+          echo "NoMount 集成完成（本地源，未使用 setup.sh）"
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
@@ -1627,7 +1580,7 @@ jobs:
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
               if [ -f "build/build.sh" ]; then
-                LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh -j4 CC="/usr/bin/ccache clang" || exit 1
+                LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
               else
                 # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
