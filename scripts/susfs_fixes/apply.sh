@@ -257,6 +257,14 @@ if [[ -f fs/statfs.c ]] && grep -qF 'susfs_sus_kstat_spoof_vfs_statfs(' fs/statf
   fi
 fi
 
+# 上游 2026-11-01 起 priority_uid_filter 的两个凭据辅助函数定义在 #ifdef 之外，
+# 调用点却全在 CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER 内；SukiSU/BakaSU 的 Kconfig 尚无该选项，
+# 函数成为死代码，开启 CONFIG_WERROR 的内核（android12-5.10-2023-01 起）报 unused function
+if grep -qE '^static (struct cred \*|void )susfs_(switch_to_ksu_domain|restore_creds)\(' fs/susfs.c; then
+  echo "为 priority_uid_filter 凭据辅助函数标记 __maybe_unused"
+  sed -i -E 's/^static (struct cred \*|void )(susfs_switch_to_ksu_domain|susfs_restore_creds)\(/static __maybe_unused \1\2(/' fs/susfs.c
+fi
+
 # 在编译前报告 SUSFS 主补丁产生的冲突文件，上游自带的 .rej 不计入
 mapfile -t SUSFS_REJ_FILES < <(list_untracked_rej)
 SUSFS_REJ_COUNT=${#SUSFS_REJ_FILES[@]}
