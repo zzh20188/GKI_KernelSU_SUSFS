@@ -578,13 +578,6 @@ jobs:
           echo "LZ4_STATUS=${{ inputs.use_zram && '开启' || '未开启' }}" >> $GITHUB_ENV
           echo "BBG_STATUS=${{ inputs.use_bbg && '支持' || '不支持' }}" >> $GITHUB_ENV
           echo "NET_STATUS=${{ inputs.use_networking && '开启' || '未开启' }}" >> $GITHUB_ENV
-          if [[ "${{ inputs.use_kpm }}" == enabled* ]]; then
-            echo "KPM_STATUS=支持" >> $GITHUB_ENV
-          elif [[ "${{ inputs.use_kpm }}" == patched* ]]; then
-            echo "KPM_STATUS=支持（补丁尚不支持）" >> $GITHUB_ENV
-          else
-            echo "KPM_STATUS=未开启" >> $GITHUB_ENV
-          fi
 
           # Hook 类型
           if [ "${{ inputs.kernelsu_variant }}" = "SukiSU" ] || [ "${{ inputs.kernelsu_variant }}" = "BakaSU" ]; then
@@ -609,7 +602,6 @@ jobs:
               echo "BRANCH_INFO=-" >> $GITHUB_ENV
               echo "HOOK_TYPE=无" >> $GITHUB_ENV
               echo "MOUNT_TYPE=无" >> $GITHUB_ENV
-              echo "KPM_STATUS=未开启" >> $GITHUB_ENV
               echo "RELEASE_HEADLINE=**纯净 GKI 内核**（未集成 KernelSU / SUSFS）" >> $GITHUB_ENV
               echo "RELEASE_NAME=GKI Kernel: 纯净版（无 KernelSU / SUSFS）" >> $GITHUB_ENV
               ;;
@@ -783,7 +775,6 @@ jobs:
 
           | 项目 | 内容 |
           |:---|:---|
-          | KernelSU / SUSFS 模式 | ${{ inputs.ksu_mode }} |
           | KernelSU 变体 | $KSU_NAME |
           | KernelSU 分支 | $BRANCH_INFO |
           | SUSFS | $SUS_VER |
@@ -793,7 +784,6 @@ jobs:
           | BBG 安全补丁 | $BBG_STATUS |
           | ZRAM / LZ4KD | $LZ4_STATUS |
           | 网络增强 (BBRv3 / IPSet / CAKE / CIFS) | $NET_STATUS |
-          | KPM | $KPM_STATUS |
 
           ### 下载说明
 
