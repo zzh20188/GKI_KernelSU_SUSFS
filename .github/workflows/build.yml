@@ -1301,10 +1301,15 @@ jobs:
             IP_SET_HASH_NETPORTNET IP_SET_HASH_NET IP_SET_HASH_NETNET \
             IP_SET_HASH_NETPORT IP_SET_HASH_NETIFACE IP_SET_LIST_SET \
             NETFILTER_XT_MATCH_ADDRTYPE NETFILTER_XT_SET NETFILTER_XT_TARGET_LOG \
-            NETFILTER_XT_MATCH_RECENT IP6_NF_NAT IP6_NF_TARGET_MASQUERADE; do
+            NETFILTER_XT_MATCH_RECENT IP6_NF_NAT IP6_NF_TARGET_MASQUERADE \
+            IP_NF_TARGET_REJECT IP6_NF_TARGET_REJECT; do
             set_config "CONFIG_$cfg" y
           done
           set_config CONFIG_IP_SET_MAX 65534
+          # 与 wild_kernel 一致：5.10 在源码中直接写死上限，defconfig 取值未生效时兜底
+          if [ "$KVER" = "5.10" ]; then
+            sed -i 's/CONFIG_IP_SET_MAX/65534/g' net/netfilter/ipset/ip_set_core.c
+          fi
 
           # TCP 拥塞控制算法：已打 BBRv3 补丁的版本默认 bbr3，其余默认 bbr
           for cfg in TCP_CONG_ADVANCED TCP_CONG_BBR TCP_CONG_CUBIC \
