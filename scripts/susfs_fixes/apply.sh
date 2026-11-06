@@ -62,7 +62,7 @@ adjust_legacy_fdinfo_context() {
 }
 
 restore_legacy_fdinfo_context() {
-  perl -i -pe 's/^(\s+if \(inode\) \{)/$1\n\t\t\/\*\n\t\t * IN_ALL_EVENTS represents all of the mask bits\n\t\t * that we expose to userspace.  There is at\n\t\t * least one bit (FS_EVENT_ON_CHILD) which is\n\t\t * used only internally to the kernel.\n\t\t *\/\n\t\tu32 mask = mark->mask & IN_ALL_EVENTS;/m' fs/notify/fdinfo.c
+  perl -i -pe 's/^(\s+if \(inode\) \{)/$1\n\t\t\/\*\n\t\t * IN_ALL_EVENTS represents all of the mask bits\n\t\t * that we expose to userspace.  There is at\n\t\t * least one bit (FS_EVENT_ON_CHILD[...]
   perl -i -pe 's/\binotify_mark_user_mask\(mark\)/mask, mark->ignored_mask/g' fs/notify/fdinfo.c
   perl -i -pe 's/ignored_mask:0/ignored_mask:%x/g' fs/notify/fdinfo.c
 }
@@ -71,7 +71,7 @@ restore_legacy_fdinfo_context() {
 if [[ "$ANDROID_VERSION" == "android12" && "$KERNEL_VERSION" == "5.10" ]]; then
   if [[ -n "$LEGACY_SUKISU_CONFIG" && "$CURRENT_SUB" -le 43 ]]; then
     echo "临时调整 Android 12 5.10 base.c 上下文"
-    perl -i -pe 's/(int|size_t)\s+this_len\s*=\s*min_t\s*\(\s*\1\s*,/size_t this_len = min_t(size_t,/;' fs/proc/base.c
+    perl -i -pe 's/(int|size_t)\s+this_len\s*=\s*min_t\s*\(\s*\1\s*,/size_t this_len = min_t(size_t,/' fs/proc/base.c
   fi
   if [[ "$CURRENT_SUB" -le 117 ]]; then
     echo "临时调整 Android 12 5.10 fdinfo.c 上下文"
@@ -220,6 +220,29 @@ fi
 
 patch -p1 < "$SUSFS_PATCH" || true
 
+# 关闭优先 UID 过滤时，避免未使用的 susfs_switch_to_ksu_domain/susfs_restore_creds 编译到内核，
+# 这些辅助函数仅在 CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER 开启时才需要。
+if [ -f "$KERNEL_ROOT/common/fs/susfs.c" ]; then
+  python3 - "$KERNEL_ROOT/common/fs/susfs.c" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+start_marker = "static struct cred *susfs_switch_to_ksu_domain(void) {"
+end_marker = "/* sus_path */"
+
+if start_marker in text and end_marker in text:
+    start = text.index(start_marker)
+    end = text.index(end_marker, start)
+    block = text[start:end]
+    guarded = "#ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER\n" + block + "#endif /* CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER */\n\n"
+    if "#ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER\n" + start_marker not in text:
+        text = text[:start] + guarded + text[end:]
+        path.write_text(text)
+PY
+fi
+
 # 为尚未提供 SU 会话 FD 接口的 SukiSU/BakaSU 恢复旧版 exec hook 行为
 EXEC_HELPER=""
 if [[ "$KSU_VARIANT" == SukiSU* || "$KSU_VARIANT" == "BakaSU" ]]; then
@@ -350,7 +373,7 @@ fi
 
 fix_missing_vm_flags_clear() {
   if [[ "$OS_PATCH_LEVEL" == "2024-11" ]] && grep -qF 'vm_flags_clear(new_vma, VM_PAD_MASK);' ./mm/mmap.c; then
-    sed -i 's/vm_flags_clear(new_vma, VM_PAD_MASK);/new_vma->vm_flags \&= ~VM_PAD_MASK;/' ./mm/mmap.c
+    sed -i 's/vm_flags_clear(new_vma, VM_PAD_MASK);/new_vma->vm_flags &= ~VM_PAD_MASK;/' ./mm/mmap.c
   fi
 }
 
@@ -437,7 +460,7 @@ if [[ "$ANDROID_VERSION" == "android16" && "$KERNEL_VERSION" == "6.12" ]]; then
   SETUID_HOOK="$KERNEL_ROOT/common/drivers/kernelsu/setuid_hook.c"
   if [[ -n "$LEGACY_SUKISU_CONFIG" && -f "$SETUID_HOOK" ]] \
     && grep -qF 'defined(CONFIG_KSU_MANUAL_HOOK))' "$SETUID_HOOK"; then
-    sed -i 's/defined(CONFIG_KSU_MANUAL_HOOK))/!defined(CONFIG_KSU_SUSFS) \&\& defined(CONFIG_KSU_MANUAL_HOOK))/' "$SETUID_HOOK"
+    sed -i 's/defined(CONFIG_KSU_MANUAL_HOOK))/!defined(CONFIG_KSU_SUSFS) && defined(CONFIG_KSU_MANUAL_HOOK))/' "$SETUID_HOOK"
     echo "已修复 setuid_hook.c 重复定义问题"
   fi
 fi
