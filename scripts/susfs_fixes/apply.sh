@@ -257,6 +257,35 @@ if [[ -f fs/statfs.c ]] && grep -qF 'susfs_sus_kstat_spoof_vfs_statfs(' fs/statf
   fi
 fi
 
+# 上游 2026-11-01 起 priority_uid_filter 的两个凭据辅助函数定义在 #ifdef 之外，
+# 调用点却全在 CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER 内；SukiSU/BakaSU 的 Kconfig 尚无该选项，
+# 函数成为死代码，开启 CONFIG_WERROR 的内核（android12-5.10-2023-01 起）报 unused function
+if grep -qE '^static (struct cred \*|void )susfs_(switch_to_ksu_domain|restore_creds)\(' fs/susfs.c; then
+  echo "为 priority_uid_filter 凭据辅助函数标记 __maybe_unused"
+  sed -i -E 's/^static (struct cred \*|void )(susfs_switch_to_ksu_domain|susfs_restore_creds)\(/static __maybe_unused \1\2(/' fs/susfs.c
+fi
+
+# 上游 2026-11-02 起 priority_uid_filter 的声明与定义都受 CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER 保护，
+# 该选项由 10_enable_susfs_for_ksu.patch 加进 KSU 的 Kconfig；SukiSU builtin 不打该补丁，
+# Kconfig 尚未同步，却无条件调用这些接口，编译时报隐式声明。按上游定义补上选项
+KSU_KCONFIG="$KERNEL_ROOT/KernelSU/kernel/Kconfig"
+if [[ -f "$KSU_KCONFIG" ]] \
+  && grep -qF 'CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER' include/linux/susfs.h \
+  && ! grep -qE '^config KSU_SUSFS_PRIORITY_UID_FILTER$' "$KSU_KCONFIG" \
+  && grep -RqsE --include='*.c' 'susfs_(parse_priority_app_strings|set_priority_uid_filter)\(' "$KERNEL_ROOT/KernelSU/kernel"; then
+  echo "$KSU_VARIANT 的 Kconfig 缺少 KSU_SUSFS_PRIORITY_UID_FILTER，按上游定义补上"
+  cat >> "$KSU_KCONFIG" << 'EOF'
+
+config KSU_SUSFS_PRIORITY_UID_FILTER
+	bool "Enable to allow adding user-defined uids that will be hidden from getpriority/setpriority/ioprio_get/ioprio_set syscall"
+	depends on KSU_SUSFS
+	default y
+	help
+	  - Allow hiding user-defined uids from syscalls like getpriority/setpriority/ioprio_get/ioprio_set.
+	  - Effective on all processes with uid >= 10000.
+EOF
+fi
+
 # 在编译前报告 SUSFS 主补丁产生的冲突文件，上游自带的 .rej 不计入
 mapfile -t SUSFS_REJ_FILES < <(list_untracked_rej)
 SUSFS_REJ_COUNT=${#SUSFS_REJ_FILES[@]}

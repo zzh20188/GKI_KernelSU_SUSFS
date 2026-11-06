@@ -1261,12 +1261,19 @@ jobs:
             *) BBR3_PATCH="" ;;
           esac
 
+          # LTS 分支持续合入 stable 修复，上下文会与月度分支分叉（如 sysctl_net_ipv4.c 在
+          # /* obsolete */ 前新增 tcp_min_rcvbuf），存在同名 -lts 补丁时 LTS 构建改用它
+          if [ -n "$BBR3_PATCH" ] && [ "${{ inputs.os_patch_level }}" = "lts" ] && [ -f "${BBR3_PATCH%.patch}-lts.patch" ]; then
+            BBR3_PATCH="${BBR3_PATCH%.patch}-lts.patch"
+          fi
+
           # android16-6.12 的 backport 补丁上游不可用（wild_kernel 已禁用），仅保留基线 BBR v1
           if [ -n "$BBR3_PATCH" ]; then
             if [ ! -f "$BBR3_PATCH" ]; then
               echo "::error::BBRv3 补丁不存在: $BBR3_PATCH" >&2
               exit 1
             fi
+            echo "[*] 使用 BBRv3 补丁: $(basename "$BBR3_PATCH")"
             if patch -p1 --dry-run < "$BBR3_PATCH" >/dev/null 2>&1; then
               patch -p1 --no-backup-if-mismatch < "$BBR3_PATCH"
               echo "[+] BBRv3 补丁已应用"
@@ -1310,10 +1317,15 @@ jobs:
             IP_SET_HASH_NETPORTNET IP_SET_HASH_NET IP_SET_HASH_NETNET \
             IP_SET_HASH_NETPORT IP_SET_HASH_NETIFACE IP_SET_LIST_SET \
             NETFILTER_XT_MATCH_ADDRTYPE NETFILTER_XT_SET NETFILTER_XT_TARGET_LOG \
-            NETFILTER_XT_MATCH_RECENT IP6_NF_NAT IP6_NF_TARGET_MASQUERADE; do
+            NETFILTER_XT_MATCH_RECENT IP6_NF_NAT IP6_NF_TARGET_MASQUERADE \
+            IP_NF_TARGET_REJECT IP6_NF_TARGET_REJECT; do
             set_config "CONFIG_$cfg" y
           done
           set_config CONFIG_IP_SET_MAX 65534
+          # 与 wild_kernel 一致：5.10 在源码中直接写死上限，defconfig 取值未生效时兜底
+          if [ "$KVER" = "5.10" ]; then
+            sed -i 's/CONFIG_IP_SET_MAX/65534/g' net/netfilter/ipset/ip_set_core.c
+          fi
 
           # TCP 拥塞控制算法：已打 BBRv3 补丁的版本默认 bbr3，其余默认 bbr
           for cfg in TCP_CONG_ADVANCED TCP_CONG_BBR TCP_CONG_CUBIC \
@@ -1447,6 +1459,7 @@ jobs:
           CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
           CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
           CONFIG_KSU_SUSFS_SUS_MAP=y
+          CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=y
           EOF
 
           # 把本步实际追加的行导出为配置片段，随 SUSFS 集成补丁一起分发
