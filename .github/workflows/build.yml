@@ -1245,12 +1245,19 @@ jobs:
             *) BBR3_PATCH="" ;;
           esac
 
+          # LTS 分支持续合入 stable 修复，上下文会与月度分支分叉（如 sysctl_net_ipv4.c 在
+          # /* obsolete */ 前新增 tcp_min_rcvbuf），存在同名 -lts 补丁时 LTS 构建改用它
+          if [ -n "$BBR3_PATCH" ] && [ "${{ inputs.os_patch_level }}" = "lts" ] && [ -f "${BBR3_PATCH%.patch}-lts.patch" ]; then
+            BBR3_PATCH="${BBR3_PATCH%.patch}-lts.patch"
+          fi
+
           # android16-6.12 的 backport 补丁上游不可用（wild_kernel 已禁用），仅保留基线 BBR v1
           if [ -n "$BBR3_PATCH" ]; then
             if [ ! -f "$BBR3_PATCH" ]; then
               echo "::error::BBRv3 补丁不存在: $BBR3_PATCH" >&2
               exit 1
             fi
+            echo "[*] 使用 BBRv3 补丁: $(basename "$BBR3_PATCH")"
             if patch -p1 --dry-run < "$BBR3_PATCH" >/dev/null 2>&1; then
               patch -p1 --no-backup-if-mismatch < "$BBR3_PATCH"
               echo "[+] BBRv3 补丁已应用"
