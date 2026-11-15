@@ -1,6 +1,6 @@
 # Pandora OTA 助手：当前使用说明
 
-当前版本 **0.13.3-dev**（versionCode 27）。仓库默认分支 dev，设备 Xiaomi 17 Pro / pandora。完整项目入口见 [OS4 文档索引](../../docs/pandora-os4-guide.md)。
+当前版本 **0.13.4-dev**（versionCode 28）。仓库默认分支 dev，设备 Xiaomi 17 Pro / pandora。完整项目入口见 [OS4 文档索引](../../docs/pandora-os4-guide.md)。
 
 App 的范围：只读采集、GitHub 上传与接收跟踪、在手机填写原真机反馈工作流。电脑负责 fastboot boot；App 不执行 fastboot/flash、重启、切 slot 或分区写入，也不会自动晋升 LKG。
 
@@ -12,8 +12,8 @@ App 的范围：只读采集、GitHub 上传与接收跟踪、在手机填写原
 
 | 页面 | 功能 |
 | --- | --- |
-| 工作台 | 当前系统、Root 检查、采集前预检、采集与上传、最近采集、真机测试反馈入口、OTA 全链路可信阶段快照 |
-| 记录 | 切换本地 ZIP、查回执、重新通知、前台接收跟踪、核验后清理、查看 GitHub 草稿 |
+| 工作台 | 当前系统、Root 检查、采集前预检、采集与上传；最近采集显示与系统 Build 分离的「软件 D02（更新页确认）」；真机测试反馈入口、OTA 全链路可信阶段快照 |
+| 记录 | 切换本地 ZIP（含软件修订标识）、查回执、重新通知、前台接收跟踪、核验后清理、查看 GitHub 草稿 |
 | 设置 | 仓库、Keystore 加密 PAT、实时连接验证、采集/上传说明、使用指南、安全与关于 |
 | 真机测试反馈（二级页） | 候选/Run 与 IMG SHA、五项本机信息、人工检查和备注、原工作流提交与跟踪、最近 20 条反馈 |
 
@@ -73,6 +73,12 @@ Root 后 init_boot 明确是诊断快照，不是 OEM 原件；无需把离线�
 
 通过只固化开发基线，不修改 LKG。build/uname/启动完成不是指定 IMG 已启动的硬件证明，仍需用户确认实际电脑镜像；不能用磁盘 boot 分区 SHA 冒充临时镜像 SHA。纯 GKI 临时会话未必有 Root，不能把 Root 缺失直接当作基础启动失败。
 
+## D02 真实软件 OTA 已验收
+
+2026-11-15 Xiaomi 17 Pro 实机完整验证 D02 正常重启、Root 和 Slot A 保留，并以 0.13.3-dev 实际采集上传。GitHub 接收 Run [#43687115408](https://github.com/wekingchen/GKI_KernelSU_SUSFS/actions/runs/43687115408) 成功，Draft 收据 `REVIEW_REQUIRED`，Asset `750110892`，SHA-256 `c14c07df4a69af3ec9bea4430c3ec0af6df3722036aef199cf252daa54866398`。原 Build `OS4.0.5.0.XBLCNXM` 未伪造为 `.D02`，也未自动替换固定内核输入或晋升 LKG。完整实机证据见 [D02 验收记录](../../docs/pandora-ota-d02-real-device-2026-11-15.md)。
+
+0.13.4 只是对 UI 的追踪展示优化：工作台最近采集、记录列表、采集包选择框均读取 ZIP 中已核验的 D02 证据，显示为「软件 D02（更新页确认）」；无软件修订的旧 ZIP 继续显示原始 Build 与 Slot，不产生虚假的修订号。**0.13.4 需要覆盖安装后的实际 UI 验收；不能将 0.13.3 真机结果冒充 0.13.4 真机结果。**
+
 ## 验证状态与能力边界
 
 - 工作台已提供 GKI / ABI / 待测 / 基线 / 自定义 / LKG 的可信阶段快照，可按需刷新；接收回执及所提交反馈运行支持前台自动跟踪。阶段快照不提供逐秒编译进度。
@@ -107,6 +113,7 @@ gradle --no-daemon :app:assembleDebug
 | 0.12.2 | 修复成功响应被静默截断至 16 KiB 的问题；完整读取 GitHub JSON，超过 2 MiB 明确失败，错误提示最多保留 16 KiB |
 | 0.13 | 加入来源绑定的全链路阶段快照卡及相应帮助；服务器配套增加候选/固定输入恢复入口。后续维护补齐模拟器 Launcher 弹窗处理、页面就绪确认与黑屏拒收 |
 | 0.13.2 | 支持严格的 `.Dxx` 软件修订格式；服务端分类为待核验而非自动声明无内核变化；增加 `REVIEW_REQUIRED` 回执、前台停止轮询及本地安全删除适配 |
-| 0.13.3 | 修复 D02 更新页面版本与 Android Build 不一致：用户单次确认 Dxx，采集与 Draft 回执保留独立来源声明，同 Build 只审阅不触碰内核基线 |
+| 0.13.3 | 修复 D02 更新页面版本与 Android Build 不一致：用户单次确认 Dxx，采集与 Draft 回执保留独立来源声明，同 Build 只审阅不触碰内核基线；D02 实机闭环已通过 |
+| 0.13.4 | 在工作台、采集历史和记录切换框中直接显示 ZIP 清单确认的软件 Dxx，区分人工更新页证据与真实 Android Build；接收提示更直观 |
 
 HTTP User-Agent 的版本字段直接取构建生成的 `BuildConfig.VERSION_NAME`，随 App 版本自动更新。

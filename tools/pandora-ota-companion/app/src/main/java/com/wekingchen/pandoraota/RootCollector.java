@@ -68,12 +68,20 @@ final class RootCollector {
         final String slotSuffix;
         final String slotLabel;
         final String uname;
+        final String softwareRevision;
 
-        CaptureIdentity(String build, String slotSuffix, String uname) {
+        CaptureIdentity(String build, String slotSuffix, String uname, String softwareRevision) {
             this.build = build;
             this.slotSuffix = slotSuffix;
             this.slotLabel = normalizeSlotLabel(slotSuffix);
             this.uname = uname;
+            this.softwareRevision = softwareRevision;
+        }
+
+        String displayLabel() {
+            return build + (softwareRevision.isEmpty()
+                    ? "" : " · 软件 " + softwareRevision + "（更新页确认）")
+                    + " · slot " + slotLabel;
         }
     }
 
@@ -131,7 +139,7 @@ final class RootCollector {
                 throw new SecurityException("采集包活动 slot 信息不一致");
             }
             if (uname.isEmpty()) throw new SecurityException("采集包内核版本缺失");
-            return new CaptureIdentity(build, slot, uname);
+            return new CaptureIdentity(build, slot, uname, revision);
         }
     }
 

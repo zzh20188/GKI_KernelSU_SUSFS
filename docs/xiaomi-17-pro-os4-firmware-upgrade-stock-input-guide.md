@@ -1,6 +1,6 @@
 # 小米 17 Pro OS4：OTA、手机采集与真机反馈操作指南
 
-核对日期：2026-11-15（D02 软件修订实机重启成功，采集回执待验收）。适用 pandora；[当前状态](pandora-os4-guide.md)以机器可读指针和真实记录为准。当前稳定快照为 OS4.0.5.0.XBLCNXM / R62 Gen 4。
+核对日期：2026-11-15（D02 软件修订实机采集、上传与 GitHub 回执均已验收）。适用 pandora；[当前状态](pandora-os4-guide.md)以机器可读指针和真实记录为准。当前稳定快照为 OS4.0.5.0.XBLCNXM / R62 Gen 4。
 
 ## 一、先判断是否需要重新采集
 
@@ -98,13 +98,13 @@ adb shell cat /proc/modules
 
 Windows 10/11 可运行仓库最新 [`collect-pandora-stock-input.cmd`](../scripts/xiaomi-os4/collect-pandora-stock-input.cmd)，需要 adb、PowerShell、tar 和手机 Root；完整导出四分区、OEM 模块/数量清单、README、SHA256SUMS 后生成 xm.zip。模块数量或字节流出错即停止，不上传残包。
 
-人工更新固定 Release 前，必须完整备份旧附件并核验新输入；不能先删除唯一恢复输入，再验证新 ZIP。只更换附件未必触发 edited，可等北京时间 04:41 每日补查，或手动运行 OTA 主流程。Windows 新 OTA 实机采集和真正新 OTA 全链路仍待实物验证。
+人工更新固定 Release 前，必须完整备份旧附件并核验新输入；不能先删除唯一恢复输入，再验证新 ZIP。只更换附件未必触发 edited，可等北京时间 04:41 每日补查，或手动运行 OTA 主流程。**D02 软件修订**的手机采集与审核已经实机验证；真正更换 HyperOS Build / 内核的 OTA 自动候选、ABI、临时启动与固化仍待实物验证。
 
 ## 八、恢复与验证边界
 
 2026-11-15 真机观察：系统更新页面显示 `4.0.5.0.XBLCNXM.D02`（相册、计算器优化），而 `ro.mi.os.version.incremental` 仍为 `OS4.0.5.0.XBLCNXM`；首次重启成功，活动 slot A、自定义内核 `6.12.69-android16-6-os4r62-custom-4k` 与 KernelSU Root 均保留。旧 A 槽四分区备份 SHA 前后相同；B 槽启动分区为全零、不可启动，因此不能误将其当成 D02 boot。该实机结果证明此次软件更新未使运行内核及 Root 丢失，但不能推导其他 OTA 类型都不改内核。
 
-从 0.13.3 起，当 Android Build 未携带 Dxx 时，用户可在 App 采集前依据更新器页面手动确认软件修订。采集包仅记录独立的 `software_revision`、`software_revision_source=USER_CONFIRMED_UPDATE_SCREEN` 以及绑定的真实 Build。服务器标记为**人工声称、未由 Android 属性验证**，只保存 Draft 和 `REVIEW_REQUIRED` 回执；不自动替换 stock-input、不运行 GKI、不晋升 LKG。需后续实机确认 0.13.3 的采集、上传和回执；不能把代码和 CI 测试冒充完整真机验收。
+从 0.13.3 起，当 Android Build 未携带 Dxx 时，用户可在 App 采集前依据更新器页面手动确认软件修订。采集包仅记录独立的 `software_revision`、`software_revision_source=USER_CONFIRMED_UPDATE_SCREEN` 以及绑定的真实 Build。服务器标记为**人工声称、未由 Android 属性验证**，只保存 Draft 和 `REVIEW_REQUIRED` 回执；不自动替换 stock-input、不运行 GKI、不晋升 LKG。0.13.3 的 D02 采集、上传与回执已完成真实验收：[D02 完整证据与 GitHub Run](pandora-ota-d02-real-device-2026-11-15.md)；0.13.4 仅更新可见修订号的 UI，仍须等覆盖安装后进行真实 UI 确认。
 
 软件更新页面的 `.D02` 标记不保证 `ro.mi.os.version.incremental` 含相同后缀。验收需要真实的 getprop、fingerprint 与 slot；`REVIEW_REQUIRED` 不能解读为内核不变、ABI 通过或新 LKG。
 

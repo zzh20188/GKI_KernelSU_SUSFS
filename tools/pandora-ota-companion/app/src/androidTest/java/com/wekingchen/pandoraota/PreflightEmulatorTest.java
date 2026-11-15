@@ -52,6 +52,49 @@ public class PreflightEmulatorTest {
         assertFalse(RootCollector.isValidOptionalSoftwareRevision("OS4.0.5.0.XBLCNXM.D02"));
         assertFalse(RootCollector.isValidOptionalSoftwareRevision(null));
     }
+    @Test public void captureIdentityLabelsManualD02WithoutChangingBuild() {
+        RootCollector.CaptureIdentity d02 = new RootCollector.CaptureIdentity(
+                "OS4.0.5.0.XBLCNXM", "_a", "6.12.69-android16-6-os4r62-custom-4k", "D02");
+        assertEquals("OS4.0.5.0.XBLCNXM", d02.build);
+        assertEquals("D02", d02.softwareRevision);
+        assertEquals("OS4.0.5.0.XBLCNXM · 软件 D02（更新页确认） · slot A",
+                d02.displayLabel());
+        RootCollector.CaptureIdentity plain = new RootCollector.CaptureIdentity(
+                "OS4.0.5.0.XBLCNXM", "_a", "6.12.69-android16-6-os4r62-custom-4k", "");
+        assertEquals("OS4.0.5.0.XBLCNXM · slot A", plain.displayLabel());
+    }
+    @Test public void realZipManifestShowsD02OnlyWhenSourceIsBound() throws Exception {
+        android.content.Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        java.io.File archive = java.io.File.createTempFile("pandora-d02-evidence-", ".zip", ctx.getCacheDir());
+        try {
+            String manifest = "schema=pandora-ota-capture-v1\n"
+                    + "source=ACTIVE_DEVICE_SNAPSHOT_NOT_VERIFIED_STOCK\n"
+                    + "device=pandora\nro.product.device=pandora\n"
+                    + "ro.mi.os.version.incremental=OS4.0.5.0.XBLCNXM\n"
+                    + "ro.boot.slot_suffix=_a\nslot=_a\n"
+                    + "uname=6.12.69-android16-6-os4r62-custom-4k\n"
+                    + "software_revision=D02\n"
+                    + "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+                    + "software_revision_base_build=OS4.0.5.0.XBLCNXM\n";
+            try (java.util.zip.ZipOutputStream z = new java.util.zip.ZipOutputStream(
+                    new java.io.FileOutputStream(archive))) {
+                z.putNextEntry(new java.util.zip.ZipEntry("manifest.txt"));
+                z.write(manifest.getBytes(StandardCharsets.UTF_8));
+                z.closeEntry();
+                z.putNextEntry(new java.util.zip.ZipEntry("padding.bin"));
+                byte[] padding = new byte[8192];
+                new Random(20261115).nextBytes(padding);
+                z.write(padding);
+                z.closeEntry();
+            }
+            RootCollector.CaptureIdentity identity = RootCollector.inspectCaptureIdentity(archive);
+            assertEquals("OS4.0.5.0.XBLCNXM", identity.build);
+            assertEquals("D02", identity.softwareRevision);
+            assertTrue(identity.displayLabel().contains("软件 D02（更新页确认）"));
+        } finally {
+            assertTrue(archive.delete());
+        }
+    }
     @Test public void acknowledgementSurvivesStoreReload() {
         android.content.Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
         android.content.SharedPreferences prefs = ctx.getSharedPreferences("private_config", 0);
