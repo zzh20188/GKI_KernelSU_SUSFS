@@ -1,34 +1,34 @@
-name: "小米17 Pro OS4 / 将自定义构建晋升为 LKG"
+name: "小米17 Pro OS4 / 晋升真机稳定内核为 LKG"
 
 on:
   workflow_dispatch:
     inputs:
       source_run_id:
-        description: "已真机稳定使用的 OS4 自定义 Run ID（自动识别 R62 / 新 OTA）"
+        description: "① 填写已通过真机验证的自定义编译 Run ID（不是本工作流的 Run ID）"
         type: string
         required: true
       confirm_boot:
-        description: "确认此 Run 已在真机成功启动"
+        description: "② 真机启动通过：此 Run 的内核已成功进入 Android 系统"
         type: boolean
         required: true
         default: false
       confirm_persistent:
-        description: "确认该内核已经持久安装并稳定使用"
+        description: "③ 持久安装通过：已正式刷入并稳定使用，不只是 fastboot boot 临时启动"
         type: boolean
         required: true
         default: false
       confirm_runtime:
-        description: "确认本次选择的 Root、SUSFS、NoMount 等功能运行正常"
+        description: "④ 功能检查通过：本次启用的 Root、SUSFS、NoMount 等功能正常"
         type: boolean
         required: true
         default: false
       repair_draft_release:
-        description: "仅修复已成功晋升但未公开的新 OTA LKG 草稿 Release"
+        description: "异常修复专用：仅补发已晋升成功但仍为草稿的 OTA LKG Release；正常晋升请勿勾选"
         type: boolean
         required: true
         default: false
       note:
-        description: "稳定版备注（可选）"
+        description: "⑤ 稳定版备注（可选，建议记录版本号或验证情况）"
         type: string
         required: false
         default: "user-confirmed-stable"
@@ -44,7 +44,7 @@ concurrency:
 
 jobs:
   select-route:
-    name: "自动识别来源：旧 R62 / 新 OTA / 草稿修复"
+    name: "核对来源 Run 并自动选择：R62 晋升 / 新 OTA 晋升 / Release 修复"
     if: github.repository == 'wekingchen/GKI_KernelSU_SUSFS'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -88,7 +88,7 @@ jobs:
 
   promote:
     needs: select-route
-    name: "验证候选 → 上游隔离 → 自动合并新 LKG"
+    name: "旧 R62：核验候选并晋升稳定内核"
     if: needs.select-route.outputs.mode == 'legacy'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -441,7 +441,7 @@ jobs:
 
   verified-lkg-transaction:
     needs: select-route
-    name: "来源校验 → 固定源重编 → 严格验证 → 永久归档 → 指针晋升"
+    name: "新 OTA：严格复现校验、归档并晋升 LKG"
     if: >-
       github.repository == 'wekingchen/GKI_KernelSU_SUSFS' &&
       needs.select-route.outputs.mode == 'ota' && inputs.confirm_boot && inputs.confirm_persistent && inputs.confirm_runtime
@@ -504,7 +504,7 @@ jobs:
 
   publish-repair:
     needs: select-route
-    name: "只修复已晋升 LKG 的未发布草稿，重新下载全部资产核对 SHA"
+    name: "异常修复：核验文件 SHA 后补发 LKG 草稿 Release"
     if: >-
       github.repository == 'wekingchen/GKI_KernelSU_SUSFS' &&
       needs.select-route.outputs.mode == 'repair'
