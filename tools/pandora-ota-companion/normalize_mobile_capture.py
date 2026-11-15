@@ -74,6 +74,17 @@ def parse_manifest(content: bytes) -> dict[str, str]:
     if any(key in result and result[key] != value
            for key, value in allowed.items()):
         fail("unsupported or false OEM provenance claim in mobile manifest")
+    revision = result.get("software_revision", "")
+    revision_keys = ("software_revision", "software_revision_source",
+                     "software_revision_base_build")
+    if any(key in result for key in revision_keys):
+        if (not re.fullmatch(r"D[0-9]{2}", revision)
+                or result.get("software_revision_source") != "USER_CONFIRMED_UPDATE_SCREEN"
+                or result.get("software_revision_base_build")
+                    != result.get("ro.mi.os.version.incremental")):
+            fail("invalid or unbound user-claimed software revision")
+        if re.search(r"\.D[0-9]{2}\Z", result.get("ro.mi.os.version.incremental", "")):
+            fail("manual software revision cannot override property-reported revision")
     return result
 
 
@@ -111,6 +122,8 @@ def normalize(source: Path, output: Path) -> dict:
                 fail("missing " + needed)
         meta = parse_manifest(capture.read("manifest.txt"))
         build = meta.get("ro.mi.os.version.incremental", "")
+        revision = meta.get("software_revision", "")
+        revision_source = meta.get("software_revision_source", "")
         if not BUILD_PATTERN.fullmatch(build):
             fail("invalid HyperOS build: " + build)
         slot = meta.get("slot", "")
@@ -199,7 +212,11 @@ def normalize(source: Path, output: Path) -> dict:
                 "init_boot_role=DIAGNOSTIC_ONLY_NOT_FACTORY_IMAGE\n"
                 "vendor_boot_source=ACTIVE_SLOT_UNVERIFIED_OEM\n"
                 "dtbo_source=ACTIVE_SLOT_UNVERIFIED_OEM\n"
-                "note=ACTIVE_DEVICE_SNAPSHOT_NOT_VERIFIED_STOCK; boot may be modified\n"
+                + (f"software_revision={revision}\n"
+                   "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+                   f"software_revision_base_build={build}\n"
+                   if revision else "")
+                + "note=ACTIVE_DEVICE_SNAPSHOT_NOT_VERIFIED_STOCK; boot may be modified\n"
                 "note2=init_boot may include Root modifications; never assume factory original\n"
             ).encode("utf-8")
             count_text = f"MODULE_COUNT={count}\n".encode("ascii")
@@ -230,6 +247,7 @@ def normalize(source: Path, output: Path) -> dict:
     with output.open("rb") as source:
         digest = hashlib.file_digest(source, "sha256").hexdigest()
     return dict(build=build, slot=slot, uname=uname, modules=count,
+                software_revision=revision, software_revision_source=revision_source,
                 ignored_module_links=links_skipped,
                 sha256=digest, bytes=output.stat().st_size, filename=output.name,
                 provenance="ACTIVE_DEVICE_SNAPSHOT_NOT_VERIFIED_STOCK",

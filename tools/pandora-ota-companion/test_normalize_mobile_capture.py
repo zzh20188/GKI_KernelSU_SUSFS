@@ -157,6 +157,46 @@ class MobileNormalizerTest(unittest.TestCase):
             self.assertIn(b"build=OS4.0.5.0.XBLCNXM.D02",
                           archive.read("README.txt"))
 
+    def test_manual_d02_is_separate_claim_and_does_not_change_real_build(self):
+        claim = (BASE + "software_revision=D02\n"
+                 "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+                 "software_revision_base_build=OS4.0.6.0.XBLCNXM\n")
+        create_capture(self.capture, manifest=claim)
+        report = normalize(self.capture, self.output)
+        self.assertEqual("OS4.0.6.0.XBLCNXM", report["build"])
+        self.assertEqual("D02", report["software_revision"])
+        self.assertEqual("USER_CONFIRMED_UPDATE_SCREEN", report["software_revision_source"])
+        with zipfile.ZipFile(self.output) as archive:
+            text = archive.read("README.txt").decode()
+            self.assertIn("build=OS4.0.6.0.XBLCNXM\n", text)
+            self.assertIn("software_revision=D02\n", text)
+            self.assertIn("software_revision_base_build=OS4.0.6.0.XBLCNXM\n", text)
+            self.assertNotIn("build=OS4.0.6.0.XBLCNXM.D02", text)
+
+    def test_manual_revision_claim_must_match_real_build_and_source(self):
+        for change in (
+            "software_revision=D2\n",
+            "software_revision=D002\n",
+            "software_revision=D02.EXTRA\n",
+            "software_revision=D02\nsoftware_revision_source=UNKNOWN\n",
+            "software_revision=D02\nsoftware_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+            "software_revision_base_build=OS4.0.7.0.XBLCNXM\n",
+        ):
+            manifest = BASE + change
+            create_capture(self.capture, manifest=manifest)
+            with self.assertRaisesRegex(ValueError, "invalid or unbound"):
+                normalize(self.capture, self.output)
+            self.capture.unlink()
+
+    def test_property_revision_cannot_be_duplicated_by_manual_claim(self):
+        manifest = BASE.replace("OS4.0.6.0.XBLCNXM", "OS4.0.6.0.XBLCNXM.D02")
+        manifest += ("software_revision=D02\n"
+                     "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+                     "software_revision_base_build=OS4.0.6.0.XBLCNXM.D02\n")
+        create_capture(self.capture, manifest=manifest)
+        with self.assertRaisesRegex(ValueError, "manual software revision"):
+            normalize(self.capture, self.output)
+
     def test_malformed_suffix_fails_closed(self):
         manifest = BASE.replace("OS4.0.6.0.XBLCNXM", "OS4.0.5.0.XBLCNXM.D2")
         create_capture(self.capture, manifest=manifest)

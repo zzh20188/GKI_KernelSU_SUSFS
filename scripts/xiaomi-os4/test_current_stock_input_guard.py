@@ -14,11 +14,17 @@ assert SPEC and SPEC.loader
 SPEC.loader.exec_module(GUARD)
 
 
-def stock_zip(path: Path, build: str | None, payload: bytes = b"boot") -> None:
+def stock_zip(path: Path, build: str | None, payload: bytes = b"boot",
+              revision: str | None = None) -> None:
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("boot.img", payload)
         if build is not None:
-            archive.writestr("README.txt", "device=pandora\nbuild=" + build + "\n")
+            readme = "device=pandora\nbuild=" + build + "\n"
+            if revision:
+                readme += (f"software_revision={revision}\n"
+                           "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+                           f"software_revision_base_build={build}\n")
+            archive.writestr("README.txt", readme)
 
 
 class CurrentStockInputGuardTest(unittest.TestCase):
@@ -79,6 +85,30 @@ class CurrentStockInputGuardTest(unittest.TestCase):
             GUARD.decide(self.current, self.incoming, "OS4.0.8.0.XBLMIXM",
                          self.fallback, "NEW_OTA_CANDIDATE")
         self.assertIn("channel differs", str(ctx.exception))
+
+    def test_same_build_d02_manual_claim_is_review_even_with_different_boot(self):
+        stock_zip(self.current, None, b"legacy")
+        stock_zip(self.incoming, self.fallback, b"rooted-custom", revision="D02")
+        result = GUARD.decide(
+            self.current, self.incoming, self.fallback, self.fallback,
+            "SOFTWARE_OTA_REVIEW")
+        self.assertEqual(("SOFTWARE_REVIEW", self.fallback), result)
+
+    def test_same_build_software_review_without_bound_claim_is_rejected(self):
+        stock_zip(self.current, self.fallback, b"current")
+        stock_zip(self.incoming, self.fallback, b"custom")
+        with self.assertRaises(SystemExit) as ctx:
+            GUARD.decide(self.current, self.incoming, self.fallback,
+                         self.fallback, "SOFTWARE_OTA_REVIEW")
+        self.assertIn("different canonical ZIP bytes", str(ctx.exception))
+
+    def test_manual_revision_does_not_bypass_current_full_build_rollback(self):
+        stock_zip(self.current, "OS4.0.7.0.XBLCNXM")
+        stock_zip(self.incoming, self.fallback, revision="D02")
+        with self.assertRaises(SystemExit) as ctx:
+            GUARD.decide(self.current, self.incoming, self.fallback,
+                         self.fallback, "SOFTWARE_OTA_REVIEW")
+        self.assertIn("older than current fixed stock-input", str(ctx.exception))
 
     def test_d02_software_revision_is_evidence_only(self):
         stock_zip(self.current, self.fallback, b"current")

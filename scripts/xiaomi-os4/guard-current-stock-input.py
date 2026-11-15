@@ -80,6 +80,30 @@ def decide(current_zip: Path, incoming_zip: Path, incoming_build: str,
             return "SOFTWARE_REVIEW", current_build
         if incoming_build != current_build:
             abort("ambiguous HyperOS build ordering at equal numeric version")
+        if incoming_state == "SOFTWARE_OTA_REVIEW":
+            # Same real Android Build but a user-confirmed update-screen Dxx
+            # is evidence only; never treat a manually asserted label as a
+            # new kernel, canonical stock input or verified software release.
+            with zipfile.ZipFile(incoming_zip) as incoming:
+                raw = incoming.read("README.txt").decode("utf-8", "strict")
+            rows = {}
+            for line in raw.splitlines():
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                if key in rows:
+                    abort("duplicate incoming software revision evidence key")
+                rows[key] = value
+            manual_fields = {"software_revision", "software_revision_source",
+                             "software_revision_base_build"}
+            if manual_fields.intersection(rows):
+                if (re.fullmatch(r"D[0-9]{2}", rows.get("software_revision", "")) is None
+                        or rows.get("software_revision_source") != "USER_CONFIRMED_UPDATE_SCREEN"
+                        or rows.get("software_revision_base_build") != incoming_build):
+                    abort("same-build software review requires explicit bound user testimony")
+                return "SOFTWARE_REVIEW", current_build
+            # A property-reported .Dxx at the same current Build must still
+            # pass the original exact-ZIP equality check below.
         # The original fixed OS4 input is a legacy two-image ZIP without README.
         # inspect-ota-stock-input.py already proved the exact pinned boot SHA.
         if legacy_fallback and incoming_state == "SAME_PINNED_BUILD":

@@ -35,7 +35,7 @@ def boot_v4() -> bytes:
     return bytes(image)
 
 
-def capture(path: Path, *, build: str = BUILD) -> None:
+def capture(path: Path, *, build: str = BUILD, revision: str | None = None) -> None:
     manifest = (
         "schema=pandora-ota-capture-v1\n"
         "source=ACTIVE_DEVICE_SNAPSHOT_NOT_VERIFIED_STOCK\n"
@@ -45,6 +45,10 @@ def capture(path: Path, *, build: str = BUILD) -> None:
         "ro.boot.slot_suffix=_a\nslot=_a\n"
         f"uname={KERNEL}\n"
     )
+    if revision:
+        manifest += (f"software_revision={revision}\n"
+                     "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN\n"
+                     f"software_revision_base_build={build}\n")
     tar_stream = io.BytesIO()
     with tarfile.open(fileobj=tar_stream, mode="w") as archive:
         data = b"\x7fELF" + os.urandom(512)
@@ -150,6 +154,33 @@ class MobileIntakeIntegration(unittest.TestCase):
             self.assertNotEqual(p.returncode, 0)
             self.assertIn("same HyperOS build but stock boot changed",
                           p.stderr + p.stdout)
+
+    def test_real_same_build_with_manual_d02_is_review_without_kernel_promote(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source, xm = base / "mobile.zip", base / "xm.zip"
+            config, report = base / "stock.env", base / "audit.json"
+            build = "OS4.0.5.0.XBLCNXM"
+            capture(source, build=build, revision="D02")
+            normalized = normalize(source, xm)
+            self.assertEqual(build, normalized["build"])
+            self.assertEqual("D02", normalized["software_revision"])
+            config.write_text(
+                f"OS4_STOCK_INPUT_BUILD={build}\n"
+                "OS4_STOCK_BOOT_SHA256=" + "0" * 64 + "\n",
+                encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(STOCK_AUDIT), "--zip", str(xm),
+                 "--stock-config", str(config), "--output", str(report)],
+                text=True, capture_output=True)
+            self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+            audit = json.loads(report.read_text())
+            self.assertEqual(build, audit["build"])
+            self.assertEqual("D02", audit["software_revision"])
+            self.assertEqual("SOFTWARE_OTA_REVIEW", audit["status"])
+            self.assertFalse(audit["software_revision_verified_by_device"])
+            self.assertFalse(audit["may_build_gki_candidate"])
+            self.assertFalse(audit["safe_to_flash"])
 
     def test_real_capture_contract_accepts_d02_as_review_not_candidate(self):
         with tempfile.TemporaryDirectory() as directory:

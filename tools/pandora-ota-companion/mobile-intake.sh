@@ -32,6 +32,11 @@ publish_receipt() {
   local body
   printf -v body 'MOBILE_OTA_INTAKE=%s\nMOBILE_ASSET_ID=%s\nMOBILE_SOURCE_SHA256=%s\nMOBILE_BUILD=%s\nMOBILE_INTAKE_RUN=%s\nSOURCE_PROVENANCE=ACTIVE_DEVICE_SNAPSHOT_NOT_VERIFIED_STOCK\n' \
     "$state" "$STAGED_ASSET_ID" "$CLIENT_SHA" "${BUILD:-UNKNOWN}" "$GITHUB_RUN_ID"
+  if [[ -n "${SOFTWARE_REVISION:-}" ]]; then
+    body+=$'\nMOBILE_SOFTWARE_REVISION='"$SOFTWARE_REVISION"
+    body+=$'\nMOBILE_SOFTWARE_REVISION_SOURCE=USER_CONFIRMED_UPDATE_SCREEN'
+    body+=$'\nMOBILE_SOFTWARE_REVISION_DEVICE_VERIFIED=NO'
+  fi
   # GitHub may replace draft tag_name with untagged-* when updating its body.
   # Restore a stable app-owned tag so existing APK receipt queries still work.
   gh api -X PATCH "repos/$R/releases/$STAGED_RELEASE_ID" \
@@ -60,6 +65,7 @@ python3 tools/pandora-ota-companion/normalize_mobile_capture.py \
   > "$DIR/normalize-report.json"
 BUILD="$(jq -r .build "$DIR/normalize-report.json")"
 SLOT="$(jq -r .slot "$DIR/normalize-report.json")"
+SOFTWARE_REVISION="$(jq -r '.software_revision // ""' "$DIR/normalize-report.json")"
 NEW_NAME="pandora-stock-$BUILD-$SLOT-xm.zip"
 NEW="$DIR/converted/$NEW_NAME"
 mv "$DIR/converted/incoming-xm.zip" "$NEW"

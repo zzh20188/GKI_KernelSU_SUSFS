@@ -115,6 +115,18 @@ final class RootCollector {
             if (!isValidHyperOsBuild(build)) {
                 throw new SecurityException("采集包 HyperOS 版本无效");
             }
+            String revision = fields.getOrDefault("software_revision", "");
+            if (!revision.isEmpty()) {
+                if (!revision.matches("D[0-9]{2}")
+                        || !"USER_CONFIRMED_UPDATE_SCREEN".equals(fields.get("software_revision_source"))
+                        || !build.equals(fields.get("software_revision_base_build"))
+                        || build.matches(".*\\.D[0-9]{2}$")) {
+                    throw new SecurityException("软件修订号证据与真实系统 Build 不一致");
+                }
+            } else if (fields.containsKey("software_revision_source")
+                    || fields.containsKey("software_revision_base_build")) {
+                throw new SecurityException("软件修订号证据不完整");
+            }
             if (!("_a".equals(slot) || "_b".equals(slot)) || !slot.equals(propSlot)) {
                 throw new SecurityException("采集包活动 slot 信息不一致");
             }
@@ -127,6 +139,10 @@ final class RootCollector {
     static boolean isValidHyperOsBuild(String build) {
         return build != null && build.matches(
                 "OS[0-9]+(?:\\.[0-9]+)+\\.[A-Z0-9]+(?:\\.D[0-9]{2})?");
+    }
+
+    static boolean isValidOptionalSoftwareRevision(String revision) {
+        return revision != null && (revision.isEmpty() || revision.matches("D[0-9]{2}"));
     }
 
     /** Prevent accidentally uploading a stale local ZIP from another OTA/slot. */
@@ -174,6 +190,14 @@ final class RootCollector {
     }
 
     static File capture(Context ctx, boolean includeBoot) throws Exception {
+        return capture(ctx, includeBoot, "");
+    }
+
+    static File capture(Context ctx, boolean includeBoot, String softwareRevision) throws Exception {
+        if (!isValidOptionalSoftwareRevision(softwareRevision))
+            throw new IllegalArgumentException("软件修订号必须留空或为 D02 这样的两位数字格式");
+        if (!softwareRevision.isEmpty() && currentOsVersion().matches(".*\\.D[0-9]{2}$"))
+            throw new IllegalArgumentException("系统属性已包含 Dxx 修订，无需人工重复标记");
         if (!isPandora()) throw new IllegalStateException("仅支持小米17 Pro（pandora）");
         if (!includeBoot) throw new IllegalArgumentException("OTA 完整采集必须包括当前 slot 四个启动分区");
         CapturePreflight.requireSpace(ctx); // fail before Root or partition reads
@@ -204,6 +228,10 @@ final class RootCollector {
                     + "printf 'vendor_boot_source=ACTIVE_SLOT_UNVERIFIED_OEM\\ndtbo_source=ACTIVE_SLOT_UNVERIFIED_OEM\\n' >> \"$OUT/manifest.txt\"\n"
                     + "for key in ro.product.device ro.mi.os.version.incremental ro.build.version.release ro.build.version.incremental ro.build.fingerprint ro.boot.slot_suffix; do "
                     + "printf '%s=' \"$key\" >> \"$OUT/manifest.txt\"; getprop \"$key\" >> \"$OUT/manifest.txt\"; done\n"
+                    + (softwareRevision.isEmpty() ? "" :
+                       "printf 'software_revision=" + softwareRevision
+                       + "\nsoftware_revision_source=USER_CONFIRMED_UPDATE_SCREEN\nsoftware_revision_base_build=' >> \"$OUT/manifest.txt\"; "
+                       + "getprop ro.mi.os.version.incremental >> \"$OUT/manifest.txt\"\n")
                     + "uname -r > \"$OUT/kernel-release.txt\"\n"
                     + "cat /proc/version > \"$OUT/kernel-version.txt\"\n"
                     + "(cat /proc/modules || true) > \"$OUT/loaded-modules.txt\"\n"

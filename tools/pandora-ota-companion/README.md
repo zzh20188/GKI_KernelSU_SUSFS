@@ -1,6 +1,6 @@
 # Pandora OTA 助手：当前使用说明
 
-当前版本 **0.13.2-dev**（versionCode 26）。仓库默认分支 dev，设备 Xiaomi 17 Pro / pandora。完整项目入口见 [OS4 文档索引](../../docs/pandora-os4-guide.md)。
+当前版本 **0.13.3-dev**（versionCode 27）。仓库默认分支 dev，设备 Xiaomi 17 Pro / pandora。完整项目入口见 [OS4 文档索引](../../docs/pandora-os4-guide.md)。
 
 App 的范围：只读采集、GitHub 上传与接收跟踪、在手机填写原真机反馈工作流。电脑负责 fastboot boot；App 不执行 fastboot/flash、重启、切 slot 或分区写入，也不会自动晋升 LKG。
 
@@ -35,10 +35,12 @@ App 的范围：只读采集、GitHub 上传与接收跟踪、在手机填写原
 1. 先从同版本官方 OTA 离线保存原始、未修补的 init_boot.img 及来源和 SHA，再修补同版本镜像恢复 Root。新 build/fingerprint 或首次使用会提醒；「已了解」不表示 App 已备份镜像。
 2. 采集目录实际可用空间小于 1 GiB 阻止；1 GiB 至不足 2 GiB 警告；至少 2 GiB 正常继续。真正读取分区前再次核验。
 3. 采集和上传前在线验证仓库与实际写权限：创建、读回、删除独有空 Draft，再发送不会触发接收的权限探针。不是仅看 token 已填写或 permissions.push。空草稿清理失败会显示 ID 并停止继续。
-4. Root 只读采集活动 slot 的 boot/init_boot/vendor_boot/dtbo 和 OEM 模块；强制检查 pandora、build、slot、文件完整性。单个 ZIP 必须小于 950 MiB。
+4. 预检完成后出现「软件修订号 · 可选」：如果小米系统更新页面明确显示 D02，而 `ro.mi.os.version.incremental` 仍是 `OS4.0.5.0.XBLCNXM`，手动填入 `D02` 并确认；没有这种修订时选「无软件修订」。这是**用户确认的更新页面证据**，不是 Android 设备可信上报，不能伪造成真实系统 build。随后只读采集活动 slot 的 boot/init_boot/vendor_boot/dtbo 和 OEM 模块；仍强制检查 pandora、build、slot、文件完整性。单个 ZIP 必须小于 950 MiB。
 5. 成功只保留最终 ZIP，删除镜像/TAR/staging；失败删除残缺 ZIP 并尝试清理 staging。上次中断的 staging 在 30 分钟宽限后回收，不误删最终 ZIP。
 
-`.D02` 是更新页面标识，不保证 `ro.mi.os.version.incremental` 一定带该后缀；应以升级后真实 getprop 和 fingerprint 为准。若属性包含 `.D02`，采集和上传可识别该格式，但同主版本软件修订先保存来源证据并转人工核验，不自动宣称内核没有变化；若属性没有变化，则继续沿用严格的同 build / boot 漂移安全检查。\n\nRoot 后 init_boot 明确是诊断快照，不是 OEM 原件；无需把离线原始 init_boot 塞回 App ZIP。boot/OEM .ko 是 GKI/ABI 主输入，但当前快照也不能被无条件视为原厂 pristine 镜像。转换后的八文件 xm.zip 明确保留来源标签。
+`.D02` 是更新页面标识，不保证 `ro.mi.os.version.incremental` 一定带该后缀。2026-11-15 Xiaomi 17 Pro D02 真机已证实：更新器显示 D02，但真实 Build、活动 slot A、6.12.69 自定义内核和 Root 均保留。0.13.3 使用单独的 `software_revision=D02`、`software_revision_source=USER_CONFIRMED_UPDATE_SCREEN`、`software_revision_base_build=...` 保存人工确认；原始 `build=` 始终只取 Android 属性，并在采集、上传、服务端规范化时交叉校验。服务端只回执 `REVIEW_REQUIRED`，不替换固定内核输入、不生成 GKI、不晋升 LKG。**没有手动确认 D02 的同 build 快照仍受原有 boot 漂移拒收门禁，不会自动推断软件修订。**
+
+Root 后 init_boot 明确是诊断快照，不是 OEM 原件；无需把离线原始 init_boot 塞回 App ZIP。boot/OEM .ko 是 GKI/ABI 主输入，但当前快照也不能被无条件视为原厂 pristine 镜像。转换后的八文件 xm.zip 明确保留来源标签。
 
 ### 上传、状态与本地清理
 
@@ -105,5 +107,6 @@ gradle --no-daemon :app:assembleDebug
 | 0.12.2 | 修复成功响应被静默截断至 16 KiB 的问题；完整读取 GitHub JSON，超过 2 MiB 明确失败，错误提示最多保留 16 KiB |
 | 0.13 | 加入来源绑定的全链路阶段快照卡及相应帮助；服务器配套增加候选/固定输入恢复入口。后续维护补齐模拟器 Launcher 弹窗处理、页面就绪确认与黑屏拒收 |
 | 0.13.2 | 支持严格的 `.Dxx` 软件修订格式；服务端分类为待核验而非自动声明无内核变化；增加 `REVIEW_REQUIRED` 回执、前台停止轮询及本地安全删除适配 |
+| 0.13.3 | 修复 D02 更新页面版本与 Android Build 不一致：用户单次确认 Dxx，采集与 Draft 回执保留独立来源声明，同 Build 只审阅不触碰内核基线 |
 
 HTTP User-Agent 的版本字段直接取构建生成的 `BuildConfig.VERSION_NAME`，随 App 版本自动更新。

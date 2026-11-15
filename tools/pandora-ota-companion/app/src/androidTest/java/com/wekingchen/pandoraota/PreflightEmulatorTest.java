@@ -43,6 +43,15 @@ public class PreflightEmulatorTest {
         assertFalse(RootCollector.isValidHyperOsBuild("OS4.0.5.0.XBLCNXM.D002"));
         assertFalse(RootCollector.isValidHyperOsBuild(null));
     }
+    @Test public void manuallyConfirmedSoftwareRevisionRequiresTwoDigits() {
+        assertTrue(RootCollector.isValidOptionalSoftwareRevision(""));
+        assertTrue(RootCollector.isValidOptionalSoftwareRevision("D02"));
+        assertTrue(RootCollector.isValidOptionalSoftwareRevision("D99"));
+        assertFalse(RootCollector.isValidOptionalSoftwareRevision("D2"));
+        assertFalse(RootCollector.isValidOptionalSoftwareRevision("D002"));
+        assertFalse(RootCollector.isValidOptionalSoftwareRevision("OS4.0.5.0.XBLCNXM.D02"));
+        assertFalse(RootCollector.isValidOptionalSoftwareRevision(null));
+    }
     @Test public void acknowledgementSurvivesStoreReload() {
         android.content.Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
         android.content.SharedPreferences prefs = ctx.getSharedPreferences("private_config", 0);

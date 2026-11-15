@@ -39,7 +39,8 @@ class AutoOTAGuards(unittest.TestCase):
         )
         self.report = self.d / "report.json"
 
-    def make_zip(self, *, build="OS4.0.5.1.XBLCNXM", manifest=True):
+    def make_zip(self, *, build="OS4.0.5.1.XBLCNXM", manifest=True,
+                 software_revision=None):
         z = self.d / "test-xm.zip"
         with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as f:
             f.writestr("boot.img", synthetic_boot())
@@ -48,7 +49,10 @@ class AutoOTAGuards(unittest.TestCase):
                     "device=pandora", "build=" + build,
                     "slot=_a", "uname=6.12.69-android16-6-synthetic-ci-4k",
                     "collected_from_live_device=YES", "operation=READ_ONLY",
-                ]) + "\n")
+                ] + (["software_revision=" + software_revision,
+                      "software_revision_source=USER_CONFIRMED_UPDATE_SCREEN",
+                      "software_revision_base_build=" + build]
+                     if software_revision else [])) + "\n")
         return z
 
     def run_inspect(self, z):
@@ -117,6 +121,25 @@ class AutoOTAGuards(unittest.TestCase):
         self.assertTrue(x["not_oem_source_proven"])
         self.assertFalse(x["safe_to_flash"])
         self.assertIn("OTA_GKI_TAG=", env.read_text())
+
+    def test_same_real_build_with_manual_d02_becomes_review_only(self):
+        result = self.run_inspect(self.make_zip(
+            build="OS4.0.5.0.XBLCNXM", software_revision="D02"))
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        report = json.loads(self.report.read_text())
+        self.assertEqual("OS4.0.5.0.XBLCNXM", report["build"])
+        self.assertEqual("D02", report["software_revision"])
+        self.assertEqual("USER_CONFIRMED_UPDATE_SCREEN", report["software_revision_source"])
+        self.assertFalse(report["software_revision_verified_by_device"])
+        self.assertEqual("SOFTWARE_OTA_REVIEW", report["status"])
+        self.assertFalse(report["may_build_gki_candidate"])
+        self.assertEqual("SOFTWARE_OTA_EVIDENCE_REVIEW", report["next_gate"])
+
+    def test_manual_d02_cannot_disguise_new_real_firmware(self):
+        result = self.run_inspect(self.make_zip(
+            build="OS4.0.6.0.XBLCNXM", software_revision="D02"))
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("cannot masquerade", result.stderr + result.stdout)
 
     def test_d02_is_recorded_without_gki_build(self):
         result = self.run_inspect(self.make_zip(build="OS4.0.5.0.XBLCNXM.D02"))

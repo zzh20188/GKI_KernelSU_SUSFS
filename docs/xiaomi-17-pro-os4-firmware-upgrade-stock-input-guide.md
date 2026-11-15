@@ -1,12 +1,12 @@
 # 小米 17 Pro OS4：OTA、手机采集与真机反馈操作指南
 
-核对日期：2026-11-02。适用 pandora；[当前状态](pandora-os4-guide.md)以机器可读指针和真实记录为准。当前稳定快照为 OS4.0.5.0.XBLCNXM / R62 Gen 4。
+核对日期：2026-11-15（D02 软件修订实机重启成功，采集回执待验收）。适用 pandora；[当前状态](pandora-os4-guide.md)以机器可读指针和真实记录为准。当前稳定快照为 OS4.0.5.0.XBLCNXM / R62 Gen 4。
 
 ## 一、先判断是否需要重新采集
 
 | 你的情况 | 操作 |
 | --- | --- |
-| 系统 build 没变，只想更新组件或自选功能 | 日常编译无需重复采集；若要验收真实 OTA 助手，可以单独采集并保留证据，但同 build / boot 漂移安全门禁仍生效 |
+| 系统 build 没变，只想更新组件或自选功能 | 日常编译无需重复采集；如更新器明确显示 D02 等新软件修订，使用 0.13.3 的人工确认入口记录 Dxx，提交后只进入 REVIEW_REQUIRED；未声明修订的同 build / boot 漂移门禁保持不变 |
 | 升级到另一个 HyperOS OTA build | 重新采集；仅完整内核 OTA 经 ABI/KMI 后才建立新 GKI 基线；同主版本 `.D02` 类软件修订只记录证据并待核验，不自动替换固定输入 |
 | 只是重新安装 App 或换 PAT | 不用重采；固定签名覆盖安装保留原数据 |
 
@@ -30,7 +30,7 @@ App 新 build / fingerprint 提醒的「已了解」只表示读过说明，不�
 | 手机提交真机反馈 | 上述权限再加 Actions: Read and write |
 | 令牌保存 | Android Keystore 加密；不要清除应用数据以免丢失本地回执和令牌 |
 
-1. 工作台检查 Root，再点击「开始采集」。实际 captures 目录可用空间 **<1 GiB 阻止，1 GiB 至不足 2 GiB 警告，≥2 GiB 正常继续**；读取分区前再次核对。
+1. 工作台检查 Root，再点击「开始采集」。预检通过后如更新页面显示 D02、但 Android Build 未变，则在「软件修订号 · 可选」中填 `D02`；原系统属性、fingerprint、slot 原样保留，仅附加一份用户声明，绝不将 D02 虚构成 Android Build。无软件修订时选「无软件修订」。实际 captures 目录可用空间 **<1 GiB 阻止，1 GiB 至不足 2 GiB 警告，≥2 GiB 正常继续**；读取分区前再次核对。
 2. 每次采集/上传前在线核验 GitHub：真实读取仓库、创建/核对/删除专属空草稿、发送不会触发接收的权限探针。仅显示已配置不代表实时写权限通过；清理失败会给出空草稿 ID。
 3. 只读采集活动 slot 的 boot/init_boot/vendor_boot/dtbo 与 OEM 模块，生成最终 ZIP；完成后清理临时镜像/TAR/staging，失败清理残缺 ZIP 并保留明确错误。
 4. 上传到专用 Draft Release，不要 Publish。显示真实字节进度；服务器确认附件后保存回执，再通知手机接收工作流。保持 App 前台及网络稳定，不支持断点续传。
@@ -101,6 +101,10 @@ Windows 10/11 可运行仓库最新 [`collect-pandora-stock-input.cmd`](../scrip
 人工更新固定 Release 前，必须完整备份旧附件并核验新输入；不能先删除唯一恢复输入，再验证新 ZIP。只更换附件未必触发 edited，可等北京时间 04:41 每日补查，或手动运行 OTA 主流程。Windows 新 OTA 实机采集和真正新 OTA 全链路仍待实物验证。
 
 ## 八、恢复与验证边界
+
+2026-11-15 真机观察：系统更新页面显示 `4.0.5.0.XBLCNXM.D02`（相册、计算器优化），而 `ro.mi.os.version.incremental` 仍为 `OS4.0.5.0.XBLCNXM`；首次重启成功，活动 slot A、自定义内核 `6.12.69-android16-6-os4r62-custom-4k` 与 KernelSU Root 均保留。旧 A 槽四分区备份 SHA 前后相同；B 槽启动分区为全零、不可启动，因此不能误将其当成 D02 boot。该实机结果证明此次软件更新未使运行内核及 Root 丢失，但不能推导其他 OTA 类型都不改内核。
+
+从 0.13.3 起，当 Android Build 未携带 Dxx 时，用户可在 App 采集前依据更新器页面手动确认软件修订。采集包仅记录独立的 `software_revision`、`software_revision_source=USER_CONFIRMED_UPDATE_SCREEN` 以及绑定的真实 Build。服务器标记为**人工声称、未由 Android 属性验证**，只保存 Draft 和 `REVIEW_REQUIRED` 回执；不自动替换 stock-input、不运行 GKI、不晋升 LKG。需后续实机确认 0.13.3 的采集、上传和回执；不能把代码和 CI 测试冒充完整真机验收。
 
 软件更新页面的 `.D02` 标记不保证 `ro.mi.os.version.incremental` 含相同后缀。验收需要真实的 getprop、fingerprint 与 slot；`REVIEW_REQUIRED` 不能解读为内核不变、ABI 通过或新 LKG。
 

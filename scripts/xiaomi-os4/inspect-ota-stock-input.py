@@ -132,6 +132,14 @@ def main() -> None:
             if key in fields and fields[key] != expected:
                 abort("invalid or falsely verified OEM image provenance: " + key)
     build = fields.get("build", "")
+    manual_revision = fields.get("software_revision", "")
+    if manual_revision or any(k in fields for k in
+                              ("software_revision_source", "software_revision_base_build")):
+        if (not re.fullmatch(r"D[0-9]{2}", manual_revision)
+                or fields.get("software_revision_source") != "USER_CONFIRMED_UPDATE_SCREEN"
+                or fields.get("software_revision_base_build") != build
+                or re.search(r"\.D[0-9]{2}$", build)):
+            abort("invalid manually asserted software revision provenance")
     if not BUILD_RE.fullmatch(build):
         abort("invalid HyperOS build")
     if fields.get("slot") not in ("_a", "_b"):
@@ -159,8 +167,14 @@ def main() -> None:
     pinned = stock.get("OS4_STOCK_INPUT_BUILD", "")
     expected_boot = stock.get("OS4_STOCK_BOOT_SHA256", "")
     boot_hash = sha(boot)
+    if manual_revision and build_order(build)[:2] != build_order(pinned)[:2]:
+        abort("software revision evidence cannot masquerade as a new firmware build")
     if build == pinned:
-        state = "SAME_PINNED_BUILD" if boot_hash == expected_boot else "SAME_BUILD_BOOT_DRIFT_REVIEW"
+        # Explicit update-screen testimony is review-only, even when the
+        # Android Build and boot partition remain byte-for-byte unchanged.
+        state = ("SOFTWARE_OTA_REVIEW" if manual_revision else
+                 "SAME_PINNED_BUILD" if boot_hash == expected_boot else
+                 "SAME_BUILD_BOOT_DRIFT_REVIEW")
     else:
         incoming_order, incoming_channel, incoming_revision = build_order(build)
         pinned_order, pinned_channel, pinned_revision = build_order(pinned)
@@ -177,6 +191,9 @@ def main() -> None:
     can_build = state == "NEW_OTA_CANDIDATE" and android == "16" and kmi_generation == "6" and patch.startswith("6.12.")
     report = {
         "schema": 1, "status": state, "device": "pandora", "build": build, "slot": fields["slot"],
+        "software_revision": manual_revision,
+        "software_revision_source": ("USER_CONFIRMED_UPDATE_SCREEN" if manual_revision else "NONE"),
+        "software_revision_verified_by_device": False,
         "uname": uname, "kernel_release_marker": embedded or "NOT_FOUND",
         "kernel_marker_verified": bool(embedded), "kernel_version": patch, "kmi": kmi,
         "pinned_build": pinned, "stock_boot_sha256": boot_hash, "stock_header_sha256": sha(boot[:PAGE]),
