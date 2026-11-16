@@ -34,6 +34,10 @@
 6. 新增 **NoMount 挂载元模块**（构建时可选开关）：在内核 `fs/` 层集成 [maxsteeel/NoMount](https://github.com/maxsteeel/nomount)，提供无需传统挂载点的模块挂载方案，可与任意 KSU 变体及 SUSFS 共存。开启后需自行刷入配套的 NoMount 模块使用
 7. 新增 **网络增强**（构建时可选开关，默认关闭）：BBRv3 等网络功能增强
 
+## SukiSU 上游同步
+
+工作流中的 `SukiSU` 选项现对应 [SukiSU-Nova](https://github.com/SukiSU-Nova/SukiSU-Nova)，保留输入键以兼容现有调用。新版版本号按 `30000 + main 提交数 - 4001` 计算，Manager 只选择同一版本规则的 main 构建，优先使用 `manager-ci` Release，历史 Actions 产物兜底。`SukiSU(40726)` / `SukiSU(40548)` 继续使用固定的旧版源码、版本号与 Manager，不随 Nova 重置。
+
 ## ⚠️ 兼容性提醒
 
 > **注意：** 目前不支持一加 ColorOS 14、15，刷入后可能需要清除数据开机。

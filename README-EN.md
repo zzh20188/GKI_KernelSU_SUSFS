@@ -34,6 +34,10 @@ English | [**简体中文**](README.md)
 
 ---
 
+## SukiSU upstream migration
+
+The existing `SukiSU` workflow option now targets [SukiSU-Nova](https://github.com/SukiSU-Nova/SukiSU-Nova); its input key is retained for compatibility. The new version code is `30000 + main commit count - 4001`, and Manager selection is limited to main builds using the same version rule, preferring the `manager-ci` release with historical Actions artifacts as a fallback. `SukiSU(40726)` / `SukiSU(40548)` retain their pinned legacy sources, version codes, and Manager APKs.
+
 ## ⚠️ Compatibility Notice
 
 > **Note:** OnePlus ColorOS 14/15 is currently not supported. A data wipe may be required after flashing.
