@@ -563,7 +563,7 @@ jobs:
           case "${{ inputs.kernelsu_variant }}" in
             "Next")      KSU_NAME="KernelSU-Next" ;;
             "Official")  KSU_NAME="KernelSU" ;;
-            "SukiSU")    KSU_NAME="SukiSU" ;;
+            "SukiSU")    KSU_NAME="SukiSU-Nova" ;;
             "BakaSU")  KSU_NAME="BakaSU" ;;
           esac
           echo "KSU_NAME=$KSU_NAME" >> $GITHUB_ENV
@@ -663,7 +663,7 @@ jobs:
           case "${{ inputs.kernelsu_variant }}" in
             "Official") REPO_URL="https://github.com/tiann/KernelSU.git"; REPO_URL2="tiann/KernelSU" ;;
             "Next") REPO_URL="https://github.com/KernelSU-Next/KernelSU-Next.git"; REPO_URL2="KernelSU-Next/KernelSU-Next" ;;
-            "SukiSU") REPO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"; REPO_URL2="SukiSU-Ultra/SukiSU-Ultra" ;;
+            "SukiSU") REPO_URL="https://github.com/SukiSU-Nova/SukiSU-Nova.git"; REPO_URL2="SukiSU-Nova/SukiSU-Nova" ;;
             "BakaSU") REPO_URL="https://github.com/Baka-SU/BakaSU.git"; REPO_URL2="Baka-SU/BakaSU" ;;
           esac
 

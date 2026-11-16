@@ -1,4 +1,4 @@
-name: Auto Trigger on SukiSU Update
+name: Auto Trigger on SukiSU-Nova Update
 
 on:
   schedule:
@@ -17,10 +17,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
           
-      - name: Get latest commit SHA from SukiSU-Ultra
+      - name: 获取 SukiSU-Nova main 最新提交
         id: get_sha
         run: |
-          LATEST_SHA=$(curl -s https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/commits/main | jq -r '.sha')
+          set -euo pipefail
+          LATEST_SHA=$(curl -fsSL https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/commits/main |
+            jq -er '.sha | select(type == "string" and test("^[0-9a-f]{40}$"))')
           echo "sha=$LATEST_SHA" >> $GITHUB_OUTPUT
           echo "Latest SHA: $LATEST_SHA"
           

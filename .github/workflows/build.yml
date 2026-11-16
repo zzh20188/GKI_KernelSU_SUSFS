@@ -607,7 +607,7 @@ jobs:
               ;;
             "SukiSU")
               echo "添加 ${{ inputs.ksu_variant }}..."
-              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
+              curl -LSs "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/main/kernel/setup.sh" | bash $BRANCH
               ;;
             "BakaSU")
               echo "添加 BakaSU..."
@@ -619,7 +619,7 @@ jobs:
                 exit 1
               fi
               echo "添加 ${{ inputs.ksu_variant }}..."
-              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
+              curl -LSs "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/main/kernel/setup.sh" | bash $BRANCH
               ;;
           esac
 
@@ -634,12 +634,27 @@ jobs:
         if: (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'SukiSU(40726)' || inputs.ksu_variant == 'SukiSU(40548)') && inputs.ksu_mode != '禁用KSU'
         working-directory: ${{ env.KERNEL_ROOT }}/KernelSU
         run: |
-          KBUILD_FILE="./kernel/Kbuild"
           CUSTOM_TAG="${{ vars.MANAGER_STR }}"
 
-          if [ ! -f "$KBUILD_FILE" ]; then
-            echo "未找到 $KBUILD_FILE，跳过 SukiSU 版本标识定制"
+          # main 使用 Kbuild，builtin 与部分固定旧版本使用 Makefile。
+          if [ -f ./kernel/Kbuild ]; then
+            KBUILD_FILE="./kernel/Kbuild"
+          elif [ -f ./kernel/Makefile ]; then
+            KBUILD_FILE="./kernel/Makefile"
+          else
+            echo "未找到 SukiSU 构建文件，跳过版本标识定制"
             exit 0
+          fi
+
+          if grep -qE '^[[:space:]]*define get_ksu_version_full$' "$KBUILD_FILE"; then
+            VERSION_FORMAT="legacy"
+            VERSION_TOKEN='$1'
+          elif grep -qE '^[[:space:]]*KSU_VERSION_FULL[[:space:]]*:=' "$KBUILD_FILE"; then
+            VERSION_FORMAT="assignment"
+            VERSION_TOKEN='$(VERSION_TAG)'
+          else
+            echo "::error::无法识别 $KBUILD_FILE 的 SukiSU 版本字符串格式"
+            exit 1
           fi
 
           GIT_HASH=$(git rev-parse --short=8 HEAD)
@@ -649,17 +664,19 @@ jobs:
           fi
 
           if [ -n "$CUSTOM_TAG" ]; then
-            VERSION_TEMPLATE="v\$1-$CUSTOM_TAG@$BRANCH_NAME[$GIT_HASH]"
+            VERSION_TEMPLATE="v${VERSION_TOKEN}-$CUSTOM_TAG@${BRANCH_NAME}[$GIT_HASH]"
           else
-            VERSION_TEMPLATE="v\$1-$GIT_HASH@$BRANCH_NAME"
+            VERSION_TEMPLATE="v${VERSION_TOKEN}-$GIT_HASH@$BRANCH_NAME"
           fi
 
-          awk -v body="$VERSION_TEMPLATE" '
+          TMP_KBUILD=$(mktemp "${KBUILD_FILE}.XXXXXX")
+          trap 'rm -f "$TMP_KBUILD"' EXIT
+          awk -v body="$VERSION_TEMPLATE" -v format="$VERSION_FORMAT" '
             BEGIN {
               in_block = 0
               replaced = 0
             }
-            /^[[:space:]]*define get_ksu_version_full$/ {
+            format == "legacy" && /^[[:space:]]*define get_ksu_version_full$/ {
               print
               print body
               in_block = 1
@@ -671,6 +688,11 @@ jobs:
               in_block = 0
               next
             }
+            format == "assignment" && /^[[:space:]]*KSU_VERSION_FULL[[:space:]]*:=/ {
+              print "KSU_VERSION_FULL := " body
+              replaced = 1
+              next
+            }
             !in_block {
               print
             }
@@ -679,9 +701,10 @@ jobs:
                 exit 1
               }
             }
-          ' "$KBUILD_FILE" > "${KBUILD_FILE}.tmp" && mv "${KBUILD_FILE}.tmp" "$KBUILD_FILE"
+          ' "$KBUILD_FILE" > "$TMP_KBUILD"
+          mv "$TMP_KBUILD" "$KBUILD_FILE"
 
-          echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
+          echo "已更新 $KBUILD_FILE 版本字符串: $VERSION_TEMPLATE"
 
       # 在内核源码和 KSU 准备完成后再获取 SUSFS，避免在前期集中拉取。
       - name: 克隆 SUSFS 源码

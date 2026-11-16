@@ -62,27 +62,41 @@ jobs:
       - name: 获取 KSU & SUSFS 版本
         id: get_version
         run: |
+          set -euo pipefail
+
+          # 重复执行时复用同一仓库，来源不符则报错，避免误算其他变体的版本。
+          clone_kernelsu() {
+            local repository="$1"
+            if [ -d KernelSU/.git ]; then
+              if [ "$(git -C KernelSU remote get-url origin)" != "$repository" ]; then
+                echo "::error::已有 KernelSU 的来源与所选变体不同"
+                return 1
+              fi
+            else
+              git clone "$repository" KernelSU
+            fi
+          }
 
           if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "This is the Next variant"
-            git clone https://github.com/KernelSU-Next/KernelSU-Next.git KernelSU
+            clone_kernelsu https://github.com/KernelSU-Next/KernelSU-Next.git
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "This is the SukiSU variant"
-            git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
+            clone_kernelsu https://github.com/SukiSU-Nova/SukiSU-Nova.git
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             echo "This is the SukiSU(40726) variant"
-            git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
+            clone_kernelsu https://github.com/SukiSU-Nova/SukiSU-Nova.git
             git -C KernelSU checkout 5da529942987b834c2b02a4819eaa298a8383bf4
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40548)" ]; then
             echo "This is the SukiSU(40548) variant"
-            git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
+            clone_kernelsu https://github.com/SukiSU-Nova/SukiSU-Nova.git
             git -C KernelSU checkout 3170a48c508f6330ea636c51835a84573fe56ef5
           elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
             echo "This is the BakaSU variant"
-            git clone https://github.com/Baka-SU/BakaSU.git KernelSU
+            clone_kernelsu https://github.com/Baka-SU/BakaSU.git
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "This is the Official"
-            git clone https://github.com/tiann/KernelSU.git KernelSU
+            clone_kernelsu https://github.com/tiann/KernelSU.git
           else
             echo "Unknown variant"
             exit 1
@@ -93,7 +107,16 @@ jobs:
           KSU_GIT_VERSION=$(git rev-list --count HEAD)
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            KSU_VERSION=$((40000 + KSU_GIT_VERSION - 2815))
+            # Nova 与 Manager 都以 main 提交数计算版本，从上游构建文件读取规则。
+            SUKISU_VERSION_BASE=$(awk '$1 == "VERSION_BASE" {print $3; exit}' kernel/Kbuild)
+            SUKISU_VERSION_OFFSET=$(awk '$1 == "VERSION_OFFSET" {print $3; exit}' kernel/Kbuild)
+            if ! [[ "$SUKISU_VERSION_BASE" =~ ^[0-9]+$ && "$SUKISU_VERSION_OFFSET" =~ ^[0-9]+$ ]]; then
+              echo "::error::无法从 SukiSU-Nova Kbuild 解析版本规则"
+              exit 1
+            fi
+            KSU_VERSION=$((SUKISU_VERSION_BASE + KSU_GIT_VERSION - SUKISU_VERSION_OFFSET))
+            echo "SUKISU_VERSION_BASE=$SUKISU_VERSION_BASE" >> "$GITHUB_ENV"
+            echo "SUKISU_VERSION_OFFSET=$SUKISU_VERSION_OFFSET" >> "$GITHUB_ENV"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             KSU_VERSION=40726
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40548)" ]; then
@@ -150,9 +173,10 @@ jobs:
             KSUM="manager"
             BRANCH="dev"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "SukiSU..."
-            REPO="SukiSU-Ultra/SukiSU-Ultra"
+            echo "SukiSU-Nova..."
+            REPO="SukiSU-Nova/SukiSU-Nova"
             KSUM="manager"
+            BRANCH="main"
           elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
             echo "BakaSU..."
             REPO="Baka-SU/BakaSU"
@@ -185,7 +209,18 @@ jobs:
             local git_version
             git_version=$(git -C KernelSU rev-list --count "$head_sha")
             case "${{ inputs.kernelsu_variant }}" in
-              "SukiSU") echo $((40000 + git_version - 2815)) ;;
+              "SukiSU")
+                # 改名前后的版本号不单调，必须先确认规则相同，避免混用 Ultra / Nova APK。
+                local kbuild version_base version_offset
+                kbuild=$(git -C KernelSU show "$head_sha:kernel/Kbuild" 2>/dev/null) || return 1
+                version_base=$(printf '%s\n' "$kbuild" | awk '$1 == "VERSION_BASE" && !found {print $3; found=1}')
+                version_offset=$(printf '%s\n' "$kbuild" | awk '$1 == "VERSION_OFFSET" && !found {print $3; found=1}')
+                if [ "$version_base" != "$SUKISU_VERSION_BASE" ] || [ "$version_offset" != "$SUKISU_VERSION_OFFSET" ]; then
+                  echo "跳过 SukiSU Manager：提交 $head_sha 的版本规则与目标内核不同" >&2
+                  return 1
+                fi
+                echo $((version_base + git_version - version_offset))
+                ;;
               "BakaSU") echo $((30700 + git_version)) ;;
               "Official") echo $((20000 + git_version)) ;;
               "Next") echo $((30000 + git_version)) ;;
@@ -207,12 +242,49 @@ jobs:
             fi
           }
 
+          NOVA_RELEASE_LIST=""
+          NOVA_RELEASE_VERSION=0
+          download_nova_release() {
+            echo "下载 SukiSU-Nova manager-ci，KSU $NOVA_RELEASE_VERSION"
+            mkdir -p manager-artifacts/SukiSU-Nova
+            while IFS=$'\t' read -r name url; do
+              curl -fL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -o "manager-artifacts/SukiSU-Nova/$name" "$url"
+            done <<< "$NOVA_RELEASE_LIST"
+          }
+
+          # 上游滚动 Release 可能先于 Actions 成功记录发布；提交规则与 APK 版本必须同时匹配。
+          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
+            if NOVA_RELEASE=$(curl -fsSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/$REPO/releases/tags/manager-ci"); then
+              NOVA_RELEASE_REF=$(printf '%s\n' "$NOVA_RELEASE" | jq -r '.target_commitish // empty')
+              if [[ "$NOVA_RELEASE_REF" =~ ^[0-9a-f]{40}$ ]] \
+                && NOVA_RELEASE_VERSION=$(calculate_run_ksu_version "$NOVA_RELEASE_REF") \
+                && [ "$NOVA_RELEASE_VERSION" -le "$TARGET_KSU_VERSION" ]; then
+                NOVA_RELEASE_LIST=$(printf '%s\n' "$NOVA_RELEASE" | jq -r --arg version "$NOVA_RELEASE_VERSION" '
+                  .assets[] | select(.name | startswith("SukiSU_Nova_")) |
+                  select(.name | endswith("_" + $version + "-arm64-v8a-release.apk") or
+                    endswith("_" + $version + "-armeabi-v7a-release.apk") or
+                    endswith("_" + $version + "-x86_64-release.apk") or
+                    endswith("_" + $version + "-riscv64-release.apk")) |
+                  "\(.name)\t\(.browser_download_url)"')
+              fi
+            else
+              echo "未获取到 SukiSU-Nova manager-ci，继续查找 Actions 产物"
+            fi
+            if [ -n "$NOVA_RELEASE_LIST" ] && [ "$NOVA_RELEASE_VERSION" -eq "$TARGET_KSU_VERSION" ]; then
+              download_nova_release
+              exit 0
+            fi
+          fi
+
           DOWNLOAD_LIST=""
           BEST_VERSION=0
           BEST_BUILD_ID=""
           BEST_BRANCH=""
           RUNS_URL="https://api.github.com/repos/$REPO/actions/workflows/$FILENAME/runs?status=success&per_page=30"
-          if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
+          # SukiSU-Nova 的版本基线是 main，不能按 builtin / dev 的独立历史计数。
+          if [ "${{ inputs.kernelsu_variant }}" == "Next" ] || [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             RUNS_URL="https://api.github.com/repos/$REPO/actions/workflows/$FILENAME/runs?branch=$BRANCH&status=success&per_page=30"
           fi
 
@@ -263,6 +335,10 @@ jobs:
             done
           done
 
+          if [ -n "$NOVA_RELEASE_LIST" ] && { [ -z "$DOWNLOAD_LIST" ] || [ "$NOVA_RELEASE_VERSION" -ge "$BEST_VERSION" ]; }; then
+            download_nova_release
+            exit 0
+          fi
           if [ -z "$DOWNLOAD_LIST" ]; then
             echo "未获取到 KSU 版本小于等于 $TARGET_KSU_VERSION 的 Manager artifact 下载地址列表。"
             exit 1
