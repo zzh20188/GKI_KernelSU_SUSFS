@@ -1067,25 +1067,77 @@ jobs:
           esac
 
           echo "自动选择 NTSync 补丁: ${NTSYNC_PATCH}.patch"
-          wget -q "https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync/ntsync_base.patch"
-          wget -q "https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync/${NTSYNC_PATCH}.patch"
+          PATCH_DIR=$(mktemp -d)
+          trap 'rm -rf "$PATCH_DIR"' EXIT
+          PATCH_URL="https://raw.githubusercontent.com/Goldzxcbug/Droidspaces_Kernel_patch/refs/heads/main/NTsync"
 
-          patch -p1 < "ntsync_base.patch"
-          patch -p1 < "${NTSYNC_PATCH}.patch"
+          ntsync_complete() {
+            local root="$1" symbol
+            [ -f "$root/drivers/misc/ntsync.c" ] && [ -f "$root/include/uapi/linux/ntsync.h" ] || return 1
+            for symbol in CREATE_MUTEX CREATE_EVENT WAIT_ANY WAIT_ALL; do
+              grep -qF "case NTSYNC_IOC_${symbol}:" "$root/drivers/misc/ntsync.c" || return 1
+              grep -qE "^#define[[:space:]]+NTSYNC_IOC_${symbol}[[:space:]]" "$root/include/uapi/linux/ntsync.h" || return 1
+            done
+          }
+
+          # 6.12 已带有仅支持信号量的早期实现，不能只因文件存在就跳过完整回移。
+          if ntsync_complete .; then
+            echo "已存在完整 NTSync 实现，保留源码并跳过基础补丁"
+          else
+            if [ -e drivers/misc/ntsync.c ] || [ -e include/uapi/linux/ntsync.h ]; then
+              if [ "${{ inputs.android_version }}-${{ inputs.kernel_version }}" = "android16-6.12" ] \
+                && [ -f drivers/misc/ntsync.c ] && [ -f include/uapi/linux/ntsync.h ] \
+                && grep -qF 'NTSYNC_IOC_SEM_POST' drivers/misc/ntsync.c \
+                && grep -qF 'NTSYNC_IOC_SEM_POST' include/uapi/linux/ntsync.h \
+                && ! grep -qE 'NTSYNC_IOC_(WAIT_ANY|WAIT_ALL)' drivers/misc/ntsync.c include/uapi/linux/ntsync.h; then
+                echo "升级 Android 16 / 6.12 自带的不完整 NTSync 实现"
+              else
+                echo "::error::已有 NTSync 文件不完整或无法识别，拒绝覆盖，请检查源码与头文件"
+                exit 1
+              fi
+            fi
+
+            # 先在临时目录完整展开并验证，再安装，避免新建文件补丁撞上已有源码。
+            wget -q -O "$PATCH_DIR/ntsync_base.patch" "$PATCH_URL/ntsync_base.patch"
+            mkdir -p "$PATCH_DIR/base/drivers/misc" "$PATCH_DIR/base/include/uapi/linux"
+            patch --batch --forward -p1 -d "$PATCH_DIR/base" < "$PATCH_DIR/ntsync_base.patch"
+            if ! ntsync_complete "$PATCH_DIR/base"; then
+              echo "::error::NTSync 基础补丁缺少完整接口，停止安装"
+              exit 1
+            fi
+            mkdir -p drivers/misc include/uapi/linux
+            cp "$PATCH_DIR/base/drivers/misc/ntsync.c" drivers/misc/ntsync.c
+            cp "$PATCH_DIR/base/include/uapi/linux/ntsync.h" include/uapi/linux/ntsync.h
+          fi
+
+          # 6.12 的兼容补丁只解除 BROKEN；原生完整驱动已可配置时无需重复修改。
+          if [ "${{ inputs.android_version }}-${{ inputs.kernel_version }}" = "android16-6.12" ] \
+            && grep -qE '^config NTSYNC$' drivers/misc/Kconfig \
+            && ! awk '/^config NTSYNC$/ {f=1; next} f && /^(menuconfig|config) / {exit} f {print}' drivers/misc/Kconfig | grep -qw BROKEN \
+            && grep -qE '^[[:space:]]*obj-\$\(CONFIG_NTSYNC\)[[:space:]]*\+=[[:space:]]*ntsync\.o([[:space:]]|$)' drivers/misc/Makefile; then
+            echo "NTSync 已完成 Kconfig / Makefile 接入，跳过兼容补丁"
+          else
+            wget -q -O "$PATCH_DIR/compat.patch" "$PATCH_URL/${NTSYNC_PATCH}.patch"
+            if patch --dry-run --batch --forward -p1 < "$PATCH_DIR/compat.patch" > "$PATCH_DIR/compat-check.log" 2>&1; then
+              patch --batch --forward -p1 < "$PATCH_DIR/compat.patch"
+            elif patch --dry-run --batch --reverse -p1 < "$PATCH_DIR/compat.patch" > /dev/null 2>&1; then
+              echo "NTSync 兼容补丁已应用，跳过"
+            else
+              cat "$PATCH_DIR/compat-check.log"
+              echo "::error::NTSync 兼容补丁无法完整应用，停止配置"
+              exit 1
+            fi
+          fi
 
           cd ..
 
           CONFIG_PATH="./common/arch/arm64/configs/gki_defconfig"
           echo "正在检查并启用 CONFIG_NTSYNC..."
 
-          # 移除未启用标记，再追加启用项，保证重复运行时保持幂等。
-          sed -i '/CONFIG_NTSYNC is not set/d' "$CONFIG_PATH"
-          if ! grep -q "^CONFIG_NTSYNC=y" "$CONFIG_PATH"; then
-            echo "CONFIG_NTSYNC=y" >> "$CONFIG_PATH"
-            echo "✅ 已成功启用 CONFIG_NTSYNC"
-          else
-            echo "✅ CONFIG_NTSYNC 已处于启用状态"
-          fi
+          # 统一为唯一的内建启用项，避免原有 =m / =n 与新配置重复。
+          sed -i '/^# CONFIG_NTSYNC is not set$/d; /^CONFIG_NTSYNC=/d' "$CONFIG_PATH"
+          echo "CONFIG_NTSYNC=y" >> "$CONFIG_PATH"
+          echo "已启用 CONFIG_NTSYNC=y"
 
           echo "=== NTSync 补丁与配置注入完成 ==="
 
