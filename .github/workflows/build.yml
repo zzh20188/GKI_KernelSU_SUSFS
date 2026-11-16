@@ -1506,20 +1506,35 @@ jobs:
       - name: 添加 SUSFS 配置
         if: inputs.enable_susfs
         run: |
+          SUSFS_CONFIGS=(
+            CONFIG_KSU_SUSFS
+            CONFIG_KSU_SUSFS_SUS_PATH
+            CONFIG_KSU_SUSFS_SUS_MOUNT
+            CONFIG_KSU_SUSFS_SUS_KSTAT
+            CONFIG_KSU_SUSFS_SPOOF_UNAME
+            CONFIG_KSU_SUSFS_ENABLE_LOG
+            CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+            CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+            CONFIG_KSU_SUSFS_OPEN_REDIRECT
+            CONFIG_KSU_SUSFS_SUS_MAP
+          )
+
+          # 清理本步负责的配置项，避免重跑时重复或残留不受支持的选项。
+          for SYMBOL in "${SUSFS_CONFIGS[@]}" CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER; do
+            sed -i "/^[[:space:]]*${SYMBOL}=/d; /^[[:space:]]*# ${SYMBOL} is not set$/d" "$DEFCONFIG"
+          done
+
+          # BakaSU 和部分旧变体未声明此选项，写入会被 Bazel 配置校验拒绝。
+          KSU_KCONFIG="$KERNEL_ROOT/KernelSU/kernel/Kconfig"
+          if [ -f "$KSU_KCONFIG" ] \
+            && grep -qE '^[[:space:]]*(menuconfig|config)[[:space:]]+KSU_SUSFS_PRIORITY_UID_FILTER([[:space:]]|$)' "$KSU_KCONFIG"; then
+            SUSFS_CONFIGS+=(CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER)
+          else
+            echo "当前 KernelSU 未声明 CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER，跳过该选项"
+          fi
+
           LINES_BEFORE=$(wc -l < "$DEFCONFIG")
-          cat >> "$DEFCONFIG" << 'EOF'
-          CONFIG_KSU_SUSFS=y
-          CONFIG_KSU_SUSFS_SUS_PATH=y
-          CONFIG_KSU_SUSFS_SUS_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_KSTAT=y
-          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-          CONFIG_KSU_SUSFS_ENABLE_LOG=y
-          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
-          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
-          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-          CONFIG_KSU_SUSFS_SUS_MAP=y
-          CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=y
-          EOF
+          printf '%s=y\n' "${SUSFS_CONFIGS[@]}" >> "$DEFCONFIG"
 
           # 把本步实际追加的行导出为配置片段，随 SUSFS 集成补丁一起分发
           if [ "$SUSFS_PATCH_EXPORT" = "true" ] && [ -d "$GITHUB_WORKSPACE/susfs-patch" ]; then
