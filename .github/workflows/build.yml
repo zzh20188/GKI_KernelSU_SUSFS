@@ -1551,6 +1551,15 @@ jobs:
             sed -i '/^[[:space:]]*"protected_exports_list"[[:space:]]*:[[:space:]]*"android\/abi_gki_protected_exports_aarch64",$/d' ./common/BUILD.bazel
             sed -i '/kmi_symbol_list_strict_mode/d' ./common/BUILD.bazel
             rm -rf ./common/android/abi_gki_protected_exports_*
+            # 6.12 起受保护符号改由模块名单在编译期生成，不移除则 system_dlkm 中
+            # 原厂签名的 GKI 模块（rfkill、bluetooth、cfg80211 等）会被拒绝加载，WiFi/蓝牙失效。
+            # 标签前缀各分支不一致（gki_aarch64_ / microdroid_aarch64_），按后缀匹配。
+            sed -i '/^[[:space:]]*protected_module_names_list[[:space:]]*=[[:space:]]*":[A-Za-z0-9_]*_protected_module_names",$/d' ./common/BUILD.bazel
+            if grep -q 'protected_module_names_list' ./common/BUILD.bazel; then
+              echo "::error::BUILD.bazel 中仍残留 protected_module_names_list，受保护模块限制未解除" >&2
+              grep -n 'protected_module_names_list' ./common/BUILD.bazel >&2
+              exit 1
+            fi
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
           fi
 
