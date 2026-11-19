@@ -1333,10 +1333,36 @@ jobs:
               exit 1
             fi
             echo "[*] 使用 BBRv3 补丁: $(basename "$BBR3_PATCH")"
+            # 临时兼容：LTS 分支在 /* obsolete */ 前新增 tcp_min_rcvbuf（6.1.192 起），而上游尚无
+            # 6.1 / 6.6 的 -lts 补丁，月度补丁的 sysctl_net_ipv4.c hunk 会被拒。打补丁前临时移走
+            # 该行、打完原位还原；上游补齐对应 -lts 补丁后删除本段。
+            SYSCTL_C="net/ipv4/sysctl_net_ipv4.c"
+            MINRCV_LINE=""
+            restore_minrcv() {
+              if [ -n "$MINRCV_LINE" ] && ! grep -qF "$MINRCV_LINE" "$SYSCTL_C"; then
+                sed -i "0,/^\/\* obsolete \*\/\$/s||${MINRCV_LINE}\n\n/* obsolete */|" "$SYSCTL_C"
+                grep -qF "$MINRCV_LINE" "$SYSCTL_C" || { echo "::error::还原 tcp_min_rcvbuf 失败" >&2; exit 1; }
+              fi
+            }
+            if ! patch -p1 --dry-run < "$BBR3_PATCH" >/dev/null 2>&1 \
+              && grep -A1 '^static int tcp_min_rcvbuf = [0-9]*;$' "$SYSCTL_C" 2>/dev/null | sed -n 2p | grep -q '^$'; then
+              MINRCV_LINE=$(grep -m1 '^static int tcp_min_rcvbuf = [0-9]*;$' "$SYSCTL_C")
+              sed -i '/^static int tcp_min_rcvbuf = [0-9]*;$/{N;d}' "$SYSCTL_C"
+              echo "[*] 临时移走 tcp_min_rcvbuf 以匹配月度补丁上下文"
+            fi
+
             if patch -p1 --dry-run < "$BBR3_PATCH" >/dev/null 2>&1; then
               patch -p1 --no-backup-if-mismatch < "$BBR3_PATCH"
+              restore_minrcv
               echo "[+] BBRv3 补丁已应用"
+            elif [ "${{ inputs.os_patch_level }}" = "lts" ]; then
+              # LTS 分支随时合入 stable 修复，补丁上下文失配属预期内的漂移：不打入任何内容，
+              # 回退到基线 BBR v1 继续构建，避免整个 LTS 构建因可选功能中断。
+              restore_minrcv
+              echo "::warning title=BBRv3::LTS 分支上下文已漂移，$(basename "$BBR3_PATCH") 无法应用，本次构建回退到 BBR v1"
+              BBR3_PATCH=""
             else
+              restore_minrcv
               echo "::error::BBRv3 补丁应用失败，保留 .rej 供汇总产物分析" >&2
               patch -p1 --no-backup-if-mismatch < "$BBR3_PATCH" || true
               exit 1
@@ -1346,7 +1372,7 @@ jobs:
           fi
 
           # 5.10 缺少 proc_dou8vec_minmax（BBRv3 依赖的 5.15+ sysctl API），补两个前置补丁
-          if [ "$KVER" = "5.10" ] && ! grep -qF 'int proc_dou8vec_minmax(' include/linux/sysctl.h 2>/dev/null; then
+          if [ -n "$BBR3_PATCH" ] && [ "$KVER" = "5.10" ] && ! grep -qF 'int proc_dou8vec_minmax(' include/linux/sysctl.h 2>/dev/null; then
             for prepatch in sysctl_add_proc_dou8vec_minmax sysctl_fix_data-races_in_proc_dou8vec_minmax; do
               if patch -p1 --dry-run < "$BBR3_DIR/$prepatch.patch" >/dev/null 2>&1; then
                 patch -p1 --no-backup-if-mismatch < "$BBR3_DIR/$prepatch.patch"
