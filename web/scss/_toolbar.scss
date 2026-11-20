@@ -1,0 +1,155 @@
+// ===== 工具条（报头之上的一行） =====
+
+@use 'mixins' as *;
+
+.toolbar {
+  height: var(--toolbar-h);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.toolbar__inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.toolbar__repo {
+  @include mono;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+
+  &:hover { color: var(--text); }
+
+  // 手机只显示短站名
+  .toolbar__repo-short { display: none; }
+
+  @include mobile {
+    font-family: var(--font-sans);
+    font-size: var(--fs-15);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+
+    .toolbar__repo-full { display: none; }
+    .toolbar__repo-short { display: inline; }
+  }
+}
+
+.toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  flex-shrink: 0;
+
+  @include mobile { gap: 0; }
+}
+
+// 工具条上的文字链接 / 按钮
+.tb-link {
+  @include text-button;
+  font-size: var(--fs-12);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  @include mobile {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    gap: 0;
+
+    &::after { display: none; }
+    .tb-link__text { display: none; }
+    svg { width: 18px; height: 18px; }
+  }
+}
+
+// 公告入口：有未读时前面带一个 6px 朱砂方块
+.tb-link--announce {
+  .tb-link__dot {
+    @include square(var(--accent-fill));
+    display: none;
+  }
+
+  &.has-unread .tb-link__dot { display: inline-block; }
+  // 未读文字只在有未读时进入无障碍树
+  &:not(.has-unread) .tb-link__unread { display: none; }
+
+  @include mobile {
+    .tb-link__text { display: none; }
+    .tb-link__dot { position: absolute; top: 10px; right: 10px; }
+  }
+}
+
+// 语言切换：「中 | EN」两个都显示，当前项主文本色 + 朱砂下划线
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+
+  button {
+    @include text-button;
+    font-size: var(--fs-12);
+    height: 24px;
+    padding: 0 4px;
+    min-width: 24px;
+    justify-content: center;
+  }
+
+  .lang-switch__sep {
+    color: var(--hairline);
+  }
+
+  @include mobile {
+    height: 40px;
+    gap: 0;
+
+    button {
+      height: 40px;
+      min-width: 36px;
+      &::after { bottom: 8px; left: 8px; right: 8px; }
+    }
+  }
+}
+
+// 主题切换：半填充圆
+.theme-toggle {
+  @include text-button;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &::after { display: none; }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    transition: transform var(--dur-3) var(--ease);
+  }
+
+  &[data-theme="light"] svg { transform: rotate(180deg); }
+
+  @include mobile {
+    width: 40px;
+    height: 40px;
+    svg { width: 16px; height: 16px; }
+  }
+}

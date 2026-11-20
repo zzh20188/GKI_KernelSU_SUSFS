@@ -2,127 +2,161 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GKI Kernel Versions</title>
+  <meta name="description" content="Android GKI security patch month to kernel sublevel mapping for every branch, with one-click build parameters for KernelSU + SUSFS.">
+  <meta name="theme-color" content="#111214">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f7f6f2'/%3E%3Crect x='9' y='9' width='14' height='14' fill='%23d9491f'/%3E%3C/svg%3E">
+  <script>
+    // 首屏绘制前同步写入主题与语言，避免闪白与跳版
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'dark' && t !== 'light') {
+          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+        var l = localStorage.getItem('lang');
+        if (l !== 'zh' && l !== 'en') l = /^zh\b/i.test(navigator.language) ? 'zh' : 'en';
+        document.documentElement.lang = l === 'zh' ? 'zh-CN' : 'en';
+      } catch (e) { /* 隐私模式下 localStorage 不可用时保持默认 */ }
+    })();
+  </script>
   <script
     data-goatcounter="https://zzh20188.goatcounter.com/count"
     async
     src="//gc.zgo.at/count.js"></script>
+  <!-- 字体非阻塞加载：大陆用户加载失败时直接使用系统字体，不阻塞渲染 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="dist/style.bundle.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=fallback" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=fallback"></noscript>
+  <link rel="stylesheet" href="dist/app.bundle.css">
 </head>
 <body>
 
-  <!-- Header -->
-  <header class="header">
-    <div class="header-inner">
-      <div class="header-left">
-        <h1 id="headerTitle">GKI Kernel Versions</h1>
-        <p id="headerSubtitle">Android Generic Kernel Image &mdash; version tracking dashboard</p>
-      </div>
-      <div class="header-actions">
-        <div class="search-toggle-wrap">
-          <button class="search-toggle" id="searchToggle" title="Search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </button>
-          <input type="text" class="search-input" id="searchInput" style="display:none;">
+  <header class="toolbar">
+    <div class="container toolbar__inner">
+      <a class="toolbar__repo" href="https://github.com/zzh20188/GKI_KernelSU_SUSFS" target="_blank" rel="noopener" title="zzh20188/GKI_KernelSU_SUSFS"><span class="toolbar__repo-full">zzh20188/GKI_KernelSU_SUSFS</span><span class="toolbar__repo-short" data-i18n="siteShort">GKI Almanac</span></a>
+      <nav class="toolbar__actions" aria-label="Site">
+        <button class="tb-link tb-link--announce" id="announceOpen" type="button" hidden data-i18n-attr="aria-label:announce,title:announce">
+          <span class="tb-link__dot" aria-hidden="true"></span>
+          <span class="visually-hidden tb-link__unread" data-i18n="announceUnread">New announcement</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 12V6.5a5 5 0 0 1 10 0V12l1 1.5H2L3 12z"/><path d="M6.5 14a1.5 1.5 0 0 0 3 0"/></svg>
+          <span class="tb-link__text" data-i18n="announce">Announcement</span>
+        </button>
+        <a class="tb-link" id="guideLink" href="guide.html" data-i18n-attr="title:guide">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 3h5a2 2 0 0 1 2 2v9a1.5 1.5 0 0 0-1.5-1.5H2z"/><path d="M14 3H9a2 2 0 0 0-2 2v9a1.5 1.5 0 0 1 1.5-1.5H14z"/></svg>
+          <span class="tb-link__text" data-i18n="guide">Guide</span>
+        </a>
+        <a class="tb-link" href="https://github.com/zzh20188/GKI_KernelSU_SUSFS" target="_blank" rel="noopener" title="GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span class="tb-link__text">GitHub</span>
+        </a>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" id="langZh" data-lang="zh">中</button>
+          <span class="lang-switch__sep" aria-hidden="true">|</span>
+          <button type="button" id="langEn" data-lang="en">EN</button>
         </div>
-        <a class="guide-link" id="guideLink" href="guide.html" title="Guide">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          <span id="guideLabel">Guide</span>
-        </a>
-        <button class="lang-toggle" id="langToggle" title="Switch language">
-          <span id="langLabel">EN</span>
+        <button class="theme-toggle" id="themeToggle" type="button">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 0 0 13z" fill="currentColor"/></svg>
         </button>
-        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-          <span id="themeIcon">&#9789;</span>
-          <span id="themeLabel">Light</span>
-        </button>
-        <a class="github-link" href="https://github.com/zzh20188/GKI_KernelSU_SUSFS" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          GitHub
-        </a>
-      </div>
+      </nav>
     </div>
   </header>
 
-  <!-- Tabs -->
-  <nav class="tabs-container">
-    <div class="tabs" id="tabs"></div>
-  </nav>
-
-  <!-- Announcement Modal -->
-  <div class="modal-overlay announce-overlay" id="announceModal" style="display:none;">
-    <div class="modal-card announce-card">
-      <div class="modal-header">
-        <span class="modal-title" id="announceModalTitle">Announcement</span>
-        <button class="modal-close" id="announceModalClose">&times;</button>
+  <section class="masthead">
+    <div class="container masthead__inner">
+      <div>
+        <div class="masthead__eyebrow" data-i18n="tagline">Android Generic Kernel Image</div>
+        <h1 class="masthead__title" data-i18n="title">GKI Kernel Versions</h1>
       </div>
-      <div class="modal-body announce-body" id="announceModalBody"></div>
-      <div class="announce-actions">
-        <button class="announce-btn announce-btn-dismiss" id="announceDismissToday"></button>
-        <button class="announce-btn announce-btn-close" id="announceClose"></button>
+      <div class="masthead__aside">
+        <p class="masthead__lede" data-i18n="subtitle">Security patch month to kernel sublevel, for every Android GKI branch</p>
+        <div class="masthead__readout" id="readout" aria-live="polite"></div>
       </div>
     </div>
-  </div>
-
-  <!-- Time Converter -->
-  <section class="tools-section">
-    <details class="tools-inner" id="tcDetails">
-      <summary class="tools-summary" id="tcTitle">Time Converter</summary>
-      <div class="tc-row">
-        <div class="tc-inputs">
-          <div class="tc-field">
-            <label class="tc-label" id="tcDateLabel">Date</label>
-            <input type="date" class="tc-input" id="tcDate">
-          </div>
-          <div class="tc-field">
-            <label class="tc-label" id="tcTimeLabel">Time</label>
-            <input type="time" class="tc-input" id="tcTime" step="1">
-          </div>
-        </div>
-        <div class="tc-result-box">
-          <span class="tc-result" id="tcResult">—</span>
-          <button class="modal-copy tc-copy" id="tcCopy">Copy</button>
-        </div>
-      </div>
-    </details>
   </section>
 
-  <!-- Main -->
-  <main class="main" id="content">
+  <nav class="branch-nav" id="branchNav" aria-label="Branches">
+    <div class="container branch-nav__inner">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Kernel branches"></div>
+      <div class="search" id="search" role="search">
+        <button class="search__toggle" id="searchToggle" type="button" aria-expanded="false" aria-controls="searchField" data-i18n-attr="title:search,aria-label:search">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+        </button>
+        <div class="search__field" id="searchField">
+          <label for="searchInput" class="visually-hidden" data-i18n="search">Search</label>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+          <input class="search__input" id="searchInput" type="search" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder:searchPlaceholder">
+          <kbd class="search__kbd" aria-hidden="true">/</kbd>
+          <span class="search__count" id="searchCount" aria-live="polite"></span>
+          <button class="search__clear" id="searchClear" type="button" data-i18n="clearSearch">Clear</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container" id="content">
     <div class="loading">
-      <div class="loading-spinner"></div>
-      <p id="loadingText" style="margin-top: 1rem;">Loading kernel data&hellip;</p>
+      <div class="loading__bar" aria-hidden="true"></div>
+      <p data-i18n="loading">Loading kernel data…</p>
     </div>
   </main>
 
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <span id="footerPre">Data sourced from</span>
-    <a href="https://android.googlesource.com/kernel/common" target="_blank" rel="noopener">android.googlesource.com</a><span id="footerPost">. Updated automatically via GitHub Actions.</span>
+  <footer class="container footer">
+    <span>
+      <span data-i18n="footerPre">Data sourced from</span>
+      <a href="https://android.googlesource.com/kernel/common" target="_blank" rel="noopener">android.googlesource.com</a><span data-i18n="footerPost">, refreshed automatically by GitHub Actions.</span>
+    </span>
+    <span class="footer__mark">GKI_KernelSU_SUSFS</span>
   </footer>
 
-  <!-- Detail Modal -->
-  <div class="modal-overlay" id="modal" style="display:none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <span class="modal-title" id="modalTitle">GitHub Action Parameters</span>
-        <button class="modal-close" id="modalClose">&times;</button>
+  <!-- 构建参数「参数单」 -->
+  <dialog class="dialog" id="paramsDialog" aria-labelledby="paramsEyebrow paramsTitle">
+    <div class="dialog__grip" aria-hidden="true"></div>
+    <div class="dialog__head">
+      <div>
+        <div class="dialog__eyebrow" id="paramsEyebrow"></div>
+        <h2 class="dialog__title" id="paramsTitle"></h2>
+        <div class="dialog__slug" id="paramsSlug"></div>
       </div>
-      <div class="modal-body" id="modalBody"></div>
+      <button class="dialog__close" id="paramsClose" type="button" data-i18n-attr="aria-label:closeDialog,title:closeDialog">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </button>
     </div>
-  </div>
+    <div class="dialog__body" id="paramsBody"></div>
+    <div class="dialog__foot" id="paramsFoot"></div>
+  </dialog>
 
-  <!-- Back to top -->
-  <button class="back-to-top" id="backToTop" title="Back to top">&#8679;</button>
+  <!-- 公告「号外」 -->
+  <dialog class="dialog dialog--announce" id="announceDialog" aria-labelledby="announceTitle" tabindex="-1">
+    <div class="dialog__grip" aria-hidden="true"></div>
+    <div class="dialog__head">
+      <div class="dialog__eyebrow"><span id="announceTitle" data-i18n="announce">Announcement</span></div>
+      <span class="announce__date" id="announceDate"></span>
+      <button class="dialog__close" id="announceClose" type="button" data-i18n-attr="aria-label:closeDialog,title:closeDialog">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </button>
+    </div>
+    <div class="dialog__body" id="announceBody"></div>
+    <div class="dialog__foot announce__foot">
+      <label class="check">
+        <input type="checkbox" id="announceDismissToday">
+        <span class="check__box" aria-hidden="true"></span>
+        <span data-i18n="announceDismiss">Don’t show today</span>
+      </label>
+      <button class="btn-outline" id="announceOk" type="button" data-i18n="announceClose">Close</button>
+    </div>
+  </dialog>
 
-<script src="dist/app.bundle.js" defer></script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <button class="back-to-top" id="backToTop" type="button" data-i18n-attr="title:backToTop,aria-label:backToTop">
+    <span aria-hidden="true">↑</span>
+    <span class="back-to-top__text" data-i18n="backToTop">Back to top</span>
+  </button>
+
+  <script src="dist/app.bundle.js" defer></script>
 </body>
 </html>

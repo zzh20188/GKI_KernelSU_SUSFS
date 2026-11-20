@@ -13,7 +13,7 @@
   <rect x="8" y="107" width="311" height="33" rx="6" fill="#eaeef2"/>
   <rect x="8" y="112" width="3" height="23" fill="#0969da"/>
   <text x="24" y="129" font-family="Arial, sans-serif" font-size="15" font-weight="600" fill="#24292f">Android 内核构建-自定义</text>
-  <text x="24" y="162" font-family="Arial, sans-serif" font-size="14" fill="#57606a">Auto Trigger on SukiSU Update</text>
+  <text x="24" y="162" font-family="Arial, sans-serif" font-size="14" fill="#57606a">Auto Trigger on SukiSU-Nova Update</text>
   <text x="24" y="195" font-family="Arial, sans-serif" font-size="14" fill="#57606a">Copilot coding agent</text>
   <text x="24" y="228" font-family="Arial, sans-serif" font-size="14" fill="#57606a">Emergency Release Cleanup</text>
   <text x="24" y="261" font-family="Arial, sans-serif" font-size="14" fill="#57606a">GetManager</text>
@@ -62,7 +62,7 @@
   <text x="352" y="449" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#24292f">Kernelsu 变体</text>
   <text x="443" y="449" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#cf222e">*</text>
   <rect x="353" y="460" width="271" height="28" rx="6" fill="#f6f8fa" stroke="#d0d7de"/>
-  <text x="366" y="479" font-family="Arial, sans-serif" font-size="12" fill="#57606a">ReSukiSU</text>
+  <text x="366" y="479" font-family="Arial, sans-serif" font-size="12" fill="#57606a">BakaSU</text>
   <text x="607" y="479" font-family="Arial, sans-serif" font-size="12" fill="#57606a">◆</text>
 
   <text x="352" y="512" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#24292f">自定义版本名（可选）</text>

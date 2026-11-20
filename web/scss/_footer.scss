@@ -3,21 +3,38 @@
 @use 'mixins' as *;
 
 .footer {
-  max-width: 1200px;
-  margin: 2rem auto 0;
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid var(--border-subtle);
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.72rem;
+  margin-top: var(--sp-16);
+  padding: var(--sp-4) 0 var(--sp-8);
+  border-top: 1px solid var(--rule);
+  font-size: var(--fs-12);
+  color: var(--text-3);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
 
   a {
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
 
-    &:hover { text-decoration: underline; }
+    &:hover { color: var(--text); }
   }
 
-  @include mobile { padding: 1rem 0.75rem; }
+  .footer__mark {
+    @include mono;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    &::before { @include square(var(--accent-fill)); }
+  }
+
+  @include mobile {
+    margin-top: var(--sp-12);
+    padding-bottom: calc(var(--sp-8) + 44px);
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
 }

@@ -1,0 +1,67 @@
+// ===== 报头 =====
+
+@use 'mixins' as *;
+
+.masthead {
+  padding: var(--sp-8) 0 var(--sp-4);
+
+  @include mobile { padding: var(--sp-4) 0 var(--sp-3); }
+}
+
+.masthead__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--sp-6);
+  align-items: end;
+  padding-bottom: var(--sp-4);
+  @include double-rule;
+
+  @include below-desktop {
+    grid-template-columns: 1fr;
+    gap: var(--sp-3);
+  }
+}
+
+.masthead__title {
+  font-size: var(--fs-40);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--text);
+
+  @include below-desktop { font-size: 2rem; }
+  @include mobile { font-size: var(--fs-28); }
+}
+
+.masthead__eyebrow {
+  @include meta-label;
+  margin-bottom: var(--sp-2);
+}
+
+.masthead__aside {
+  text-align: right;
+
+  @include below-desktop { text-align: left; }
+}
+
+.masthead__lede {
+  font-size: var(--fs-15);
+  color: var(--text-2);
+  max-width: 44ch;
+  margin-left: auto;
+
+  @include below-desktop { margin-left: 0; max-width: 60ch; }
+  @include mobile { display: none; }
+}
+
+.masthead__readout {
+  @include mono;
+  font-size: var(--fs-12);
+  color: var(--text-3);
+  margin-top: var(--sp-2);
+  white-space: nowrap;
+
+  .sep { margin: 0 6px; color: var(--hairline); }
+
+  @include mobile { white-space: normal; }
+}

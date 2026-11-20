@@ -1,0 +1,283 @@
+// ===== 分支导航（吸顶「版面索引」） =====
+
+@use 'mixins' as *;
+
+.branch-nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  background: var(--bg);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.branch-nav__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  gap: var(--sp-6);
+  align-items: stretch;
+  min-height: var(--nav-h);
+
+  // 平板：搜索栏收窄，页签按内容宽排布，保证 5 个页签在 768 宽下都可见
+  @include below-desktop {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+    gap: var(--sp-4);
+  }
+
+  @include mobile {
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 0;
+  }
+}
+
+.tabs {
+  display: flex;
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  @include mobile {
+    overflow-x: visible;
+  }
+}
+
+.tab {
+  @include focus-ring(true);
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 8px 16px 10px 0;
+  margin-right: 24px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-2);
+  position: relative;
+  flex-shrink: 0;
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  transition: color var(--dur-1) var(--ease);
+
+  &:hover { color: var(--text); }
+
+  &[aria-selected="true"] {
+    color: var(--text);
+    .tab__num { color: var(--text); }
+  }
+
+  @include below-desktop {
+    min-width: 72px;
+    margin-right: 12px;
+    padding-right: 12px;
+  }
+
+  @include mobile {
+    // 5 个页签正好铺满内容宽，文案全是数字，中英同宽
+    flex: 1 1 0;
+    min-width: 0;
+    margin-right: 0;
+    padding: 6px 4px 8px;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.tab__android {
+  font-family: var(--font-sans);
+  font-size: var(--fs-11);
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  white-space: nowrap;
+
+  &.tab__android--short { display: none; }
+
+  @include mobile {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    &.tab__android--full { display: none; }
+    &.tab__android--short { display: block; }
+  }
+}
+
+.tab__num {
+  @include mono;
+  font-size: var(--fs-20);
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--text-2);
+  transition: color var(--dur-1) var(--ease);
+
+  @include mobile { font-size: var(--fs-17); }
+}
+
+// 页签底部 2px 微刻度尺：该分支整条时间线的横向缩略
+// 格子不设最小宽度，月份再多也不会撑开页签或溢出到邻居
+.tab__ruler {
+  display: flex;
+  height: 2px;
+  margin-top: 4px;
+  width: 100%;
+  max-width: 120px;
+  overflow: hidden;
+
+  span {
+    flex: 1 1 0;
+    min-width: 0;
+    background: var(--hairline);
+    margin-right: 1px;
+
+    &:last-child { margin-right: 0; }
+    &.on { background: var(--text-3); }
+    &.dep.on { background: var(--text-3); opacity: 0.55; }
+    &.susfs.on { background: var(--susfs-fill); opacity: 1; }
+    // 最新月：朱砂，优先级高于 SUSFS 青色
+    &.latest,
+    &.susfs.on.latest,
+    &.dep.on.latest { background: var(--accent-fill); opacity: 1; flex-basis: 3px; flex-grow: 0; }
+  }
+
+  @include mobile { max-width: none; }
+}
+
+// 当前页签底部的 2px 朱砂线，切换时平移
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--accent-fill);
+  transition: transform var(--dur-2) var(--ease), width var(--dur-2) var(--ease);
+  pointer-events: none;
+}
+
+// ---- 搜索 ----
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) 0;
+
+  // 手机：搜索的子元素直接成为导航网格的格子
+  @include mobile {
+    display: contents;
+  }
+}
+
+.search__field {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-bottom: 1px solid var(--hairline);
+  min-width: 0;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+
+  &:focus-within {
+    border-bottom-color: var(--accent);
+    box-shadow: 0 1px 0 var(--accent);
+  }
+
+  > svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+
+  // 手机：默认收起，展开后占据导航第二行
+  @include mobile {
+    display: none;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-height: 44px;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 0;
+    padding: 0 2px;
+
+    &:focus-within { box-shadow: none; }
+
+    .branch-nav.search-open & { display: flex; }
+  }
+}
+
+.search__input {
+  @include mono;
+  appearance: none;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font-size: var(--fs-13);
+  padding: 6px 0;
+  width: 100%;
+  min-width: 0;
+
+  &::placeholder { color: var(--text-3); }
+  &::-webkit-search-cancel-button { display: none; }
+
+  // 手机：16px 避免 iOS Safari 聚焦时自动放大页面
+  @include mobile { font-size: 16px; }
+}
+
+.search__kbd {
+  @include mono;
+  font-size: 10px;
+  color: var(--text-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-1);
+  padding: 0 5px;
+  line-height: 16px;
+  flex-shrink: 0;
+
+  .search.has-query & { display: none; }
+
+  @include mobile { display: none; }
+}
+
+.search__count {
+  @include mono;
+  font-size: var(--fs-11);
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:empty { display: none; }
+}
+
+.search__clear {
+  @include copy-button;
+  display: none;
+
+  .search.has-query & { display: inline-block; }
+
+  @include mobile {
+    padding: 10px 4px;
+    min-height: 44px;
+  }
+}
+
+// 手机：放大镜按钮占据导航右端的 40px 格
+.search__toggle {
+  display: none;
+  @include text-button;
+  width: 40px;
+  min-height: var(--nav-h);
+  align-items: center;
+  justify-content: center;
+  grid-column: 2;
+  grid-row: 1;
+
+  &::after { display: none; }
+  svg { width: 18px; height: 18px; }
+
+  &[aria-expanded="true"] { color: var(--accent); }
+
+  @include mobile { display: inline-flex; }
+}

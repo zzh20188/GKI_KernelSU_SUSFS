@@ -5,26 +5,138 @@
 *,
 *::before,
 *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 html {
   font-size: 16px;
-  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  // 吸顶导航高度，供锚点滚动避让
+  scroll-padding-top: calc(var(--nav-h) + 16px);
 }
 
 body {
-  font-family: 'Google Sans', 'Roboto', 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  font-size: var(--fs-15);
+  line-height: 1.55;
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh;
+  transition: background-color var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+
+  @include mobile { font-size: var(--fs-14); }
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+:lang(zh-CN) body { line-height: 1.7; }
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+code,
+kbd,
+pre {
+  @include mono;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 0; }
+
+// 页面栏宽
+.container {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+}
+
+.visually-hidden {
+  @include visually-hidden;
+}
+
+// 作者样式里的 display 会压过 UA 的 [hidden]，这里统一兜底
+[hidden] {
+  display: none !important;
+}
+
+// 强制颜色模式：承载语义的小方块、指示线与命令块保留自身颜色
+@media (forced-colors: active) {
+  .tab-indicator,
+  .tab__ruler span,
+  .tick::before,
+  .mark::before,
+  .legend__sym::before,
+  .legend__sym--dep,
+  .chapter__status::before,
+  .status-line::before,
+  .check__box,
+  .row.is-visited::before,
+  .cmd__body,
+  .footer__mark::before {
+    forced-color-adjust: none;
+  }
+}
+
+// 打印：强制浅色令牌，隐藏交互组件
+@media print {
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --overlay: #ffffff;
+    --sunken: #f2f1ec;
+    --hairline: #d0cec7;
+    --rule: #9d9a91;
+    --text: #17181a;
+    --text-2: #4d5057;
+    --text-3: #5f6269;
+    --text-deprecated: #5f6269;
+    --accent: #b93a15;
+    --accent-fill: #d9491f;
+    --susfs: #0b6e62;
+    --susfs-fill: #16968a;
+    --hatch: rgba(0, 0, 0, 0.08);
+    --hatch-strong: rgba(0, 0, 0, 0.14);
+  }
+
+  .toolbar__actions,
+  .branch-nav,
+  .back-to-top,
+  .toast,
+  .search,
+  .tools,
+  .row__arrow { display: none !important; }
+
+  .branch-panel { display: block !important; page-break-before: always; }
+  .branch-panel:first-child { page-break-before: auto; }
+  .year__note { position: static; }
+}
+
+// 减少动效：所有过渡与动画归零
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
