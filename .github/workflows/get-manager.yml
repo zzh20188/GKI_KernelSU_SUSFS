@@ -9,6 +9,9 @@ on:
       kernelsu_variant:
         required: true
         type: string
+      enable_susfs:
+        type: boolean
+        default: true
     outputs:
       susVer:
         description: "The fetched SUSFS version number"
@@ -29,6 +32,7 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NOVA_ORIGIN: https://git.zako.shirkneko.top:20004
 
     steps:
       - name: 🧐 Debug Workflow Caller Context
@@ -82,7 +86,7 @@ jobs:
             clone_kernelsu https://github.com/KernelSU-Next/KernelSU-Next.git
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "This is the SukiSU variant"
-            clone_kernelsu https://github.com/SukiSU-Nova/SukiSU-Nova.git
+            clone_kernelsu "$NOVA_ORIGIN/shirkneko/SukiSU"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             echo "This is the SukiSU(40726) variant"
             clone_kernelsu https://github.com/SukiSU-Nova/SukiSU-Nova.git
@@ -107,16 +111,34 @@ jobs:
           KSU_GIT_VERSION=$(git rev-list --count HEAD)
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            # Nova 与 Manager 都以 main 提交数计算版本，从上游构建文件读取规则。
-            SUKISU_VERSION_BASE=$(awk '$1 == "VERSION_BASE" {print $3; exit}' kernel/Kbuild)
-            SUKISU_VERSION_OFFSET=$(awk '$1 == "VERSION_OFFSET" {print $3; exit}' kernel/Kbuild)
-            if ! [[ "$SUKISU_VERSION_BASE" =~ ^[0-9]+$ && "$SUKISU_VERSION_OFFSET" =~ ^[0-9]+$ ]]; then
-              echo "::error::无法从 SukiSU-Nova Kbuild 解析版本规则"
+            # 与内核使用同一上游和分支规则，但两个分支都以 main 提交数计数。
+            VERSION_REF=refs/remotes/origin/main
+            if [ "${{ inputs.enable_susfs }}" == "true" ]; then
+              VERSION_REF=refs/remotes/origin/builtin
+            fi
+            VERSION_FILE="$VERSION_REF:kernel/Kbuild"
+            if ! VERSION_RULE=$(git show "$VERSION_FILE" 2>/dev/null); then
+              VERSION_FILE="$VERSION_REF:kernel/Makefile"
+              VERSION_RULE=$(git show "$VERSION_FILE")
+            fi
+            VERSION_BASE=$(awk '$1 == "VERSION_BASE" {print $3; exit}' <<< "$VERSION_RULE")
+            VERSION_OFFSET=$(awk '$1 == "VERSION_OFFSET" {print $3; exit}' <<< "$VERSION_RULE")
+            OFFSET_SIGN=$(awk '$1 == "KSU_VERSION" && match($0, /[+-][[:space:]]*\$\(VERSION_OFFSET\)/) {print substr($0,RSTART,1); exit}' <<< "$VERSION_RULE")
+            if ! [[ "$VERSION_BASE" =~ ^[0-9]+$ && "$VERSION_OFFSET" =~ ^[0-9]+$ && "$OFFSET_SIGN" =~ ^[+-]$ ]]; then
+              echo "::error::无法从 $VERSION_FILE 解析 SukiSU-Nova 版本规则"
               exit 1
             fi
-            KSU_VERSION=$((SUKISU_VERSION_BASE + KSU_GIT_VERSION - SUKISU_VERSION_OFFSET))
-            echo "SUKISU_VERSION_BASE=$SUKISU_VERSION_BASE" >> "$GITHUB_ENV"
-            echo "SUKISU_VERSION_OFFSET=$SUKISU_VERSION_OFFSET" >> "$GITHUB_ENV"
+            MAIN_COUNT=$(git rev-list --count refs/remotes/origin/main)
+            # 加偏移量的新规则从 35000 开始，不能回退到旧规则的 30000 系列 APK。
+            if [ "$OFFSET_SIGN" == "+" ]; then
+              KSU_VERSION=$((VERSION_BASE + MAIN_COUNT + VERSION_OFFSET))
+              NOVA_MIN_VERSION=35000
+            else
+              KSU_VERSION=$((VERSION_BASE + MAIN_COUNT - VERSION_OFFSET))
+              NOVA_MIN_VERSION=$VERSION_BASE
+            fi
+            echo "SukiSU-Nova 版本规则: $VERSION_FILE，main $MAIN_COUNT，KSU $KSU_VERSION"
+            echo "NOVA_MIN_VERSION=$NOVA_MIN_VERSION" >> "$GITHUB_ENV"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             KSU_VERSION=40726
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40548)" ]; then
@@ -128,8 +150,8 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             KSU_VERSION=$((30000 + KSU_GIT_VERSION))
           fi
-          echo $KSU_VERSION
-          echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
+          echo "$KSU_VERSION"
+          echo "KSU_VERSION=$KSU_VERSION" >> "$GITHUB_ENV"
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             SUS_VERSION="v2.1.0"
@@ -137,12 +159,12 @@ jobs:
             SUS_VERSION="v2.0.0"
           else
             INFO="https://gitlab.com/simonpunk/susfs4ksu/-/raw/gki-android14-6.1/ksu_module_susfs/module.prop\?ref_type\=heads"
-            SUS_VERSION=$(curl -s $INFO | awk -F '=' '$1 == "version" { print $2 }')
+            SUS_VERSION=$(curl -s "$INFO" | awk -F '=' '$1 == "version" { print $2 }')
           fi
-          echo $SUS_VERSION
+          echo "$SUS_VERSION"
 
-          echo "kversion=$KSU_VERSION" >> $GITHUB_OUTPUT
-          echo "sversion=$SUS_VERSION" >> $GITHUB_OUTPUT
+          echo "kversion=$KSU_VERSION" >> "$GITHUB_OUTPUT"
+          echo "sversion=$SUS_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: 添加 KernelSU
         id: add_KSU
@@ -172,15 +194,11 @@ jobs:
             REPO="KernelSU-Next/KernelSU-Next"
             KSUM="manager"
             BRANCH="dev"
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "SukiSU-Nova..."
-            REPO="SukiSU-Nova/SukiSU-Nova"
-            KSUM="manager"
-            BRANCH="main"
           elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
             echo "BakaSU..."
             REPO="Baka-SU/BakaSU"
             KSUM="manager"
+            BRANCH="main"
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "KSU..."
             REPO="tiann/KernelSU"
@@ -197,6 +215,63 @@ jobs:
             exit 1
           fi
 
+          download_nova_manager() (
+            local candidates version abi name url selected_version="" tmp_dir releases endpoint
+            local -A downloaded_abis=()
+            # 正式 Release 的标签可能早于附件更新，版本号以官方 APK 文件名为准。
+            candidates=$(
+              {
+                for endpoint in 'releases/tags/manager-ci' 'releases?limit=20'; do
+                  if releases=$(curl -fsSL --connect-timeout 8 --max-time 20 \
+                    "$NOVA_ORIGIN/api/v1/repos/shirkneko/SukiSU/$endpoint"); then
+                    printf '%s\n' "$releases"
+                  else
+                    echo "::warning::无法读取 Forgejo 的 $endpoint，继续检查其余来源" >&2
+                  fi
+                done
+                gh api 'repos/SukiSU-Nova/SukiSU-Nova/releases?per_page=20' || true
+                printf '\n'
+                gh api repos/SukiSU-Nova/SukiSU-Nova/releases/tags/manager-ci || true
+              } | jq -sr --argjson min "$NOVA_MIN_VERSION" --argjson max "$TARGET_KSU_VERSION" '
+                [ .[] | if type == "array" then .[] else . end | select(.draft != true) | .assets[]? |
+                  select(.browser_download_url | strings | startswith("https://")) |
+                  (.name | capture("^SukiSU_Nova_[A-Za-z0-9._-]+_(?<version>[0-9]+)-(?<abi>arm64-v8a|armeabi-v7a|x86_64|riscv64)-release\\.apk$")) as $apk |
+                  ($apk.version | tonumber) as $version | select($version >= $min and $version <= $max) |
+                  [$version, $apk.abi, .name, .browser_download_url]
+                ] | sort_by(-.[0])[] | @tsv') || return 1
+            [ -n "$candidates" ] || return 1
+
+            tmp_dir=$(mktemp -d) || return 1
+            trap 'rm -rf -- "$tmp_dir"' EXIT
+            mkdir "$tmp_dir/apks" || return 1
+            while IFS=$'\t' read -r version abi name url; do
+              # 某个版本一旦下载成功，不再混入其他版本的 APK。
+              if [ -n "$selected_version" ] && [ "$version" != "$selected_version" ]; then
+                break
+              fi
+              [ "${downloaded_abis[$abi]:-}" != "1" ] || continue
+              if curl -fsSL --retry 2 --connect-timeout 8 --max-time 90 -o "$tmp_dir/download.apk" "$url"; then
+                mv -- "$tmp_dir/download.apk" "$tmp_dir/apks/$name" || return 1
+                selected_version=$version
+                downloaded_abis[$abi]=1
+                echo "已下载 $name"
+              else
+                echo "::warning::下载 $name 失败，尝试其他可用附件"
+              fi
+            done <<< "$candidates"
+            [ -n "$selected_version" ] || return 1
+            mkdir -p manager-artifacts && rm -rf -- manager-artifacts/SukiSU-Nova && \
+              mv -- "$tmp_dir/apks" manager-artifacts/SukiSU-Nova
+          )
+
+          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
+            if ! download_nova_manager; then
+              echo "::warning::未找到可下载且与 KSU $TARGET_KSU_VERSION 同版本系列的 SukiSU-Nova Manager"
+              exit 1
+            fi
+            exit 0
+          fi
+
           calculate_run_ksu_version() {
             local head_sha="$1"
             if ! git -C KernelSU cat-file -e "$head_sha^{commit}" 2>/dev/null; then
@@ -209,18 +284,6 @@ jobs:
             local git_version
             git_version=$(git -C KernelSU rev-list --count "$head_sha")
             case "${{ inputs.kernelsu_variant }}" in
-              "SukiSU")
-                # 改名前后的版本号不单调，必须先确认规则相同，避免混用 Ultra / Nova APK。
-                local kbuild version_base version_offset
-                kbuild=$(git -C KernelSU show "$head_sha:kernel/Kbuild" 2>/dev/null) || return 1
-                version_base=$(printf '%s\n' "$kbuild" | awk '$1 == "VERSION_BASE" && !found {print $3; found=1}')
-                version_offset=$(printf '%s\n' "$kbuild" | awk '$1 == "VERSION_OFFSET" && !found {print $3; found=1}')
-                if [ "$version_base" != "$SUKISU_VERSION_BASE" ] || [ "$version_offset" != "$SUKISU_VERSION_OFFSET" ]; then
-                  echo "跳过 SukiSU Manager：提交 $head_sha 的版本规则与目标内核不同" >&2
-                  return 1
-                fi
-                echo $((version_base + git_version - version_offset))
-                ;;
               "BakaSU") echo $((30700 + git_version)) ;;
               "Official") echo $((20000 + git_version)) ;;
               "Next") echo $((30000 + git_version)) ;;
@@ -235,56 +298,69 @@ jobs:
                 '.artifacts[] | select(.name == $name) | "\(.name)\t\(.archive_download_url)"'
             elif [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
               printf '%s' "$artifacts" | jq -r \
-                '.artifacts[] | select(.name == "Manager-release" or .name == "Spoofed-Manager-release") | "\(.name)\t\(.archive_download_url)"'
+                '.artifacts[] | select(.name == "Manager-release" and (.expired | not)) | "\(.name)\t\(.archive_download_url)"'
             else
               printf '%s' "$artifacts" | jq -r --arg needle "$KSUM" \
                 '.artifacts[] | select((.name | ascii_downcase) | contains($needle)) | "\(.name)\t\(.archive_download_url)"'
             fi
           }
 
-          NOVA_RELEASE_LIST=""
-          NOVA_RELEASE_VERSION=0
-          download_nova_release() {
-            echo "下载 SukiSU-Nova manager-ci，KSU $NOVA_RELEASE_VERSION"
-            mkdir -p manager-artifacts/SukiSU-Nova
-            while IFS=$'\t' read -r name url; do
-              curl -fL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                -o "manager-artifacts/SukiSU-Nova/$name" "$url"
-            done <<< "$NOVA_RELEASE_LIST"
-          }
+          download_bakasu_manager() (
+            local name="$1" url="$2" tmp_dir
+            tmp_dir=$(mktemp -d) || return 1
+            trap 'rm -rf -- "$tmp_dir"' EXIT
+            echo "下载 $name..."
+            curl -fL --retry 3 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -o "$tmp_dir/manager.zip" "$url" || return 1
+            unzip -qj "$tmp_dir/manager.zip" '*-arm64-v8a-release.apk' \
+              -d "$tmp_dir/apks" || return 1
+            find "$tmp_dir/apks" -type f -name '*debug*.apk' -delete || return 1
+            local apks=("$tmp_dir/apks/"*.apk)
+            if [ "${#apks[@]}" -ne 1 ] || [ ! -f "${apks[0]}" ]; then
+              echo "::warning::$name 未提供唯一的 BakaSU arm64-v8a release APK"
+              return 1
+            fi
+            # 同一构建的两种 APK 可能同名，Release 按文件名区分附件。
+            if [ "$name" == "Spoofed-Manager-release" ]; then
+              mv -- "${apks[0]}" "${apks[0]%.apk}-spoofed.apk" || return 1
+            fi
 
-          # 上游滚动 Release 可能先于 Actions 成功记录发布；提交规则与 APK 版本必须同时匹配。
-          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            if NOVA_RELEASE=$(curl -fsSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/$REPO/releases/tags/manager-ci"); then
-              NOVA_RELEASE_REF=$(printf '%s\n' "$NOVA_RELEASE" | jq -r '.target_commitish // empty')
-              if [[ "$NOVA_RELEASE_REF" =~ ^[0-9a-f]{40}$ ]] \
-                && NOVA_RELEASE_VERSION=$(calculate_run_ksu_version "$NOVA_RELEASE_REF") \
-                && [ "$NOVA_RELEASE_VERSION" -le "$TARGET_KSU_VERSION" ]; then
-                NOVA_RELEASE_LIST=$(printf '%s\n' "$NOVA_RELEASE" | jq -r --arg version "$NOVA_RELEASE_VERSION" '
-                  .assets[] | select(.name | startswith("SukiSU_Nova_")) |
-                  select(.name | endswith("_" + $version + "-arm64-v8a-release.apk") or
-                    endswith("_" + $version + "-armeabi-v7a-release.apk") or
-                    endswith("_" + $version + "-x86_64-release.apk") or
-                    endswith("_" + $version + "-riscv64-release.apk")) |
-                  "\(.name)\t\(.browser_download_url)"')
+            mkdir -p manager-artifacts && rm -rf -- "manager-artifacts/$name" && \
+              mv -- "$tmp_dir/apks" "manager-artifacts/$name"
+          )
+
+          download_bakasu_spoof() {
+            local build_id head_sha url version
+            # 上游已停产 Spoof 版，独立回溯历史产物，不让旧 APK 替换普通版。
+            while IFS=$'\t' read -r build_id head_sha url; do
+              version=$(calculate_run_ksu_version "$head_sha") || continue
+              if ! [[ "$version" =~ ^[0-9]+$ ]] || [ "$version" -gt "$TARGET_KSU_VERSION" ]; then
+                continue
               fi
-            else
-              echo "未获取到 SukiSU-Nova manager-ci，继续查找 Actions 产物"
-            fi
-            if [ -n "$NOVA_RELEASE_LIST" ] && [ "$NOVA_RELEASE_VERSION" -eq "$TARGET_KSU_VERSION" ]; then
-              download_nova_release
-              exit 0
-            fi
-          fi
+              # 只接受上游主分支成功且非 PR 的构建，避免附上开发测试版。
+              if ! gh api "repos/$REPO/actions/runs/$build_id" | jq -e '
+                .path == ".github/workflows/build-manager.yml" and .conclusion == "success" and
+                (.event == "push" or .event == "workflow_dispatch")' >/dev/null; then
+                continue
+              fi
+              if download_bakasu_manager "Spoofed-Manager-release" "$url"; then
+                echo "已附带 BakaSU Spoofed Manager：构建 $build_id，KSU $version（目标内核 KSU $TARGET_KSU_VERSION）"
+                return 0
+              fi
+            done < <(gh api --paginate "repos/$REPO/actions/artifacts?name=Spoofed-Manager-release&per_page=100" --jq '
+              .artifacts[] | select(.name == "Spoofed-Manager-release" and (.expired | not)) |
+              select(.workflow_run.head_branch == "main" and .workflow_run.repository_id == .workflow_run.head_repository_id) |
+              [.workflow_run.id, .workflow_run.head_sha, .archive_download_url] | @tsv')
+            return 1
+          }
 
           DOWNLOAD_LIST=""
           BEST_VERSION=0
           BEST_BUILD_ID=""
           BEST_BRANCH=""
           RUNS_URL="https://api.github.com/repos/$REPO/actions/workflows/$FILENAME/runs?status=success&per_page=30"
-          # SukiSU-Nova 的版本基线是 main，不能按 builtin / dev 的独立历史计数。
-          if [ "${{ inputs.kernelsu_variant }}" == "Next" ] || [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
+          # 已指定分支的变体按该分支查找，避免取到开发分支的 APK。
+          if [ -n "${BRANCH:-}" ]; then
             RUNS_URL="https://api.github.com/repos/$REPO/actions/workflows/$FILENAME/runs?branch=$BRANCH&status=success&per_page=30"
           fi
 
@@ -302,6 +378,11 @@ jobs:
               BUILD_ID=$(printf '%s' "$RUNS" | jq -r ".workflow_runs[$INDEX].id")
               HEAD_SHA=$(printf '%s' "$RUNS" | jq -r ".workflow_runs[$INDEX].head_sha")
               HEAD_BRANCH=$(printf '%s' "$RUNS" | jq -r ".workflow_runs[$INDEX].head_branch")
+
+              if [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ] && ! printf '%s' "$RUNS" | jq -e \
+                ".workflow_runs[$INDEX].event | . == \"push\" or . == \"workflow_dispatch\"" >/dev/null; then
+                continue
+              fi
 
               RUN_KSU_VERSION=$(calculate_run_ksu_version "$HEAD_SHA" || true)
               if ! [[ "$RUN_KSU_VERSION" =~ ^[0-9]+$ ]]; then
@@ -335,35 +416,30 @@ jobs:
             done
           done
 
-          if [ -n "$NOVA_RELEASE_LIST" ] && { [ -z "$DOWNLOAD_LIST" ] || [ "$NOVA_RELEASE_VERSION" -ge "$BEST_VERSION" ]; }; then
-            download_nova_release
-            exit 0
-          fi
           if [ -z "$DOWNLOAD_LIST" ]; then
             echo "未获取到 KSU 版本小于等于 $TARGET_KSU_VERSION 的 Manager artifact 下载地址列表。"
             exit 1
           fi
           echo "选择 Manager 构建 $BEST_BUILD_ID ($BEST_BRANCH), KSU $BEST_VERSION"
 
-          echo "$DOWNLOAD_LIST" | while IFS=$'\t' read -r NAME URL; do
-            SAFE_NAME=$(echo "$NAME" | tr '/ ' '__')
-            ZIP_NAME="${{ inputs.kernelsu_variant }}-${SAFE_NAME}(${{ env.KSU_VERSION }}).zip"
-            echo "下载 $NAME -> $ZIP_NAME"
-            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o "$ZIP_NAME" "$URL"
-            mkdir -p "manager-artifacts/$SAFE_NAME"
-            unzip -o "$ZIP_NAME" -d "manager-artifacts/$SAFE_NAME"
-            rm -rf "$ZIP_NAME"
-          done
-
           if [ "${{ inputs.kernelsu_variant }}" == "BakaSU" ]; then
-            echo "仅保留 BakaSU arm64-v8a release 管理器..."
-            find manager-artifacts -type f -name "*.apk" ! -name "*-arm64-v8a-release.apk" -delete
-            find manager-artifacts -type f -name "*debug*.apk" -delete
-            if ! find manager-artifacts -type f -name "*-arm64-v8a-release.apk" | grep -q .; then
-              echo "未找到 BakaSU arm64-v8a release 管理器。"
-              exit 1
+            IFS=$'\t' read -r NAME URL <<< "$DOWNLOAD_LIST"
+            download_bakasu_manager "$NAME" "$URL" || exit 1
+            rm -rf -- manager-artifacts/Spoofed-Manager-release
+            if ! download_bakasu_spoof; then
+              echo "::warning::没有可下载且版本不高于目标内核的 BakaSU Spoofed Manager，本次仅附带普通版。"
             fi
             find manager-artifacts -type f -name "*.apk" -print
+          else
+            echo "$DOWNLOAD_LIST" | while IFS=$'\t' read -r NAME URL; do
+              SAFE_NAME=$(echo "$NAME" | tr '/ ' '__')
+              ZIP_NAME="${{ inputs.kernelsu_variant }}-${SAFE_NAME}(${{ env.KSU_VERSION }}).zip"
+              echo "下载 $NAME -> $ZIP_NAME"
+              curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o "$ZIP_NAME" "$URL"
+              mkdir -p "manager-artifacts/$SAFE_NAME"
+              unzip -o "$ZIP_NAME" -d "manager-artifacts/$SAFE_NAME"
+              rm -rf "$ZIP_NAME"
+            done
           fi
 
       - name: 添加 SUSFS 模块
