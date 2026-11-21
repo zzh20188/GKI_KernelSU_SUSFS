@@ -9,9 +9,6 @@ on:
       kernelsu_variant:
         required: true
         type: string
-      enable_susfs:
-        type: boolean
-        default: true
     outputs:
       susVer:
         description: "The fetched SUSFS version number"
@@ -32,7 +29,7 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      NOVA_ORIGIN: https://git.zako.shirkneko.top:20004
+      NOVA_GITHUB_REPO: SukiSU-Nova/SukiSU-Nova
 
     steps:
       - name: 🧐 Debug Workflow Caller Context
@@ -86,7 +83,6 @@ jobs:
             clone_kernelsu https://github.com/KernelSU-Next/KernelSU-Next.git
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "This is the SukiSU variant"
-            clone_kernelsu "$NOVA_ORIGIN/shirkneko/SukiSU"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             echo "This is the SukiSU(40726) variant"
             clone_kernelsu https://github.com/SukiSU-Nova/SukiSU-Nova.git
@@ -106,29 +102,30 @@ jobs:
             exit 1
           fi
 
-          cd KernelSU
-
-          KSU_GIT_VERSION=$(git rev-list --count HEAD)
+          if [ "${{ inputs.kernelsu_variant }}" != "SukiSU" ]; then
+            cd KernelSU
+            KSU_GIT_VERSION=$(git rev-list --count HEAD)
+          fi
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            # 与内核使用同一上游和分支规则，但两个分支都以 main 提交数计数。
-            VERSION_REF=refs/remotes/origin/main
-            if [ "${{ inputs.enable_susfs }}" == "true" ]; then
-              VERSION_REF=refs/remotes/origin/builtin
+            # 管理器按 GitHub main 的版本判断；GitHub builtin 仍保留旧规则，不能用来筛新版 APK。
+            MAIN_SHA=$(gh api "repos/$NOVA_GITHUB_REPO/commits/main" --jq '.sha')
+            if ! [[ "$MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::无法获取 SukiSU-Nova GitHub main 提交"
+              exit 1
             fi
-            VERSION_FILE="$VERSION_REF:kernel/Kbuild"
-            if ! VERSION_RULE=$(git show "$VERSION_FILE" 2>/dev/null); then
-              VERSION_FILE="$VERSION_REF:kernel/Makefile"
-              VERSION_RULE=$(git show "$VERSION_FILE")
-            fi
+            # 每页只返回一个提交，最后一页的页码就是同一提交快照的历史数量。
+            MAIN_COUNT=$(gh api --include "repos/$NOVA_GITHUB_REPO/commits?sha=$MAIN_SHA&per_page=1" |
+              sed -nE '/^[Ll][Ii][Nn][Kk]:/s/.*[?&]page=([0-9]+)>; rel="last".*/\1/p')
+            VERSION_RULE=$(gh api -H 'Accept: application/vnd.github.raw+json' \
+              "repos/$NOVA_GITHUB_REPO/contents/kernel/Kbuild?ref=$MAIN_SHA")
             VERSION_BASE=$(awk '$1 == "VERSION_BASE" {print $3; exit}' <<< "$VERSION_RULE")
             VERSION_OFFSET=$(awk '$1 == "VERSION_OFFSET" {print $3; exit}' <<< "$VERSION_RULE")
             OFFSET_SIGN=$(awk '$1 == "KSU_VERSION" && match($0, /[+-][[:space:]]*\$\(VERSION_OFFSET\)/) {print substr($0,RSTART,1); exit}' <<< "$VERSION_RULE")
-            if ! [[ "$VERSION_BASE" =~ ^[0-9]+$ && "$VERSION_OFFSET" =~ ^[0-9]+$ && "$OFFSET_SIGN" =~ ^[+-]$ ]]; then
-              echo "::error::无法从 $VERSION_FILE 解析 SukiSU-Nova 版本规则"
+            if ! [[ "$MAIN_COUNT" =~ ^[0-9]+$ && "$VERSION_BASE" =~ ^[0-9]+$ && "$VERSION_OFFSET" =~ ^[0-9]+$ && "$OFFSET_SIGN" =~ ^[+-]$ ]]; then
+              echo "::error::无法从 GitHub main 解析 SukiSU-Nova 版本规则或提交数"
               exit 1
             fi
-            MAIN_COUNT=$(git rev-list --count refs/remotes/origin/main)
             # 加偏移量的新规则从 35000 开始，不能回退到旧规则的 30000 系列 APK。
             if [ "$OFFSET_SIGN" == "+" ]; then
               KSU_VERSION=$((VERSION_BASE + MAIN_COUNT + VERSION_OFFSET))
@@ -137,7 +134,7 @@ jobs:
               KSU_VERSION=$((VERSION_BASE + MAIN_COUNT - VERSION_OFFSET))
               NOVA_MIN_VERSION=$VERSION_BASE
             fi
-            echo "SukiSU-Nova 版本规则: $VERSION_FILE，main $MAIN_COUNT，KSU $KSU_VERSION"
+            echo "SukiSU-Nova GitHub main 提交数: $MAIN_COUNT，Manager 版本上限: $KSU_VERSION"
             echo "NOVA_MIN_VERSION=$NOVA_MIN_VERSION" >> "$GITHUB_ENV"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             KSU_VERSION=40726
@@ -216,57 +213,42 @@ jobs:
           fi
 
           download_nova_manager() (
-            local candidates version abi name url selected_version="" tmp_dir releases endpoint
-            local -A downloaded_abis=()
+            local candidates name url tmp_dir
             # 正式 Release 的标签可能早于附件更新，版本号以官方 APK 文件名为准。
             candidates=$(
               {
-                for endpoint in 'releases/tags/manager-ci' 'releases?limit=20'; do
-                  if releases=$(curl -fsSL --connect-timeout 8 --max-time 20 \
-                    "$NOVA_ORIGIN/api/v1/repos/shirkneko/SukiSU/$endpoint"); then
-                    printf '%s\n' "$releases"
-                  else
-                    echo "::warning::无法读取 Forgejo 的 $endpoint，继续检查其余来源" >&2
-                  fi
-                done
-                gh api 'repos/SukiSU-Nova/SukiSU-Nova/releases?per_page=20' || true
+                gh api "repos/$NOVA_GITHUB_REPO/releases?per_page=20" || true
                 printf '\n'
-                gh api repos/SukiSU-Nova/SukiSU-Nova/releases/tags/manager-ci || true
-              } | jq -sr --argjson min "$NOVA_MIN_VERSION" --argjson max "$TARGET_KSU_VERSION" '
+                gh api "repos/$NOVA_GITHUB_REPO/releases/tags/manager-ci" || true
+              } | jq -sr --argjson min "$NOVA_MIN_VERSION" --argjson max "$TARGET_KSU_VERSION" \
+                --arg source "https://github.com/$NOVA_GITHUB_REPO/releases/download/" '
                 [ .[] | if type == "array" then .[] else . end | select(.draft != true) | .assets[]? |
-                  select(.browser_download_url | strings | startswith("https://")) |
-                  (.name | capture("^SukiSU_Nova_[A-Za-z0-9._-]+_(?<version>[0-9]+)-(?<abi>arm64-v8a|armeabi-v7a|x86_64|riscv64)-release\\.apk$")) as $apk |
+                  select(.browser_download_url | strings | startswith($source)) |
+                  (.name | capture("^SukiSU_Nova_[A-Za-z0-9._-]+_(?<version>[0-9]+)-arm64-v8a-release\\.apk$")) as $apk |
                   ($apk.version | tonumber) as $version | select($version >= $min and $version <= $max) |
-                  [$version, $apk.abi, .name, .browser_download_url]
-                ] | sort_by(-.[0])[] | @tsv') || return 1
+                  [$version, .name, .browser_download_url]
+                ] | sort_by(-.[0])[] | .[1:] | @tsv') || return 1
             [ -n "$candidates" ] || return 1
 
             tmp_dir=$(mktemp -d) || return 1
             trap 'rm -rf -- "$tmp_dir"' EXIT
             mkdir "$tmp_dir/apks" || return 1
-            while IFS=$'\t' read -r version abi name url; do
-              # 某个版本一旦下载成功，不再混入其他版本的 APK。
-              if [ -n "$selected_version" ] && [ "$version" != "$selected_version" ]; then
-                break
-              fi
-              [ "${downloaded_abis[$abi]:-}" != "1" ] || continue
+            while IFS=$'\t' read -r name url; do
               if curl -fsSL --retry 2 --connect-timeout 8 --max-time 90 -o "$tmp_dir/download.apk" "$url"; then
                 mv -- "$tmp_dir/download.apk" "$tmp_dir/apks/$name" || return 1
-                selected_version=$version
-                downloaded_abis[$abi]=1
+                mkdir -p manager-artifacts && rm -rf -- manager-artifacts/SukiSU-Nova && \
+                  mv -- "$tmp_dir/apks" manager-artifacts/SukiSU-Nova || return 1
                 echo "已下载 $name"
-              else
-                echo "::warning::下载 $name 失败，尝试其他可用附件"
+                return 0
               fi
+              echo "::warning::下载 $name 失败，尝试其他可用附件"
             done <<< "$candidates"
-            [ -n "$selected_version" ] || return 1
-            mkdir -p manager-artifacts && rm -rf -- manager-artifacts/SukiSU-Nova && \
-              mv -- "$tmp_dir/apks" manager-artifacts/SukiSU-Nova
+            return 1
           )
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             if ! download_nova_manager; then
-              echo "::warning::未找到可下载且与 KSU $TARGET_KSU_VERSION 同版本系列的 SukiSU-Nova Manager"
+              echo "::warning::未找到可下载且与 KSU $TARGET_KSU_VERSION 同版本系列的 SukiSU-Nova arm64-v8a Manager"
               exit 1
             fi
             exit 0
